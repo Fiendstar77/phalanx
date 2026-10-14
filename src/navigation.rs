@@ -9,9 +9,18 @@ fn point(id: usize) -> [f32; 2] {
     [(id % WIDTH) as f32 - 10.5, (id / WIDTH) as f32 - 7.5]
 }
 fn nearest(arena: Arena, p: [f32; 2]) -> Option<usize> {
-    (0..COUNT)
-        .filter(|i| !arena.blocked(point(*i)) && arena.clear_segment(p, point(*i)))
-        .min_by(|a, b| distance(p, point(*a)).total_cmp(&distance(p, point(*b))))
+    let mut best = None;
+    let mut best_distance = f32::INFINITY;
+    for id in 0..COUNT {
+        let candidate = point(id);
+        let d = distance(p, candidate);
+        // Preserve stable tie order; only test clearance for a closer anchor.
+        if d < best_distance && !arena.blocked(candidate) && arena.clear_segment(p, candidate) {
+            best = Some(id);
+            best_distance = d;
+        }
+    }
+    best
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize)]
@@ -63,13 +72,32 @@ impl PartialOrd for Entry {
     }
 }
 
-pub fn threat_at(arena: Arena, p: [f32; 2], team: usize, units: &[Unit]) -> f32 {
-    units
+#[derive(Clone, Copy, Debug)]
+pub struct Threat {
+    pub position: [f32; 2],
+    pub range: f32,
+    pub confidence: f32,
+}
+pub fn threat_at_known(arena: Arena, p: [f32; 2], threats: &[Threat]) -> f32 {
+    threats
         .iter()
-        .filter(|u| u.team != team && u.health > 0.0 && arena.clear_segment(p, u.position))
-        .map(|u| (1.0 - distance(p, u.position) / (u.role.range() + 2.0)).max(0.0))
+        .filter(|t| arena.clear_segment(p, t.position))
+        .map(|t| (1.0 - distance(p, t.position) / (t.range + 2.0)).max(0.0) * t.confidence)
         .sum::<f32>()
         .min(2.0)
+}
+/// Ground-truth adapter for explicit navigation baseline tests. Agent runtime uses plan_known.
+pub fn threat_at(arena: Arena, p: [f32; 2], team: usize, units: &[Unit]) -> f32 {
+    let threats: Vec<_> = units
+        .iter()
+        .filter(|u| u.team != team && u.health > 0.0)
+        .map(|u| Threat {
+            position: u.position,
+            range: u.role.range(),
+            confidence: 1.0,
+        })
+        .collect();
+    threat_at_known(arena, p, &threats)
 }
 fn edge(arena: Arena, a: [f32; 2], b: [f32; 2], mind: Mind, threat: f32) -> PathCost {
     let d = distance(a, b);
@@ -92,6 +120,24 @@ pub fn plan(
     team: usize,
     units: &[Unit],
 ) -> Route {
+    let threats: Vec<_> = units
+        .iter()
+        .filter(|u| u.team != team && u.health > 0.0)
+        .map(|u| Threat {
+            position: u.position,
+            range: u.role.range(),
+            confidence: 1.0,
+        })
+        .collect();
+    plan_known(arena, start, goal, mind, &threats)
+}
+pub fn plan_known(
+    arena: Arena,
+    start: [f32; 2],
+    goal: [f32; 2],
+    mind: Mind,
+    threats: &[Threat],
+) -> Route {
     if arena.blocked(start) || arena.blocked(goal) {
         return Route::default();
     }
@@ -106,7 +152,7 @@ pub fn plan(
             if arena.blocked(point(i)) {
                 0.0
             } else {
-                threat_at(arena, point(i), team, units)
+                threat_at_known(arena, point(i), threats)
             }
         })
         .collect();
@@ -169,7 +215,7 @@ pub fn plan(
             pair[0],
             pair[1],
             mind,
-            threat_at(arena, pair[1], team, units),
+            threat_at_known(arena, pair[1], threats),
         ));
     }
     Route { points, cost }

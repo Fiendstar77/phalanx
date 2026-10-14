@@ -43,4 +43,4 @@ Use a separate consent-based playtest protocol to assess decision readability, p
 
 ## Current evidence
 
-Mechanics and replay tests have been performed. No controlled statistical studies, formal playtests, model-training runs, or controller benchmarks have been performed. This document is a protocol, not a results report.
+Mechanics, perception/coordination, replay, and local CPU timing checks have been performed. No controlled statistical studies, formal playtests, model-training runs, or controller benchmarks have been performed. This document is a protocol, not a results report.

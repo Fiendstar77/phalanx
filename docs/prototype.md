@@ -1,8 +1,8 @@
-# Prototype 0.2
+# Prototype 0.3
 
 ## Simulation model
 
-The core in `src/lib.rs` is independent of Bevy. Each tick advances exactly 0.1 simulated seconds. Living units select actions every five ticks: advance, attack, high ground, flank, regroup, retreat, hold, and seek cover. Negative scores exclude actions; stateless noise is keyed by seed, tick, unit ID, and action.
+The core in `src/lib.rs` is independent of Bevy. Each tick advances exactly 0.1 simulated seconds. Living units select actions every five ticks: advance, attack, high ground, flank, regroup, retreat, hold, seek cover, and support ally. Negative scores exclude actions; stateless noise is keyed by seed, tick, unit ID, and action.
 
 Aggression and courage influence engagement. Caution, patience, and discipline influence positioning. Teamwork and ally isolation influence regrouping. Injury, caution, self-preservation, and enemy concentration influence retreat. Nearby enemy pressure adds a retreat incentive to rock throwers. Scores and eligibility conditions remain explicit in source.
 
@@ -20,7 +20,25 @@ Positive edge costs combine:
 - threat (nearby enemy influence × edge length × a caution/self-preservation weight, reduced by cover);
 - uphill elevation change weighted by patience.
 
-Enemy influence uses weapon range and clear segments. It is relative to the moving unit's team. Routes refresh periodically, when targets move materially, and when personality changes. Overlays draw remaining route waypoints; the inspector exposes the cost of the last full plan, not the remaining journey's cost.
+Enemy influence uses only that unit’s contacts, their last observed weapon range and position, fading confidence, and clear segments. Routes refresh periodically, when targets move materially, and when personality changes. Overlays draw remaining route waypoints; the inspector exposes the cost of the last full plan, not the remaining journey's cost.
+
+## Perception and coordination
+
+`src/perception.rs` is the observation boundary. Radial sight starts at 10 units, gains range from observer elevation, loses range when a target occupies cover, and checks walls and terrain height. Decisions use contacts with observed position, health, role, timestamp, source, and direct-visibility status. Lost contacts retain their last observed position with decreasing confidence for up to four simulated seconds; observation of a body or inspection of an empty last-known location can clear them earlier.
+
+Nearby teammates share current direct sightings when both participants have `(teamwork + discipline) / 2 >= 0.5` and are within eight units. Memory reports are not retransmitted, so sharing cannot keep a stale contact alive indefinitely. Friendly information is available through direct sight or nearby cooperative communication. All updates use the same pre-movement snapshot to avoid team update-order advantages.
+
+`src/cognition.rs` selects targets from the recipient’s contacts, with teamwork-weighted preferences for an allied focus. High-teamwork agents can move to support a known injured or pressured ally. Supporting is tactical movement, not healing. A visible enemy engaged by an ally can make a disciplined agent prefer a flank; a fixed flank anchor and cooldown discourage repeated orbiting.
+
+An attack requires a current direct sighting and valid range/clearance. Reports and memories can guide movement but cannot authorize attacking an unseen target. Navigation receives perceived threat sources rather than hidden unit positions. Without contacts, agents search the level's authored opposing deployment zone; this objective contains no live enemy coordinates.
+
+The inspector exposes visible/known/report counts, selected contact source and age, support target, scores, and the last decision's eligibility reason. Threat overlays use known contacts. Knowledge markers show reported positions; an older marker may differ from the enemy's true position.
+
+## Presentation and performance
+
+The simulation remains fixed at 10 ticks per simulated second. While running, rendered pawn positions interpolate between actual previous/current states, with up to one simulated tick of presentation delay (100 ms at x1). Pause and single-step show current simulation positions. Picking and selection markers use the same displayed position. No predicted future movement is fed into the simulation.
+
+Development builds optimize the simulation crate as well as dependencies. Route anchoring avoids clearance checks for grid cells farther than the current best candidate. Unchanged inspector/status text and camera transforms are not marked dirty every frame. See `docs/performance.md` for measured step timing and replay checks.
 
 ## Combat roles
 
@@ -32,7 +50,7 @@ Damage resolves simultaneously. Rocks persist after their thrower's death, and e
 
 ## Current limits
 
-- Global enemy knowledge; no perception memory, view cone, or occlusion-based concealment.
+- Radial sight and proximity communication; no facing/view cones, audible combat cues, or probabilistic identification.
 - Fixed authored presets; no terrain editor or arbitrary arena/profile saving.
 - Grid routes and ally separation, rather than rigid-body collision or navmesh movement.
 - Abstract cover reduction for both melee and rocks; no directional cover or ballistic physics.
@@ -44,8 +62,8 @@ Damage resolves simultaneously. Rocks persist after their thrower's death, and e
 
 ## Validation
 
-Thirteen tests cover deterministic replay, personality-dependent action and route selection, simultaneous fatal attacks, terminal finite state, team composition, choke clearance, rough-ground slowdown, blocked throws, delayed impacts, misses, cover protection, and rocks surviving their throwers. The finite-state test uses 20 seeds and both profile orientations; another test tracks wall clearance through a complete battle on every arena.
+Twenty-three tests cover deterministic replay, personality-dependent action and route selection, simultaneous fatal attacks, terminal finite state, team composition, choke clearance, rough-ground slowdown, blocked throws, delayed impacts, misses, cover protection, rocks surviving their throwers, limited sight, terrain occlusion, sharing eligibility/range, memory expiry without echoes, hidden-enemy independence, support, focus selection, and flanking. The finite-state test uses 20 seeds and both profile orientations; another test tracks wall clearance through a complete battle on every arena.
 
-Local checks include formatting, full graphics compilation, and Clippy. Desktop checks cover preset changes, terrain/threat/elevation overlays, route display, selection, and battle controls. The development machine uses NVIDIA Vulkan; transient swapchain validation errors occurred during renderer startup, although rendering recovered. Other platforms have not been runtime-tested.
+Local checks include formatting, full graphics compilation, and Clippy. Desktop checks cover preset changes, terrain/threat/elevation overlays, route display, selection, battle controls, and the knowledge inspector. The user confirmed that the updated movement feels smooth. The development machine uses NVIDIA Vulkan; transient swapchain validation errors occurred during renderer startup, although rendering recovered. Other platforms have not been runtime-tested.
 
 Recordings and screenshots in `docs/images/` show the actual application. They illustrate the prototype; they are not evidence of statistical superiority for a profile or controller. The evaluation protocol remains a draft for later controlled studies.

@@ -4,30 +4,34 @@
 
 Players shape battlefields and agent personalities, then observe autonomous teams fight. PHALANX explores how terrain, individual psychology, and teamwork affect collective behavior—and how to make those decisions explainable and measurable.
 
-> **Status: early playable prototype.** Rust/Bevy runs 5-versus-5 battles with three melee fighters and two rock throwers per team, personality-weighted routes, cover, rough ground, three arena presets, and decision inspection. Python analysis, arena editing, and generative cognition remain planned. No model has been trained or integrated.
+> **Status: early playable prototype.** Rust/Bevy runs 5-versus-5 battles with three melee fighters and two rock throwers per team, personality-weighted routes, cover, rough ground, three arena presets, limited perception, shared sightings, ally support, and decision inspection. Python analysis, arena editing, and generative cognition remain planned. No model has been trained or integrated.
 
-![PHALANX prototype: two autonomous teams, terrain, and live decision inspector](docs/images/demo.gif)
+![PHALANX v0.3: observed enemy contacts and the decision inspector](docs/images/prototype.png)
 
-[Full-resolution inspector screenshot](docs/images/prototype.png)
+[Terrain and rock-throwing gameplay recording (v0.2)](docs/images/demo.gif)
 
 ## Implemented
 
 - Three 3D arenas: Ridge, Choke, and Open Field; green cover, brown rough ground, and solid choke walls.
 - Three melee fighters and two rock throwers per team, with visible rocks, travel time, possible misses, and blocked shots.
-- Seven editable mind traits and eight scored tactical actions (including seeking cover).
+- Seven editable mind traits and nine scored tactical actions (including seeking cover and supporting allies).
 - Run, pause, single-step, reset, profile swap, and x1/x2/x4/x10 speed controls.
 - Click selection, decision scores, personality presets, and individual trait adjustments.
 - Camera orbit/zoom; actual route, terrain, threat, and elevation overlays.
-- Route costs include distance, terrain difficulty, exposure, enemy threat, cover protection, and uphill travel; personality affects the weights.
+- Route costs include distance, terrain difficulty, exposure, remembered enemy threat, cover protection, and uphill travel; personality affects the weights.
+- Range/line-of-sight perception, fading enemy memory, and nearby cooperative allies sharing direct sightings.
+- Ally support, shared target preferences, and flanking incentives when a teammate engages an enemy.
+- Knowledge overlay: green current sightings, gold personal memories, purple allied reports; contact age/source and decision reasons in the inspector.
+- Smooth display between fixed simulation snapshots, optimized route searches, and optional frame timing diagnostics.
 - Fixed-step combat, simultaneous damage, deterministic seeded decision variation, and JSON battle summaries.
 
-Agents follow routes on a one-unit grid, with ally separation, terrain slowdown, and wall clearance. Attacks require a clear segment through the arena. Enemy positions are still globally known: line-of-sight attack validation is implemented, but limited perception is not. Cover is an abstract defensive terrain bonus, not a physical shield.
+Agents follow routes on a one-unit grid, with ally separation, terrain slowdown, and wall clearance. Attacks require a clear segment through the arena. Agent decisions and route danger use their own observed, remembered, or reported contacts. When no contact is known, agents search the authored enemy deployment zone. The player sees the complete arena as an observer; agents do not receive that complete view. Cover is an abstract defensive terrain bonus, not a physical shield.
 
 ## The experience
 
 Build an arena → shape two teams' minds → run a battle → inspect decisions → change one variable → repeat.
 
-Seven personality traits influence tactical utility: aggression, caution, courage, teamwork, patience, self-preservation, and discipline. The intended inspector exposes candidate action scores and the state behind each decision.
+Seven personality traits influence tactical utility: aggression, caution, courage, teamwork, patience, self-preservation, and discipline. The inspector exposes candidate action scores and the state behind each decision.
 
 ## Research question
 
@@ -77,7 +81,7 @@ On Linux, Bevy requires graphical drivers and development libraries for the wind
 
 Click **Run**. Click a fighter to inspect it, then use the presets or trait buttons to change its mind. **Swap profiles** resets the battle with the teams' psychological profiles exchanged. **Reset** restores the original profiles for the current orientation and seed, including discarding individual edits.
 
-**Arena** cycles Ridge → Choke → Open Field and resets the battle. **Overlay** cycles Off → Terrain → Threat → Elevation. Threat is relative to the selected unit’s team.
+**Arena** cycles Ridge → Choke → Open Field and resets the battle. **Overlay** cycles Off → Terrain → Threat → Elevation → Knowledge. Threat uses the selected unit’s known contacts; the knowledge view marks last-observed positions, including stale ones.
 
 Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **W/S** zoom, **M** arena, **O** overlay.
 
@@ -91,9 +95,16 @@ cargo run --locked --no-default-features --bin phalanx-batch -- --arena choke --
 cargo test --locked --no-default-features
 ```
 
-The JSON contains arena, roles, final unit state, traits, decision counts, damage, movement distance, route cost components, cover/rough-ground ticks, rocks thrown, and target-hit counts. A rock can hit several enemies within its impact radius, so target-hit counts can exceed rocks thrown. It is an initial summary format; sequential decision logging and Python analysis remain future work. Reproducibility applies to the same build/configuration; cross-platform floating-point equivalence is not guaranteed.
+The JSON contains arena, roles, final unit state, traits, decision counts, damage, movement distance, route cost components, cover/rough-ground ticks, rocks thrown, target-hit counts, contact memory/provenance, shared-report updates, and support/flank decisions. A rock can hit several enemies within its impact radius, so target-hit counts can exceed rocks thrown. It is an initial summary format; sequential decision logging and Python analysis remain future work. Reproducibility applies to the same build/configuration; cross-platform floating-point equivalence is not guaranteed.
 
-See [implementation and validation notes](docs/prototype.md).
+See [implementation and validation notes](docs/prototype.md) and [local performance measurements](docs/performance.md).
+
+For timing diagnostics:
+
+```bash
+cargo run --locked --no-default-features --example profile
+RUST_LOG=info cargo run --locked --bin phalanx -- --arena choke --profile
+```
 
 ## Author
 

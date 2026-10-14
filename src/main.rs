@@ -1,5 +1,15 @@
-use bevy::{asset::RenderAssetUsages, mesh::PrimitiveTopology, prelude::*};
-use phalanx::{ACTIONS, Battle, DT, Mind, Role, navigation::threat_at, terrain::Arena};
+use bevy::{
+    asset::RenderAssetUsages,
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    mesh::PrimitiveTopology,
+    prelude::*,
+};
+use phalanx::{
+    ACTIONS, Battle, DT, Mind, Role,
+    navigation::threat_at_known,
+    perception::{self, Source},
+    terrain::Arena,
+};
 
 #[derive(Resource)]
 struct Session {
@@ -12,6 +22,41 @@ struct Session {
     overlay: usize,
     orbit: f32,
     zoom: f32,
+    previous_positions: [[f32; 2]; 10],
+}
+impl Session {
+    fn new(battle: Battle) -> Self {
+        let previous_positions = std::array::from_fn(|i| battle.units[i].position);
+        Self {
+            battle,
+            running: false,
+            selected: 0,
+            speed: 1.0,
+            accumulator: 0.0,
+            paths: true,
+            overlay: 0,
+            orbit: 0.0,
+            zoom: 24.0,
+            previous_positions,
+        }
+    }
+    fn remember_positions(&mut self) {
+        for unit in &self.battle.units {
+            self.previous_positions[unit.id] = unit.position;
+        }
+    }
+    fn presented(&self, id: usize) -> [f32; 2] {
+        let current = self.battle.units[id].position;
+        if !self.running {
+            return current;
+        }
+        let old = self.previous_positions[id];
+        let alpha = (self.accumulator / DT).clamp(0.0, 1.0);
+        [
+            old[0] + (current[0] - old[0]) * alpha,
+            old[1] + (current[1] - old[1]) * alpha,
+        ]
+    }
 }
 #[derive(Component)]
 struct Pawn(usize);
@@ -71,46 +116,56 @@ fn main() {
         }
         return;
     }
-    App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "PHALANX | Minds x Terrain".into(),
-                resolution: (1440, 900).into(),
-                ..default()
-            }),
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: "PHALANX | Minds x Terrain".into(),
+            resolution: (1440, 900).into(),
             ..default()
-        }))
-        .insert_resource(ClearColor(Color::srgb(0.025, 0.035, 0.055)))
-        .insert_resource(Session {
-            battle: Battle::with_arena(seed, args.iter().any(|a| a == "--swap"), arena),
-            running: false,
-            selected: 0,
-            speed: 1.0,
-            accumulator: 0.0,
-            paths: true,
-            overlay: 0,
-            orbit: 0.0,
-            zoom: 24.0,
-        })
-        .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (
-                controls,
-                keyboard,
-                simulate,
-                sync_terrain,
-                sync_rocks,
-                sync_pawns,
-                pick,
-                camera_motion,
-                overlays,
-                update_text,
-                update_status,
-            )
-                .chain(),
+        }),
+        ..default()
+    }))
+    .insert_resource(ClearColor(Color::srgb(0.025, 0.035, 0.055)))
+    .insert_resource(Session::new(Battle::with_arena(
+        seed,
+        args.iter().any(|a| a == "--swap"),
+        arena,
+    )))
+    .add_systems(Startup, setup)
+    .add_systems(
+        Update,
+        (
+            controls,
+            keyboard,
+            simulate,
+            sync_terrain,
+            sync_rocks,
+            sync_pawns,
+            pick,
+            camera_motion,
+            overlays,
+            update_text,
+            update_status,
         )
-        .run();
+            .chain(),
+    );
+    if args.iter().any(|a| a == "--profile") {
+        app.add_plugins((
+            FrameTimeDiagnosticsPlugin::default(),
+            LogDiagnosticsPlugin {
+                filter: Some(
+                    [
+                        FrameTimeDiagnosticsPlugin::FPS,
+                        FrameTimeDiagnosticsPlugin::FRAME_TIME,
+                    ]
+                    .into_iter()
+                    .collect(),
+                ),
+                ..default()
+            },
+        ));
+    }
+    app.run();
 }
 fn font(size: f32) -> TextFont {
     TextFont {
@@ -125,7 +180,7 @@ fn button(parent: &mut ChildSpawnerCommands, title: &str, control: Control) {
             PressLatch::default(),
             control,
             Node {
-                padding: UiRect::axes(px(12), px(8)),
+                padding: UiRect::axes(px(12), px(6)),
                 margin: UiRect::all(px(3)),
                 border_radius: BorderRadius::all(px(5)),
                 ..default()
@@ -274,7 +329,7 @@ fn setup(
             p.spawn((
                 Inspector,
                 Text::new(""),
-                font(13.0),
+                font(12.0),
                 Node {
                     margin: UiRect::top(px(14)),
                     ..default()
@@ -341,6 +396,7 @@ fn apply(control: Control, session: &mut Session) {
         Control::Pause => session.running = false,
         Control::Step => {
             session.running = false;
+            session.remember_positions();
             session.battle.step();
         }
         Control::Reset => {
@@ -373,7 +429,7 @@ fn apply(control: Control, session: &mut Session) {
             }
         }
         Control::Paths => session.paths = !session.paths,
-        Control::Overlay => session.overlay = (session.overlay + 1) % 4,
+        Control::Overlay => session.overlay = (session.overlay + 1) % 5,
         Control::Arena => {
             session.battle = Battle::with_arena(
                 session.battle.seed,
@@ -398,6 +454,9 @@ fn apply(control: Control, session: &mut Session) {
             };
             *field = (*field + change).clamp(0.0, 1.0);
         }
+    }
+    if matches!(control, Control::Reset | Control::Swap | Control::Arena) {
+        session.remember_positions();
     }
 }
 fn controls(
@@ -453,6 +512,7 @@ fn simulate(time: Res<Time>, mut session: ResMut<Session>) {
     session.accumulator += time.delta_secs().min(0.25) * session.speed;
     while session.accumulator >= DT {
         session.accumulator -= DT;
+        session.remember_positions();
         session.battle.step();
         if session.battle.finished {
             session.running = false;
@@ -463,11 +523,11 @@ fn simulate(time: Res<Time>, mut session: ResMut<Session>) {
 fn sync_pawns(session: Res<Session>, mut pawns: Query<(&Pawn, &mut Transform, &mut Visibility)>) {
     for (pawn, mut transform, mut visible) in &mut pawns {
         let unit = &session.battle.units[pawn.0];
-        transform.translation = Vec3::new(
-            unit.position[0],
-            session.battle.arena.elevation(unit.position) + 0.64,
-            unit.position[1],
-        );
+        let p = session.presented(unit.id);
+        let next = Vec3::new(p[0], session.battle.arena.elevation(p) + 0.64, p[1]);
+        if transform.translation != next {
+            transform.translation = next;
+        }
         *visible = if unit.health > 0.0 {
             Visibility::Inherited
         } else {
@@ -496,13 +556,10 @@ fn pick(
         if unit.health <= 0.0 {
             continue;
         }
+        let p = session.presented(unit.id);
         if let Ok(screen) = camera.world_to_viewport(
             transform,
-            Vec3::new(
-                unit.position[0],
-                session.battle.arena.elevation(unit.position) + 0.6,
-                unit.position[1],
-            ),
+            Vec3::new(p[0], session.battle.arena.elevation(p) + 0.6, p[1]),
         ) {
             let d = screen.distance(cursor);
             if d < best.0 {
@@ -533,24 +590,24 @@ fn camera_motion(
         session.zoom += dt * 8.0;
     }
     session.zoom = session.zoom.clamp(13.0, 38.0);
-    **camera = Transform::from_xyz(
+    let next = Transform::from_xyz(
         session.orbit.sin() * session.zoom,
         session.zoom * 0.88,
         session.orbit.cos() * session.zoom,
     )
     .looking_at(Vec3::new(3.5, 0.0, 0.0), Vec3::Y);
+    if camera.translation != next.translation || camera.rotation != next.rotation {
+        **camera = next;
+    }
 }
 fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
     let arena = session.battle.arena;
     let u = &session.battle.units[session.selected];
+    let rendered = session.presented(u.id);
     if u.health > 0.0 {
         gizmos.circle(
             Isometry3d::new(
-                Vec3::new(
-                    u.position[0],
-                    arena.elevation(u.position) + 0.08,
-                    u.position[1],
-                ),
+                Vec3::new(rendered[0], arena.elevation(rendered) + 0.08, rendered[1]),
                 Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
             ),
             0.65,
@@ -559,11 +616,7 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
         if u.role == Role::RockThrower {
             gizmos.circle(
                 Isometry3d::new(
-                    Vec3::new(
-                        u.position[0],
-                        arena.elevation(u.position) + 0.12,
-                        u.position[1],
-                    ),
+                    Vec3::new(rendered[0], arena.elevation(rendered) + 0.12, rendered[1]),
                     Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
                 ),
                 u.role.range(),
@@ -581,7 +634,7 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
             } else {
                 Color::srgb(0.3, 0.7, 1.0)
             };
-            let mut previous = unit.position;
+            let mut previous = session.presented(unit.id);
             for waypoint in unit.route.points.iter().skip(unit.path_cursor) {
                 // Sample each actual route edge so its overlay follows the ground.
                 for i in 0..4 {
@@ -605,7 +658,37 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
             }
         }
     }
-    if session.overlay > 0 {
+    if session.overlay == 4 {
+        for contact in &u.contacts {
+            let color = if contact.visible {
+                Color::srgb(0.2, 1.0, 0.6)
+            } else if matches!(contact.source, Source::Ally(_)) {
+                Color::srgb(0.8, 0.4, 1.0)
+            } else {
+                Color::srgb(1.0, 0.75, 0.25)
+            };
+            let p = contact.position;
+            let center = Vec3::new(p[0], arena.elevation(p) + 0.2, p[1]);
+            gizmos.circle(
+                Isometry3d::new(center, Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+                0.35 + (1.0 - contact.confidence(session.battle.tick)) * 0.55,
+                color,
+            );
+            gizmos.line(center, center + Vec3::Y * 1.8, color);
+        }
+        if u.action == 8 || u.action == 3 {
+            let a = Vec3::new(
+                u.position[0],
+                arena.elevation(u.position) + 0.25,
+                u.position[1],
+            );
+            let p = u.target;
+            let b = Vec3::new(p[0], arena.elevation(p) + 0.25, p[1]);
+            gizmos.line(a, b, Color::srgb(1.0, 0.85, 0.3));
+        }
+    }
+    if session.overlay > 0 && session.overlay < 4 {
+        let known = perception::threats(u, session.battle.tick);
         for x in -10..=10 {
             for z in -7..=7 {
                 let p = [x as f32 + 0.5, z as f32 + 0.5];
@@ -623,7 +706,7 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
                         }
                     }
                     2 => {
-                        let t = (threat_at(arena, p, u.team, &session.battle.units) / 2.0).min(1.0);
+                        let t = (threat_at_known(arena, p, &known) / 2.0).min(1.0);
                         Color::srgb(0.15 + t * 0.85, 0.55 * (1.0 - t), 0.25 * (1.0 - t))
                     }
                     _ => {
@@ -661,9 +744,33 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
             })
             .collect()
     };
+    let focus = u
+        .enemy
+        .and_then(|id| u.contacts.iter().find(|c| c.enemy == id))
+        .map(|c| {
+            let source = if c.visible {
+                "own sight".into()
+            } else {
+                match c.source {
+                    Source::OwnSight => "own memory".into(),
+                    Source::Ally(id) => format!("ally {:02} report", id % 5 + 1),
+                }
+            };
+            format!(
+                "Contact {:02}: {} ({:.1}s)",
+                c.enemy % 5 + 1,
+                source,
+                session.battle.tick.saturating_sub(c.seen_tick) as f32 * DT
+            )
+        })
+        .unwrap_or_else(|| "No contact: search deployment".into());
+    let support = u
+        .support_target
+        .map(|id| format!("Supporting ally {:02}", id % 5 + 1))
+        .unwrap_or_else(|| "".into());
     for mut t in &mut text {
-        t.0 = format!(
-            "{}-{:02}   HEALTH {:.0}%\n{} | {}\nSurface: cover {:.0}% / rough {:.0}%\n\nAggression {:.1} | Caution {:.1}\nCourage {:.1} | Teamwork {:.1}\nPatience {:.1} | Preservation {:.1}\nDiscipline {:.1}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}",
+        let content = format!(
+            "{}-{:02}   HEALTH {:.0}%\n{} | {}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n\nAggression {:.1} | Caution {:.1}\nCourage {:.1} | Teamwork {:.1}\nPatience {:.1} | Preservation {:.1}\nDiscipline {:.1}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}\nWhy (last decision):\n{}",
             if u.team == 0 { "RED" } else { "BLUE" },
             u.id % 5 + 1,
             u.health,
@@ -675,6 +782,14 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
             },
             session.battle.arena.cover(u.position) * 100.0,
             session.battle.arena.roughness(u.position) * 100.0,
+            u.visible_enemies,
+            u.contacts.len(),
+            u.contacts
+                .iter()
+                .filter(|c| matches!(c.source, Source::Ally(_)))
+                .count(),
+            focus,
+            support,
             m.aggression,
             m.caution,
             m.courage,
@@ -688,14 +803,18 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
             u.route.cost.exposure,
             u.route.cost.threat,
             u.rocks_thrown,
-            u.rocks_hit
+            u.rocks_hit,
+            u.decision_reason
         );
+        if t.0 != content {
+            t.0 = content;
+        }
     }
 }
 
 fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>) {
     for mut t in &mut text {
-        t.0 = format!(
+        let content = format!(
             "{} | {:.1}s | x{:.0} | Seed {}\nRED {} / 5     BLUE {} / 5\n{} | {}\nOverlay: {} | {}",
             if session.running { "RUNNING" } else { "PAUSED" },
             session.battle.tick as f32 * DT,
@@ -705,13 +824,23 @@ fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>
             session.battle.survivors(1),
             session.battle.result,
             session.battle.arena.name(),
-            ["OFF", "TERRAIN", "THREAT (selected team)", "ELEVATION"][session.overlay],
+            [
+                "OFF",
+                "TERRAIN",
+                "THREAT (known contacts)",
+                "ELEVATION",
+                "KNOWLEDGE"
+            ][session.overlay],
             match session.overlay {
                 2 => "green=low / red=high",
                 3 => "blue=low / pale=high",
+                4 => "green=seen / gold=memory / purple=report",
                 _ => "green=cover / brown=rough",
             }
         );
+        if t.0 != content {
+            t.0 = content;
+        }
     }
 }
 

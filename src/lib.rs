@@ -1,11 +1,14 @@
 //! Fixed-step combat model, independent of rendering and wall-clock time.
 use serde::Serialize;
+pub mod cognition;
 pub mod navigation;
+pub mod perception;
 pub mod terrain;
-use navigation::{Route, plan};
+use navigation::{Route, plan_known};
+use perception::{COMMUNICATION_RANGE, Contact, can_see, cooperative, threats};
 use terrain::Arena;
 
-pub const ACTION_COUNT: usize = 8;
+pub const ACTION_COUNT: usize = 9;
 
 pub const DT: f32 = 0.1;
 pub const ACTIONS: [&str; ACTION_COUNT] = [
@@ -17,6 +20,7 @@ pub const ACTIONS: [&str; ACTION_COUNT] = [
     "RETREAT",
     "HOLD",
     "SEEK COVER",
+    "SUPPORT ALLY",
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
@@ -104,6 +108,13 @@ pub struct Unit {
     pub rough_ticks: u32,
     pub rocks_thrown: u32,
     pub rocks_hit: u32,
+    pub contacts: Vec<Contact>,
+    pub visible_enemies: usize,
+    pub shared_reports: u32,
+    pub support_target: Option<usize>,
+    pub flank_anchor: Option<[f32; 2]>,
+    pub flank_until: u32,
+    pub decision_reason: String,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Battle {
@@ -177,6 +188,13 @@ impl Battle {
                     rough_ticks: 0,
                     rocks_thrown: 0,
                     rocks_hit: 0,
+                    contacts: Vec::new(),
+                    visible_enemies: 0,
+                    shared_reports: 0,
+                    support_target: None,
+                    flank_anchor: None,
+                    flank_until: 0,
+                    decision_reason: "Awaiting first decision".into(),
                 }
             })
             .collect();
@@ -201,6 +219,7 @@ impl Battle {
         if self.finished {
             return;
         }
+        perception::update(&mut self.units, self.arena, self.tick);
         let snapshot = self.units.clone();
         let mut damage = [0.0; 10];
         let arena = self.arena;
@@ -232,21 +251,30 @@ impl Battle {
             unit.cover_ticks += u32::from(arena.cover(unit.position) > 0.0);
             unit.rough_ticks += u32::from(arena.roughness(unit.position) > 0.0);
             unit.cooldown = (unit.cooldown - DT).max(0.0);
-            let Some(enemy) = snapshot
-                .iter()
-                .filter(|e| e.team != unit.team && e.health > 0.0)
-                .min_by(|a, b| {
-                    distance(unit.position, a.position)
-                        .total_cmp(&distance(unit.position, b.position))
-                })
-            else {
-                continue;
-            };
-            let d = distance(unit.position, enemy.position);
             let allies: Vec<_> = snapshot
                 .iter()
-                .filter(|a| a.team == unit.team && a.id != unit.id && a.health > 0.0)
+                .filter(|a| {
+                    a.team == unit.team
+                        && a.id != unit.id
+                        && a.health > 0.0
+                        && distance(unit.position, a.position) <= COMMUNICATION_RANGE
+                        && (can_see(arena, unit.position, a.position)
+                            || (cooperative(unit.mind) && cooperative(a.mind)))
+                })
                 .collect();
+            let enemy = cognition::focus_target(unit, &allies, self.tick);
+            // Enemy deployment zones are authored objectives, not live enemy positions.
+            let objective = [
+                if unit.team == 0 { 8.0 } else { -8.0 },
+                (unit.id % 5) as f32 * 1.6 - 3.2,
+            ];
+            let enemy_position = enemy.as_ref().map(|e| e.position).unwrap_or(objective);
+            let d = enemy
+                .as_ref()
+                .map(|e| distance(unit.position, e.position))
+                .unwrap_or(f32::INFINITY);
+            let known_threats = threats(unit, self.tick);
+            let support = cognition::support_ally(unit, &allies, self.tick);
             let center = if allies.is_empty() {
                 unit.position
             } else {
@@ -257,14 +285,12 @@ impl Battle {
             };
             let isolation = (distance(unit.position, center) / 5.0).min(1.0);
             let injury = 1.0 - unit.health / 100.0;
-            let local_threat = (snapshot
+            let local_threat = (unit
+                .contacts
                 .iter()
-                .filter(|e| {
-                    e.team != unit.team
-                        && e.health > 0.0
-                        && distance(unit.position, e.position) < 3.5
-                })
-                .count() as f32
+                .filter(|c| distance(unit.position, c.position) < 3.5)
+                .map(|c| c.confidence(self.tick))
+                .sum::<f32>()
                 / 3.0)
                 .min(1.0);
             let ridge = [
@@ -274,9 +300,11 @@ impl Battle {
             if self.tick.is_multiple_of(5) {
                 let m = unit.mind;
                 let ranged = unit.role == Role::RockThrower;
-                let in_range =
-                    d < unit.role.range() && arena.clear_segment(unit.position, enemy.position);
+                let in_range = enemy.as_ref().is_some_and(|e| e.visible)
+                    && d < unit.role.range()
+                    && arena.clear_segment(unit.position, enemy_position);
                 let arrived = distance(unit.position, ridge) < 0.9;
+                let previous_action = unit.action;
                 unit.scores = [
                     0.25 + 0.65 * m.aggression + 0.2 * m.courage - 0.25 * m.caution * local_threat,
                     if in_range {
@@ -291,8 +319,35 @@ impl Battle {
                         0.25 + 0.35 * m.caution + 0.25 * m.discipline + 0.2 * m.patience
                             - 0.015 * distance(unit.position, ridge)
                     },
-                    if d > 2.0 && d < 7.0 {
-                        0.2 + 0.25 * m.aggression + 0.25 * m.discipline + 0.2 * m.patience
+                    if let Some(e) = &enemy {
+                        let engaged = allies
+                            .iter()
+                            .filter(|a| {
+                                a.enemy == Some(e.enemy)
+                                    && a.action == 1
+                                    && (can_see(arena, unit.position, a.position)
+                                        || (cooperative(unit.mind) && cooperative(a.mind)))
+                            })
+                            .count() as f32;
+                        let ongoing = unit.action == 3
+                            && unit
+                                .flank_anchor
+                                .is_some_and(|p| distance(unit.position, p) > 0.8);
+                        if e.visible
+                            && !in_range
+                            && d > 2.0
+                            && d < 9.0
+                            && engaged > 0.0
+                            && (ongoing || self.tick >= unit.flank_until)
+                        {
+                            0.25 + 0.2 * m.aggression
+                                + 0.35 * m.discipline
+                                + 0.3 * m.teamwork
+                                + 0.2 * engaged.min(2.0)
+                                + if ongoing { 0.1 } else { 0.0 }
+                        } else {
+                            -1.0
+                        }
                     } else {
                         -1.0
                     },
@@ -326,6 +381,12 @@ impl Battle {
                     } else {
                         -1.0
                     },
+                    if let Some((ally, urgency)) = support {
+                        0.15 + 0.65 * m.teamwork + 0.25 * m.discipline + 0.45 * urgency
+                            - 0.025 * distance(unit.position, ally.position)
+                    } else {
+                        -1.0
+                    },
                 ];
                 for (i, score) in unit.scores.iter_mut().enumerate() {
                     if *score >= 0.0 {
@@ -340,39 +401,70 @@ impl Battle {
                     .unwrap()
                     .0;
                 unit.decision_counts[unit.action] += 1;
+                if unit.action == 3 && previous_action != 3 {
+                    unit.flank_anchor = enemy
+                        .as_ref()
+                        .map(|e| cognition::flank_position(arena, unit, e));
+                    unit.flank_until = self.tick + 60;
+                } else if unit.action != 3 {
+                    unit.flank_anchor = None;
+                }
+                unit.decision_reason = match unit.action {
+                    0 => {
+                        if enemy.is_some() {
+                            "Advance on observed/reported contact"
+                        } else {
+                            "Search opposing deployment zone"
+                        }
+                    }
+                    1 => "Current sighting inside weapon range",
+                    2 => "Caution, discipline and patience favor ridge",
+                    3 => "Ally engages target; approach another angle",
+                    4 => "Teamwork favors reducing ally separation",
+                    5 => "Injury or close threat favors withdrawal",
+                    6 => "Patience favors holding ridge position",
+                    7 => "Exposure and self-preservation favor cover",
+                    _ => "Known ally injury or pressure favors support",
+                }
+                .into();
             }
-            unit.enemy = Some(enemy.id);
+            unit.enemy = enemy.as_ref().map(|e| e.enemy);
+            unit.support_target = if unit.action == 8 {
+                support.map(|(ally, _)| ally.id)
+            } else {
+                None
+            };
             unit.target = match unit.action {
                 2 => ridge,
-                3 => [
-                    enemy.position[0],
-                    (enemy.position[1] + if unit.id.is_multiple_of(2) { 2.8 } else { -2.8 })
-                        .clamp(-6.0, 6.0),
-                ],
+                3 => unit.flank_anchor.unwrap_or(enemy_position),
                 4 => center,
                 5 => [
-                    (unit.position[0] + (unit.position[0] - enemy.position[0])).clamp(-10.5, 10.5),
-                    (unit.position[1] + (unit.position[1] - enemy.position[1])).clamp(-7.0, 7.0),
+                    (unit.position[0] + (unit.position[0] - enemy_position[0])).clamp(-10.5, 10.5),
+                    (unit.position[1] + (unit.position[1] - enemy_position[1])).clamp(-7.0, 7.0),
                 ],
                 6 => unit.position,
                 7 => arena.nearest_cover(unit.position).unwrap_or(unit.position),
-                _ => enemy.position,
+                8 => support
+                    .map(|(ally, _)| cognition::support_position(arena, unit, ally))
+                    .unwrap_or(unit.position),
+                _ => enemy_position,
             };
             if unit.action == 1
+                && enemy.as_ref().is_some_and(|e| e.visible)
                 && d < unit.role.range()
-                && arena.clear_segment(unit.position, enemy.position)
+                && arena.clear_segment(unit.position, enemy_position)
                 && unit.cooldown <= 0.0
             {
                 let advantage = 1.0
                     + 0.1
-                        * (arena.elevation(unit.position) - arena.elevation(enemy.position))
+                        * (arena.elevation(unit.position) - arena.elevation(enemy_position))
                             .max(0.0);
                 if unit.role == Role::RockThrower {
                     self.rocks.push(Rock {
                         shooter: unit.id,
                         team: unit.team,
                         from: unit.position,
-                        to: enemy.position,
+                        to: enemy_position,
                         age: 0,
                         flight_ticks: (d / 10.0 / DT).ceil().max(1.0) as u32,
                         damage: 7.0 * advantage,
@@ -380,16 +472,17 @@ impl Battle {
                     unit.rocks_thrown += 1;
                     unit.cooldown = 1.6;
                 } else {
-                    let dealt = 10.0 * advantage * (1.0 - 0.3 * arena.cover(enemy.position));
-                    damage[enemy.id] += dealt;
+                    let dealt = 10.0 * advantage * (1.0 - 0.3 * arena.cover(enemy_position));
+                    damage[enemy.as_ref().unwrap().enemy] += dealt;
                     unit.damage_dealt += dealt;
                     unit.cooldown = 0.8;
                 }
             }
             let stationary = unit.action == 6
                 || (unit.action == 1
+                    && enemy.as_ref().is_some_and(|e| e.visible)
                     && d < unit.role.range()
-                    && arena.clear_segment(unit.position, enemy.position));
+                    && arena.clear_segment(unit.position, enemy_position));
             if stationary {
                 unit.route = Route::default();
                 unit.path_cursor = 0;
@@ -399,14 +492,8 @@ impl Battle {
                     || distance(unit.route_goal, unit.target) > 1.0
                     || unit.route_mind != unit.mind;
                 if expired {
-                    unit.route = plan(
-                        arena,
-                        unit.position,
-                        unit.target,
-                        unit.mind,
-                        unit.team,
-                        &snapshot,
-                    );
+                    unit.route =
+                        plan_known(arena, unit.position, unit.target, unit.mind, &known_threats);
                     unit.path_cursor = 1;
                     unit.route_goal = unit.target;
                     unit.route_mind = unit.mind;
@@ -455,6 +542,12 @@ impl Battle {
         // Simultaneous damage avoids giving the first team update-order immunity.
         for unit in &mut self.units {
             unit.health = (unit.health - damage[unit.id]).max(0.0);
+            if unit.health <= 0.0 {
+                unit.visible_enemies = 0;
+                for c in &mut unit.contacts {
+                    c.visible = false;
+                }
+            }
         }
         self.tick += 1;
         let a = self.survivors(0);

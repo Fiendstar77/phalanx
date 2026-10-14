@@ -1,6 +1,6 @@
 [package]
 name = "phalanx"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "Interpretable terrain-aware autonomous combat prototype"
 publish = false
@@ -24,6 +24,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [profile.dev]
+opt-level = 2
 debug = 0
 
 [profile.dev.package."*"]
