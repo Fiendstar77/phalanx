@@ -4,11 +4,11 @@
 
 Players shape battlefields and agent personalities, then observe autonomous teams fight. PHALANX explores how terrain, individual psychology, and teamwork affect collective behavior—and how to make those decisions explainable and measurable.
 
-> **Status: early playable prototype.** Rust/Bevy runs 5-versus-5 battles with three melee fighters and two rock throwers per team, personality-weighted routes, cover, rough ground, three arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch imitation baseline are available. Arena editing and generative cognition remain planned. The live game uses utility AI; the learned network is currently evaluated offline.
+> **Status: early playable prototype.** Rust/Bevy runs 5-versus-5 battles with three melee fighters and two rock throwers per team, personality-weighted routes, cover, rough ground, three arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
 
-![PHALANX v0.3: observed enemy contacts and the decision inspector](docs/images/prototype.png)
+![Live utility/PyTorch disagreement in the actual game](docs/images/learned-comparison.png)
 
-[Terrain and rock-throwing gameplay recording (v0.2)](docs/images/demo.gif)
+[Live learned-controller gameplay recording](docs/images/learned-demo.gif)
 
 ## Implemented
 
@@ -26,6 +26,14 @@ Players shape battlefields and agent personalities, then observe autonomous team
 - Fixed-step combat, simultaneous damage, deterministic seeded decision variation, and JSON battle summaries.
 
 Agents follow routes on a one-unit grid, with ally separation, terrain slowdown, and wall clearance. Attacks require a clear segment through the arena. Agent decisions and route danger use their own observed, remembered, or reported contacts. When no contact is known, agents search the authored enemy deployment zone. The player sees the complete arena as an observer; agents do not receive that complete view. Cover is an abstract defensive terrain bonus, not a physical shield.
+
+## Live controller experiment
+
+**Same Choke map, 32 fresh seeds, both spawn sides, identical teams.** The frozen learned policy won 37 battles; utility won 25; two were draws. The learned-minus-utility score was +0.188 (95% seed-block bootstrap interval: −0.047 to +0.406). The interval includes zero, so superiority is not established.
+
+![Matched-seed controller comparison](docs/results/v05/comparison.png)
+
+Press **C** or **Utility/Learned** to switch controllers. The inspector compares utility and PyTorch proposals on the same observation, shows agreement and the executed action, and disagreements are logged to JSONL. Utility remains the default, eligibility authority, and fallback. [Protocol, interpretation, limitations, and reproduction](docs/results/v05/README.md).
 
 ## First measured results
 
@@ -52,9 +60,9 @@ The project first establishes deterministic combat and terrain-aware navigation.
 - **Rust / Bevy 0.19.1:** implemented interactive simulation, tactical pathfinding, combat, and agent inspection.
 - **Python:** implemented sequential telemetry collection, counterbalanced experiment batches, seed-block bootstrap intervals, and standalone plots.
 - **Optional local LLM:** structured tactical proposals, legality validation, deterministic fallback.
-- **PyTorch:** a trained, reload-verified imitation policy with disjoint training/validation/test seeds; offline evaluation and simple baselines.
+- **PyTorch:** a trained, reload-verified imitation policy with disjoint training/validation/test seeds; held-out evaluation, simple baselines, and live controller comparison.
 
-The trained network is not yet connected to in-game control. No generative model has been integrated.
+The live game runs the exported trained weights through an equivalent Rust CPU forward pass verified against PyTorch. No generative model has been integrated.
 
 ## Milestones and acceptance criteria
 
@@ -91,7 +99,9 @@ Click **Run**. Click a fighter to inspect it, then use the presets or trait butt
 
 **Arena** cycles Ridge → Choke → Open Field and resets the battle. **Overlay** cycles Off → Terrain → Threat → Elevation → Knowledge. Threat uses the selected unit’s known contacts; the knowledge view marks last-observed positions, including stale ones.
 
-Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **W/S** zoom, **M** arena, **O** overlay.
+Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **W/S** zoom, **M** arena, **O** overlay, **C** Utility/Learned controller.
+
+Add `--learned` to start with learned control. Disagreement logs are written to `outputs/disagreements-*.jsonl`.
 
 You can also launch a specific setup: `cargo run --locked --bin phalanx -- --arena choke --seed 42`.
 

@@ -1,0 +1,8 @@
+{"actions":["ADVANCE","ATTACK","HIGH GROUND","FLANK","REGROUP","RETREAT","HOLD","SEEK COVER","SUPPORT ALLY"],"event":"session","policy_source_sha256":"923f16100436e42dee2b2dbdee2c7069e3fd95bb1de51f05222da26d7f88b316","schema_version":1,"simulation_version":"0.5.0"}
+{"arena":"choke","comparison":{"confidence":0.6081187129020691,"controller":"Utility","disagreed":true,"executed":4,"learned":0,"tick":115,"unit":7,"utility":4},"event":"disagreement","run_id":0,"seed":42}
+{"arena":"choke","comparison":{"confidence":0.8136246800422668,"controller":"Utility","disagreed":true,"executed":5,"learned":8,"tick":135,"unit":8,"utility":5},"event":"disagreement","run_id":0,"seed":42}
+{"arena":"choke","comparison":{"confidence":0.870941162109375,"controller":"Utility","disagreed":true,"executed":0,"learned":3,"tick":150,"unit":4,"utility":0},"event":"disagreement","run_id":0,"seed":42}
+{"arena":"choke","comparison":{"confidence":0.9986646175384521,"controller":"Utility","disagreed":true,"executed":0,"learned":3,"tick":155,"unit":4,"utility":0},"event":"disagreement","run_id":0,"seed":42}
+{"arena":"choke","comparison":{"confidence":0.7530826926231384,"controller":"Utility","disagreed":true,"executed":7,"learned":5,"tick":170,"unit":6,"utility":7},"event":"disagreement","run_id":0,"seed":42}
+{"arena":"choke","comparison":{"confidence":0.5974037647247314,"controller":"Utility","disagreed":true,"executed":1,"learned":5,"tick":195,"unit":9,"utility":1},"event":"disagreement","run_id":0,"seed":42}
+{"arena":"choke","comparison":{"confidence":0.6081187129020691,"controller":"Learned","disagreed":true,"executed":0,"learned":0,"tick":115,"unit":7,"utility":4},"event":"disagreement","run_id":1,"seed":42}

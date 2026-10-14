@@ -49,3 +49,15 @@ The 29 inputs contain traits and perceived tactical state. Utility-score magnitu
 The network has two 64-unit hidden layers and nine outputs. AdamW and class-weighted cross entropy train it to reproduce the utility teacher. Reports include held-out accuracy, supported-class macro-F1, per-class counts/precision/recall, raw eligibility rate, simple baselines, and single-observation CPU timing. There is no claim of better combat, new-map generalization, player preference, or generative reasoning.
 
 The saved `policy.pt` contains model weights, feature/action names, and train-only normalization. `predict` reloads it with `weights_only=True` and verifies stored inference observations. See the [official PyTorch serialization guidance](https://docs.pytorch.org/tutorials/beginner/saving_loading_models.html).
+
+## Live policy and focused experiment
+
+The game bundles the frozen v0.4 model, exported with:
+
+```bash
+.venv/bin/python -m analysis.export docs/results/v04/policy/policy.pt assets/policy.json
+python3 -m analysis.duel --output outputs/my-choke-duel
+.venv/bin/python -m analysis.plots --duel outputs/my-choke-duel --output comparison.png
+```
+
+The fixed Choke protocol uses 32 fresh seeds, opposite spawn sides, identical neutral traits, and seed-block uncertainty. [Published results and limitations](../docs/results/v05/README.md). Headless `--controller learned` controls both teams; `--duel` controls one team with the frozen policy and the other with utility (`--swap` moves the learner to the other side). Training rejects learned-controller traces to preserve utility-teacher labels. Live UI defaults to utility, shadows PyTorch, switches with C, and logs disagreements.

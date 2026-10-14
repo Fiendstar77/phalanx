@@ -28,3 +28,7 @@ RUST_LOG=info cargo run --locked --bin phalanx -- --arena choke --profile
 ```
 
 The first command reports median, p95, p99, and maximum CPU step time for three complete battles. The second logs live FPS/frame timing. Startup shader/pipeline compilation and transient renderer initialization errors should be distinguished from steady gameplay.
+
+## Live policy check (v0.5)
+
+On the same development desktop, Choke with the bundled policy evaluated beside utility AI remained about 60 FPS (steady diagnostic averages around 16.67 ms/frame). This verifies local responsiveness, not a controller latency benchmark. The forward pass runs natively in Rust at decision time; no Python service blocks gameplay.

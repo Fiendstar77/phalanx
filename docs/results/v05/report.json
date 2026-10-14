@@ -1,0 +1,15 @@
+{
+  "seed_blocks": 32,
+  "battles": 64,
+  "learned_wins": 37,
+  "utility_wins": 25,
+  "draws": 2,
+  "timeouts": 1,
+  "score_advantage": 0.1875,
+  "score_advantage_95ci": [
+    -0.046875,
+    0.40625
+  ],
+  "learned_fallbacks": 0,
+  "same_state_agreement_on_learned_trajectories": 0.9340546863576547
+}

@@ -1,4 +1,4 @@
-# Prototype 0.4
+# Prototype 0.5
 
 ## Simulation model
 
@@ -71,3 +71,9 @@ Recordings and screenshots in `docs/images/` show the actual application. They i
 ## Measured baseline
 
 The Python package now runs controlled batches and trains a PyTorch policy from exact decision-time traces. See [the first results](results/v04/README.md) for 864 battles, held-out evaluation, real saved weights, and current limitations. Three Python analysis tests and a train/save/reload smoke run complement the Rust checks.
+
+## Live learned controller
+
+The frozen PyTorch policy is exported to `assets/policy.json` and evaluated in Rust on the same 29 pre-action features as utility AI. Both proposals use utility eligibility. Utility is default; C switches the executed controller without resetting state. Failed inference falls back to utility. The inspector retains the last decision's mode and proposals; disagreements go to JSONL. Learned explanations identify a model proposal rather than attributing the choice to a utility score. See [the focused comparison](results/v05/README.md) for measured outcomes and limits.
+
+Four additional Rust tests validate actual PyTorch/Rust logits and masked predictions, unchanged utility combat under shadow inference, deterministic eligible learned control, and invalid-model/input fallback.
