@@ -1,4 +1,4 @@
-# Prototype 0.3
+# Prototype 0.4
 
 ## Simulation model
 
@@ -57,13 +57,17 @@ Damage resolves simultaneously. Rocks persist after their thrower's death, and e
 - Initial presets change multiple traits, so comparing them does not isolate a single trait.
 - Scores represent the most recent decision. Route costs represent the most recent full plan.
 - Reset discards individual personality edits and restores initial presets for the current arena/orientation/seed.
-- JSON is a battle summary, not a sequential decision/event dataset.
-- No LLM, learned controller, Python evaluation, or model training yet.
+- JSON summaries are complemented by optional decision/damage JSONL traces; aggregate living-time and ally-distance metrics are recorded.
+- A PyTorch imitation model has been trained and evaluated offline. The live game retains utility AI; no generative model or learned in-game controller is installed.
 
 ## Validation
 
-Twenty-three tests cover deterministic replay, personality-dependent action and route selection, simultaneous fatal attacks, terminal finite state, team composition, choke clearance, rough-ground slowdown, blocked throws, delayed impacts, misses, cover protection, rocks surviving their throwers, limited sight, terrain occlusion, sharing eligibility/range, memory expiry without echoes, hidden-enemy independence, support, focus selection, and flanking. The finite-state test uses 20 seeds and both profile orientations; another test tracks wall clearance through a complete battle on every arena.
+Twenty-six Rust tests cover deterministic replay, personality-dependent action and route selection, simultaneous fatal attacks, terminal finite state, team composition, choke clearance, rough-ground slowdown, blocked throws, delayed impacts, misses, cover protection, rocks surviving their throwers, limited sight, terrain occlusion, sharing eligibility/range, memory expiry without echoes, hidden-enemy independence, support, focus selection, flanking, decision-recording invariance, valid feature/mask records, living-time metrics, and protection against leaking selected flank state into training features. The finite-state test uses 20 seeds and both profile orientations; another test tracks wall clearance through a complete battle on every arena.
 
 Local checks include formatting, full graphics compilation, and Clippy. Desktop checks cover preset changes, terrain/threat/elevation overlays, route display, selection, battle controls, and the knowledge inspector. The user confirmed that the updated movement feels smooth. The development machine uses NVIDIA Vulkan; transient swapchain validation errors occurred during renderer startup, although rendering recovered. Other platforms have not been runtime-tested.
 
 Recordings and screenshots in `docs/images/` show the actual application. They illustrate the prototype; they are not evidence of statistical superiority for a profile or controller. The evaluation protocol remains a draft for later controlled studies.
+
+## Measured baseline
+
+The Python package now runs controlled batches and trains a PyTorch policy from exact decision-time traces. See [the first results](results/v04/README.md) for 864 battles, held-out evaluation, real saved weights, and current limitations. Three Python analysis tests and a train/save/reload smoke run complement the Rust checks.

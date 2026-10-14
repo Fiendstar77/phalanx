@@ -19,6 +19,7 @@ def plot_policy(directory):
     labels=[a.replace(" ","\n") for a in m["actions"]]
     axes[1].set(xticks=range(len(labels)),yticks=range(len(labels)),xticklabels=labels,yticklabels=labels,xlabel="Predicted action",ylabel="Utility teacher action",title="Held-out test · row-normalized confusion")
     axes[1].tick_params(labelsize=7)
+    axes[1].set_xticklabels(labels,rotation=40,ha="right",rotation_mode="anchor")
     fig.suptitle("PHALANX · PyTorch policy imitation · combat improvement not established")
     fig.savefig(path/"learning.png",dpi=170);plt.close(fig)
 

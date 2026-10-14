@@ -1,0 +1,53 @@
+{
+  "ridge": {
+    "seed_blocks": 48,
+    "battles": 96,
+    "high_wins": 12,
+    "draws": 0,
+    "timeouts": 0,
+    "score_advantage": -0.75,
+    "score_advantage_95ci": [
+      -0.875,
+      -0.625
+    ],
+    "survival_advantage": -0.46875,
+    "survival_advantage_95ci": [
+      -0.5375,
+      -0.3958333333333333
+    ]
+  },
+  "choke": {
+    "seed_blocks": 48,
+    "battles": 96,
+    "high_wins": 14,
+    "draws": 1,
+    "timeouts": 0,
+    "score_advantage": -0.6979166666666666,
+    "score_advantage_95ci": [
+      -0.8229166666666666,
+      -0.5625
+    ],
+    "survival_advantage": -0.35208333333333336,
+    "survival_advantage_95ci": [
+      -0.42083333333333334,
+      -0.2833333333333334
+    ]
+  },
+  "open": {
+    "seed_blocks": 48,
+    "battles": 96,
+    "high_wins": 1,
+    "draws": 1,
+    "timeouts": 0,
+    "score_advantage": -0.96875,
+    "score_advantage_95ci": [
+      -1.0,
+      -0.9166666666666666
+    ],
+    "survival_advantage": -0.6645833333333334,
+    "survival_advantage_95ci": [
+      -0.7000000000000001,
+      -0.6291666666666667
+    ]
+  }
+}

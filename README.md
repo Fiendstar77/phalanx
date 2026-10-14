@@ -4,7 +4,7 @@
 
 Players shape battlefields and agent personalities, then observe autonomous teams fight. PHALANX explores how terrain, individual psychology, and teamwork affect collective behavior—and how to make those decisions explainable and measurable.
 
-> **Status: early playable prototype.** Rust/Bevy runs 5-versus-5 battles with three melee fighters and two rock throwers per team, personality-weighted routes, cover, rough ground, three arena presets, limited perception, shared sightings, ally support, and decision inspection. Python analysis, arena editing, and generative cognition remain planned. No model has been trained or integrated.
+> **Status: early playable prototype.** Rust/Bevy runs 5-versus-5 battles with three melee fighters and two rock throwers per team, personality-weighted routes, cover, rough ground, three arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch imitation baseline are available. Arena editing and generative cognition remain planned. The live game uses utility AI; the learned network is currently evaluated offline.
 
 ![PHALANX v0.3: observed enemy contacts and the decision inspector](docs/images/prototype.png)
 
@@ -27,6 +27,14 @@ Players shape battlefields and agent personalities, then observe autonomous team
 
 Agents follow routes on a one-unit grid, with ally separation, terrain slowdown, and wall clearance. Attacks require a clear segment through the arena. Agent decisions and route danger use their own observed, remembered, or reported contacts. When no contact is known, agents search the authored enemy deployment zone. The player sees the complete arena as an observer; agents do not receive that complete view. Cover is an abstract defensive terrain bonus, not a physical shield.
 
+## First measured results
+
+**864 battles**, three arenas, both spawn orientations, 48 seeds. A 6,665-parameter PyTorch policy reached **97.9% masked action agreement** on held-out seeds (simple attack/advance baseline: 73.1%). This measures imitation of utility AI, not better combat performance.
+
+The trait study found a caution advantage reversal between Ridge and Choke, while higher teamwork underperformed in the tested configuration. We report these results, uncertainty, and limitations in [the measured baseline](docs/results/v04/README.md).
+
+Run experiments or train/reload the model with [the Python/PyTorch guide](analysis/README.md).
+
 ## The experience
 
 Build an arena → shape two teams' minds → run a battle → inspect decisions → change one variable → repeat.
@@ -42,11 +50,11 @@ The project first establishes deterministic combat and terrain-aware navigation.
 ## Stack and planned extensions
 
 - **Rust / Bevy 0.19.1:** implemented interactive simulation, tactical pathfinding, combat, and agent inspection.
-- **Python (planned):** sequential telemetry analysis, statistical comparisons, and experiment reporting.
+- **Python:** implemented sequential telemetry collection, counterbalanced experiment batches, seed-block bootstrap intervals, and standalone plots.
 - **Optional local LLM:** structured tactical proposals, legality validation, deterministic fallback.
-- **PyTorch:** a later learned-policy baseline or training experiment, only once real simulation data and an evaluation pipeline exist.
+- **PyTorch:** a trained, reload-verified imitation policy with disjoint training/validation/test seeds; offline evaluation and simple baselines.
 
-No model has been trained or integrated at this stage.
+The trained network is not yet connected to in-game control. No generative model has been integrated.
 
 ## Milestones and acceptance criteria
 
@@ -95,7 +103,7 @@ cargo run --locked --no-default-features --bin phalanx-batch -- --arena choke --
 cargo test --locked --no-default-features
 ```
 
-The JSON contains arena, roles, final unit state, traits, decision counts, damage, movement distance, route cost components, cover/rough-ground ticks, rocks thrown, target-hit counts, contact memory/provenance, shared-report updates, and support/flank decisions. A rock can hit several enemies within its impact radius, so target-hit counts can exceed rocks thrown. It is an initial summary format; sequential decision logging and Python analysis remain future work. Reproducibility applies to the same build/configuration; cross-platform floating-point equivalence is not guaranteed.
+The JSON contains arena, roles, final unit state, traits, decision counts, damage, movement distance, route cost components, cover/rough-ground ticks, rocks thrown, target-hit counts, contact memory/provenance, shared-report updates, and support/flank decisions. A rock can hit several enemies within its impact radius, so target-hit counts can exceed rocks thrown. Optional `--trace FILE.jsonl` records decision-time features, eligible actions, observations, decisions, and damage events. The analysis package consumes real simulation records. Reproducibility applies to the same build/configuration; cross-platform floating-point equivalence is not guaranteed.
 
 See [implementation and validation notes](docs/prototype.md) and [local performance measurements](docs/performance.md).
 

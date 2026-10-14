@@ -1,0 +1,2 @@
+# Preserve recorded CSV bytes for manifest hashes; CRLF is valid CSV line termination.
+*.csv -text whitespace=cr-at-eol

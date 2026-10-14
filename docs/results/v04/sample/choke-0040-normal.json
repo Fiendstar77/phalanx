@@ -1,0 +1,1057 @@
+{
+  "seed": 40,
+  "tick": 274,
+  "units": [
+    {
+      "id": 0,
+      "team": 0,
+      "role": "Fighter",
+      "position": [
+        9.533528,
+        -6.5008025
+      ],
+      "health": 86.0,
+      "mind": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3
+      },
+      "action": 0,
+      "scores": [
+        1.0105755,
+        -1.0,
+        -1.0,
+        -1.0,
+        0.15197115,
+        -1.0,
+        -1.0,
+        0.26672778,
+        -1.0
+      ],
+      "target": [
+        8.0,
+        -3.2
+      ],
+      "enemy": null,
+      "cooldown": 0.39999998,
+      "damage_dealt": 206.0,
+      "distance_moved": 24.140774,
+      "decision_counts": [
+        23,
+        32,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "route": {
+        "points": [
+          [
+            9.276236,
+            -7.4747095
+          ],
+          [
+            9.5,
+            -6.5
+          ],
+          [
+            9.5,
+            -5.5
+          ],
+          [
+            8.5,
+            -4.5
+          ],
+          [
+            7.5,
+            -3.5
+          ],
+          [
+            8.0,
+            -3.2
+          ]
+        ],
+        "cost": {
+          "distance": 5.4115868,
+          "terrain": 0.0,
+          "exposure": 1.7317078,
+          "threat": 0.0,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 1,
+      "route_goal": [
+        8.0,
+        -3.2
+      ],
+      "route_mind": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3
+      },
+      "cover_ticks": 129,
+      "rough_ticks": 72,
+      "alive_ticks": 274,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 0,
+      "rocks_hit": 0,
+      "contacts": [],
+      "visible_enemies": 0,
+      "shared_reports": 0,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 0,
+      "decision_reason": "Search opposing deployment zone"
+    },
+    {
+      "id": 1,
+      "team": 0,
+      "role": "Fighter",
+      "position": [
+        4.0375214,
+        -3.0937572
+      ],
+      "health": 0.0,
+      "mind": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3
+      },
+      "action": 1,
+      "scores": [
+        0.96571535,
+        1.3568027,
+        -1.0,
+        -1.0,
+        0.14405966,
+        0.47142416,
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "target": [
+        4.3444366,
+        -3.3444364
+      ],
+      "enemy": 6,
+      "cooldown": 0.8,
+      "damage_dealt": 40.0,
+      "distance_moved": 15.21254,
+      "decision_counts": [
+        23,
+        4,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "route": {
+        "points": [],
+        "cost": {
+          "distance": 0.0,
+          "terrain": 0.0,
+          "exposure": 0.0,
+          "threat": 0.0,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 0,
+      "route_goal": [
+        4.4984446,
+        -3.707395
+      ],
+      "route_mind": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3
+      },
+      "cover_ticks": 0,
+      "rough_ticks": 99,
+      "alive_ticks": 139,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 0,
+      "rocks_hit": 0,
+      "contacts": [],
+      "visible_enemies": 0,
+      "shared_reports": 0,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 110,
+      "decision_reason": "Current sighting inside weapon range"
+    },
+    {
+      "id": 2,
+      "team": 0,
+      "role": "Fighter",
+      "position": [
+        9.462723,
+        -6.306575
+      ],
+      "health": 21.0,
+      "mind": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3
+      },
+      "action": 0,
+      "scores": [
+        1.0073146,
+        -1.0,
+        -1.0,
+        -1.0,
+        0.13955188,
+        0.20699075,
+        -1.0,
+        0.42303818,
+        -1.0
+      ],
+      "target": [
+        8.0,
+        0.0
+      ],
+      "enemy": null,
+      "cooldown": 0.39999998,
+      "damage_dealt": 138.0,
+      "distance_moved": 28.503693,
+      "decision_counts": [
+        27,
+        22,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "route": {
+        "points": [
+          [
+            9.237915,
+            -7.3304825
+          ],
+          [
+            9.5,
+            -6.5
+          ],
+          [
+            9.5,
+            -5.5
+          ],
+          [
+            9.5,
+            -4.5
+          ],
+          [
+            9.5,
+            -3.5
+          ],
+          [
+            8.5,
+            -2.5
+          ],
+          [
+            8.5,
+            -1.5
+          ],
+          [
+            7.5,
+            -0.5
+          ],
+          [
+            8.0,
+            0.0
+          ]
+        ],
+        "cost": {
+          "distance": 8.40639,
+          "terrain": 0.0,
+          "exposure": 2.6900449,
+          "threat": 0.0,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 2,
+      "route_goal": [
+        8.0,
+        0.0
+      ],
+      "route_mind": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3
+      },
+      "cover_ticks": 64,
+      "rough_ticks": 101,
+      "alive_ticks": 274,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 0,
+      "rocks_hit": 0,
+      "contacts": [],
+      "visible_enemies": 0,
+      "shared_reports": 0,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 120,
+      "decision_reason": "Search opposing deployment zone"
+    },
+    {
+      "id": 3,
+      "team": 0,
+      "role": "RockThrower",
+      "position": [
+        4.9581914,
+        -4.86036
+      ],
+      "health": 100.0,
+      "mind": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3
+      },
+      "action": 0,
+      "scores": [
+        0.99592024,
+        -1.0,
+        -1.0,
+        -1.0,
+        0.1597689,
+        -1.0,
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "target": [
+        8.0,
+        1.6000001
+      ],
+      "enemy": null,
+      "cooldown": 0.89999986,
+      "damage_dealt": 74.9,
+      "distance_moved": 17.164274,
+      "decision_counts": [
+        19,
+        34,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "route": {
+        "points": [
+          [
+            4.2572923,
+            -5.2572327
+          ],
+          [
+            5.5,
+            -4.5
+          ],
+          [
+            5.5,
+            -3.5
+          ],
+          [
+            5.5,
+            -2.5
+          ],
+          [
+            5.5,
+            -1.5
+          ],
+          [
+            6.5,
+            -0.5
+          ],
+          [
+            6.5,
+            0.5
+          ],
+          [
+            7.5,
+            1.5
+          ],
+          [
+            8.0,
+            1.6000001
+          ]
+        ],
+        "cost": {
+          "distance": 8.79357,
+          "terrain": 0.0,
+          "exposure": 2.3482654,
+          "threat": 0.0,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 1,
+      "route_goal": [
+        8.0,
+        1.6000001
+      ],
+      "route_mind": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3
+      },
+      "cover_ticks": 32,
+      "rough_ticks": 213,
+      "alive_ticks": 274,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 13,
+      "rocks_hit": 11,
+      "contacts": [],
+      "visible_enemies": 0,
+      "shared_reports": 0,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 225,
+      "decision_reason": "Search opposing deployment zone"
+    },
+    {
+      "id": 4,
+      "team": 0,
+      "role": "RockThrower",
+      "position": [
+        4.5866446,
+        -3.9079487
+      ],
+      "health": 100.0,
+      "mind": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3
+      },
+      "action": 0,
+      "scores": [
+        1.0173068,
+        -1.0,
+        -1.0,
+        -1.0,
+        0.16258472,
+        -1.0,
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "target": [
+        8.0,
+        3.2
+      ],
+      "enemy": null,
+      "cooldown": 0.89999986,
+      "damage_dealt": 74.9,
+      "distance_moved": 19.536871,
+      "decision_counts": [
+        20,
+        30,
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "route": {
+        "points": [
+          [
+            4.7694716,
+            -4.768747
+          ],
+          [
+            4.5,
+            -3.5
+          ],
+          [
+            4.5,
+            -2.5
+          ],
+          [
+            5.5,
+            -1.5
+          ],
+          [
+            6.5,
+            -0.5
+          ],
+          [
+            6.5,
+            0.5
+          ],
+          [
+            7.5,
+            1.5
+          ],
+          [
+            7.5,
+            2.5
+          ],
+          [
+            7.5,
+            3.5
+          ],
+          [
+            8.0,
+            3.2
+          ]
+        ],
+        "cost": {
+          "distance": 10.122785,
+          "terrain": 0.0,
+          "exposure": 3.2392907,
+          "threat": 0.0,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 1,
+      "route_goal": [
+        8.0,
+        3.2
+      ],
+      "route_mind": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3
+      },
+      "cover_ticks": 48,
+      "rough_ticks": 200,
+      "alive_ticks": 274,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 12,
+      "rocks_hit": 11,
+      "contacts": [],
+      "visible_enemies": 0,
+      "shared_reports": 0,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 225,
+      "decision_reason": "Search opposing deployment zone"
+    },
+    {
+      "id": 5,
+      "team": 1,
+      "role": "Fighter",
+      "position": [
+        1.6150336,
+        -1.3788072
+      ],
+      "health": 0.0,
+      "mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "action": 1,
+      "scores": [
+        0.4982054,
+        1.1142848,
+        -1.0,
+        -1.0,
+        -1.0,
+        0.9670543,
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "target": [
+        0.27920324,
+        -1.4920725
+      ],
+      "enemy": 1,
+      "cooldown": 0.8,
+      "damage_dealt": 20.0,
+      "distance_moved": 11.154654,
+      "decision_counts": [
+        8,
+        2,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        4
+      ],
+      "route": {
+        "points": [],
+        "cost": {
+          "distance": 0.0,
+          "terrain": 0.0,
+          "exposure": 0.0,
+          "threat": 0.0,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 0,
+      "route_goal": [
+        1.7664895,
+        -1.2192419
+      ],
+      "route_mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "cover_ticks": 0,
+      "rough_ticks": 55,
+      "alive_ticks": 84,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 0,
+      "rocks_hit": 0,
+      "contacts": [],
+      "visible_enemies": 0,
+      "shared_reports": 67,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 120,
+      "decision_reason": "Current sighting inside weapon range"
+    },
+    {
+      "id": 6,
+      "team": 1,
+      "role": "Fighter",
+      "position": [
+        4.4902177,
+        -4.459607
+      ],
+      "health": 0.0,
+      "mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "action": 1,
+      "scores": [
+        0.5652709,
+        1.072046,
+        -1.0,
+        -1.0,
+        -1.0,
+        1.021465,
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "target": [
+        4.499798,
+        -3.144505
+      ],
+      "enemy": 2,
+      "cooldown": 0.8,
+      "damage_dealt": 50.0,
+      "distance_moved": 25.359684,
+      "decision_counts": [
+        10,
+        6,
+        0,
+        2,
+        0,
+        0,
+        0,
+        5,
+        11
+      ],
+      "route": {
+        "points": [],
+        "cost": {
+          "distance": 0.0,
+          "terrain": 0.0,
+          "exposure": 0.0,
+          "threat": 0.0,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 0,
+      "route_goal": [
+        4.4902177,
+        -4.459607
+      ],
+      "route_mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "cover_ticks": 8,
+      "rough_ticks": 41,
+      "alive_ticks": 166,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 0,
+      "rocks_hit": 0,
+      "contacts": [],
+      "visible_enemies": 0,
+      "shared_reports": 229,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 155,
+      "decision_reason": "Current sighting inside weapon range"
+    },
+    {
+      "id": 7,
+      "team": 1,
+      "role": "Fighter",
+      "position": [
+        3.6555636,
+        -6.3444366
+      ],
+      "health": 0.0,
+      "mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "action": 1,
+      "scores": [
+        0.57358074,
+        1.0996363,
+        -1.0,
+        -1.0,
+        -1.0,
+        1.0533315,
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "target": [
+        4.389945,
+        -5.296876
+      ],
+      "enemy": 2,
+      "cooldown": 0.39999998,
+      "damage_dealt": 34.0,
+      "distance_moved": 25.7775,
+      "decision_counts": [
+        11,
+        5,
+        0,
+        2,
+        1,
+        5,
+        0,
+        7,
+        8
+      ],
+      "route": {
+        "points": [],
+        "cost": {
+          "distance": 0.0,
+          "terrain": 0.0,
+          "exposure": 0.0,
+          "threat": 0.0,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 0,
+      "route_goal": [
+        4.5,
+        -5.0
+      ],
+      "route_mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "cover_ticks": 73,
+      "rough_ticks": 78,
+      "alive_ticks": 193,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 0,
+      "rocks_hit": 0,
+      "contacts": [],
+      "visible_enemies": 0,
+      "shared_reports": 185,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 180,
+      "decision_reason": "Current sighting inside weapon range"
+    },
+    {
+      "id": 8,
+      "team": 1,
+      "role": "RockThrower",
+      "position": [
+        4.6820927,
+        -7.026297
+      ],
+      "health": 0.0,
+      "mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "action": 5,
+      "scores": [
+        0.56086403,
+        1.0858818,
+        -1.0,
+        -1.0,
+        0.52518284,
+        1.9031847,
+        -1.0,
+        -1.0,
+        1.2181232
+      ],
+      "target": [
+        4.837196,
+        -7.0
+      ],
+      "enemy": 2,
+      "cooldown": 0.0,
+      "damage_dealt": 49.0,
+      "distance_moved": 25.8966,
+      "decision_counts": [
+        9,
+        7,
+        0,
+        0,
+        0,
+        16,
+        0,
+        1,
+        12
+      ],
+      "route": {
+        "points": [
+          [
+            4.6120753,
+            -6.9572744
+          ],
+          [
+            4.5,
+            -7.5
+          ],
+          [
+            4.697161,
+            -7.0
+          ]
+        ],
+        "cost": {
+          "distance": 1.0916455,
+          "terrain": 0.0,
+          "exposure": 1.3973062,
+          "threat": 4.32813,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 3,
+      "route_goal": [
+        4.697161,
+        -7.0
+      ],
+      "route_mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "cover_ticks": 26,
+      "rough_ticks": 91,
+      "alive_ticks": 225,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 4,
+      "rocks_hit": 7,
+      "contacts": [],
+      "visible_enemies": 0,
+      "shared_reports": 154,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 0,
+      "decision_reason": "Injury or close threat favors withdrawal"
+    },
+    {
+      "id": 9,
+      "team": 1,
+      "role": "RockThrower",
+      "position": [
+        10.498162,
+        -6.6075993
+      ],
+      "health": 0.0,
+      "mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "action": 5,
+      "scores": [
+        0.5685869,
+        1.0717207,
+        -1.0,
+        -1.0,
+        -1.0,
+        1.961705,
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "target": [
+        10.5,
+        -5.884716
+      ],
+      "enemy": 2,
+      "cooldown": 0.0,
+      "damage_dealt": 49.0,
+      "distance_moved": 31.992922,
+      "decision_counts": [
+        8,
+        11,
+        0,
+        0,
+        2,
+        19,
+        0,
+        0,
+        14
+      ],
+      "route": {
+        "points": [
+          [
+            10.490647,
+            -7.047535
+          ],
+          [
+            10.5,
+            -6.5
+          ],
+          [
+            10.5,
+            -6.59507
+          ]
+        ],
+        "cost": {
+          "distance": 0.6426847,
+          "terrain": 0.0,
+          "exposure": 0.8226364,
+          "threat": 2.1970353,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 3,
+      "route_goal": [
+        10.5,
+        -6.59507
+      ],
+      "route_mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "cover_ticks": 42,
+      "rough_ticks": 74,
+      "alive_ticks": 270,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 6,
+      "rocks_hit": 7,
+      "contacts": [],
+      "visible_enemies": 0,
+      "shared_reports": 146,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 0,
+      "decision_reason": "Injury or close threat favors withdrawal"
+    }
+  ],
+  "finished": true,
+  "result": "Red wins",
+  "swapped": false,
+  "arena": "choke",
+  "rocks": [],
+  "schema_version": 1,
+  "simulation_version": "0.4.0",
+  "ally_distance_sum": [
+    1034.332816230878,
+    423.48578576892606
+  ],
+  "ally_distance_samples": [
+    274,
+    224
+  ]
+}

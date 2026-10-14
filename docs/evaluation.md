@@ -19,13 +19,13 @@ Players should be able to understand how personality and terrain change tactical
 - Choose battle count and primary metric before evaluating; use pilot variance to inform sample size.
 - Include timeouts, draws, rejected outputs, and model failures. Never silently discard failed trials.
 
-## Telemetry contract — planned
+## Telemetry contract — implemented baseline
 
-Battle records: battle ID, seed, versions, map, traits, controller, winner or draw, duration, survivors, and timeout status.
+Battle summaries and manifests record version, source/binary hashes, seed, arena, orientation, initial/final profiles, result, duration, survivors, damage, living-unit-time terrain use, and sampled ally distance. File names provide trial IDs.
 
-Decision records: tick, agent ID, observed tactical state, valid actions, utility scores, selected action, controller source, validation outcome, and latency. LLM records additionally include model/settings, token use, and fallback reason.
+Decision JSONL records include tick, unit ID, exact pre-movement state, observed contacts, 29 perceived-state features, eligibility masks, scores, selected action, target, and reason. Damage events and start/end records accompany decisions. Recording is tested against unrecorded replay.
 
-Behavior measures: movement, damage, cover/high-ground use, retreat/regroup events, ally distance, and cohesion. Store explicit definitions and aggregation windows alongside results.
+Future generative-controller records should add model/settings, validity outcomes, decision latency, token use, and fallback reasons. Current PyTorch evaluation separately records forward-pass timing; it is not a per-battle model-integration benchmark.
 
 ## Analysis
 
@@ -43,4 +43,4 @@ Use a separate consent-based playtest protocol to assess decision readability, p
 
 ## Current evidence
 
-Mechanics, perception/coordination, replay, and local CPU timing checks have been performed. No controlled statistical studies, formal playtests, model-training runs, or controller benchmarks have been performed. This document is a protocol, not a results report.
+Mechanics, perception/coordination, replay, and local CPU timing checks have been performed. The first exploratory trait studies and a PyTorch imitation-training run are complete; [results and limitations](results/v04/README.md) include counterbalanced outcomes, uncertainty, baselines, and held-out evaluation. Formal playtests, learned-controller combat rollouts, and generative-controller comparisons remain future work.

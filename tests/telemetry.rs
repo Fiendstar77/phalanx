@@ -36,3 +36,34 @@ fn telemetry_counts_only_living_unit_time_and_handles_no_ally_pairs() {
     assert_eq!(b.units[1].alive_ticks, 0);
     assert_eq!(b.ally_distance_samples, [0, 0]);
 }
+
+#[test]
+fn recorded_features_do_not_include_the_selected_flank_state() {
+    let mut b = Battle::with_arena(42, false, phalanx::terrain::Arena::OpenField);
+    for u in &mut b.units {
+        u.health = 0.0;
+    }
+    b.units[0].health = 100.0;
+    b.units[0].mind = phalanx::Mind::disciplined();
+    b.units[0].position = [-3.6, 0.0];
+    b.units[1].health = 100.0;
+    b.units[1].position = [-1.0, 0.0];
+    b.units[1].enemy = Some(5);
+    b.units[1].action = 1;
+    b.units[5].health = 100.0;
+    b.units[5].position = [0.4, 0.0];
+    let records = b.step_recorded();
+    let r = records.iter().find(|r| r.unit == 0).unwrap();
+    assert_eq!(r.action, "FLANK");
+    assert!(b.units[0].flank_anchor.is_some());
+    let ready = FEATURE_NAMES
+        .iter()
+        .position(|n| *n == "flank_ready")
+        .unwrap();
+    let remaining = FEATURE_NAMES
+        .iter()
+        .position(|n| *n == "flank_remaining")
+        .unwrap();
+    assert_eq!(r.features[ready], 1.0);
+    assert_eq!(r.features[remaining], 1.0);
+}
