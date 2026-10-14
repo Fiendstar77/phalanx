@@ -1,2 +1,4 @@
 # Preserve recorded CSV bytes for manifest hashes; CRLF is valid CSV line termination.
 *.csv -text whitespace=cr-at-eol
+# The imported roadmap uses intentional Markdown two-space hard line breaks.
+PHALANX_COMMERCIAL_GAME_ROADMAP_v0.1.md whitespace=-blank-at-eol
