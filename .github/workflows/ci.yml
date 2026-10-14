@@ -20,3 +20,23 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: sudo apt-get update && sudo apt-get install -y libudev-dev libwayland-dev libxkbcommon-dev
       - run: cargo check --locked --bin phalanx
+  python-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest analysis.test_analysis
+  pytorch-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install torch==2.14.1+cpu --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m analysis.experiments --study profiles --seeds 3 --trace --output outputs/smoke
+      - run: python -m analysis.train --data outputs/smoke --output outputs/smoke-policy --epochs 1 --train-end 1 --val-end 2
+      - run: python -m analysis.predict outputs/smoke-policy

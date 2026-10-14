@@ -3,6 +3,7 @@ use serde::Serialize;
 pub mod cognition;
 pub mod navigation;
 pub mod perception;
+pub mod telemetry;
 pub mod terrain;
 use navigation::{Route, plan_known};
 use perception::{COMMUNICATION_RANGE, Contact, can_see, cooperative, threats};
@@ -106,6 +107,8 @@ pub struct Unit {
     pub route_mind: Mind,
     pub cover_ticks: u32,
     pub rough_ticks: u32,
+    pub alive_ticks: u32,
+    pub high_ground_ticks: u32,
     pub rocks_thrown: u32,
     pub rocks_hit: u32,
     pub contacts: Vec<Contact>,
@@ -126,6 +129,10 @@ pub struct Battle {
     pub swapped: bool,
     pub arena: Arena,
     pub rocks: Vec<Rock>,
+    pub schema_version: u32,
+    pub simulation_version: String,
+    pub ally_distance_sum: [f64; 2],
+    pub ally_distance_samples: [u32; 2],
 }
 pub fn elevation(p: [f32; 2]) -> f32 {
     let x = (1.0 - p[0].abs() / 3.5).max(0.0);
@@ -186,6 +193,8 @@ impl Battle {
                     route_mind: Mind::aggressive(),
                     cover_ticks: 0,
                     rough_ticks: 0,
+                    alive_ticks: 0,
+                    high_ground_ticks: 0,
                     rocks_thrown: 0,
                     rocks_hit: 0,
                     contacts: Vec::new(),
@@ -207,6 +216,10 @@ impl Battle {
             swapped,
             arena,
             rocks: Vec::new(),
+            schema_version: 1,
+            simulation_version: env!("CARGO_PKG_VERSION").into(),
+            ally_distance_sum: [0.0; 2],
+            ally_distance_samples: [0; 2],
         }
     }
     pub fn survivors(&self, team: usize) -> usize {
@@ -216,6 +229,14 @@ impl Battle {
             .count()
     }
     pub fn step(&mut self) {
+        self.advance(None);
+    }
+    pub fn step_recorded(&mut self) -> Vec<telemetry::DecisionRecord> {
+        let mut records = Vec::new();
+        self.advance(Some(&mut records));
+        records
+    }
+    fn advance(&mut self, mut records: Option<&mut Vec<telemetry::DecisionRecord>>) {
         if self.finished {
             return;
         }
@@ -248,6 +269,8 @@ impl Battle {
             if unit.health <= 0.0 {
                 continue;
             }
+            unit.alive_ticks += 1;
+            unit.high_ground_ticks += u32::from(arena.elevation(unit.position) > 0.8);
             unit.cover_ticks += u32::from(arena.cover(unit.position) > 0.0);
             unit.rough_ticks += u32::from(arena.roughness(unit.position) > 0.0);
             unit.cooldown = (unit.cooldown - DT).max(0.0);
@@ -297,6 +320,8 @@ impl Battle {
                 if unit.team == 0 { -0.6 } else { 0.6 },
                 unit.position[1].clamp(-2.0, 2.0),
             ];
+            let old_flank_until = unit.flank_until;
+            let old_flank_anchor = unit.flank_anchor;
             if self.tick.is_multiple_of(5) {
                 let m = unit.mind;
                 let ranged = unit.role == Role::RockThrower;
@@ -449,6 +474,61 @@ impl Battle {
                     .unwrap_or(unit.position),
                 _ => enemy_position,
             };
+            if self.tick.is_multiple_of(5)
+                && let Some(sink) = records.as_deref_mut()
+            {
+                let m = unit.mind;
+                let engaged = enemy
+                    .as_ref()
+                    .map(|e| {
+                        allies
+                            .iter()
+                            .filter(|a| a.enemy == Some(e.enemy) && a.action == 1)
+                            .count()
+                    })
+                    .unwrap_or(0);
+                let features = vec![
+                    m.aggression,
+                    m.caution,
+                    m.courage,
+                    m.teamwork,
+                    m.patience,
+                    m.self_preservation,
+                    m.discipline,
+                    unit.health / 100.0,
+                    f32::from(unit.role == Role::RockThrower),
+                    unit.position[0] / 11.0,
+                    unit.position[1] / 8.0,
+                    arena.elevation(unit.position) / 1.7,
+                    arena.cover(unit.position),
+                    arena.roughness(unit.position),
+                    (d / 20.0).min(1.0),
+                    f32::from(enemy.as_ref().is_some_and(|e| e.visible)),
+                    unit.contacts.len() as f32 / 5.0,
+                    enemy.as_ref().map(|e| e.health / 100.0).unwrap_or(0.0),
+                    enemy
+                        .as_ref()
+                        .map(|e| e.confidence(self.tick))
+                        .unwrap_or(0.0),
+                    allies.len() as f32 / 4.0,
+                    isolation,
+                    local_threat,
+                    support
+                        .map(|(_, urgency)| (urgency / 2.0).min(1.0))
+                        .unwrap_or(0.0),
+                    engaged as f32 / 4.0,
+                    f32::from(distance(unit.position, ridge) < 0.9),
+                    f32::from(self.tick < 180),
+                    f32::from(self.tick >= old_flank_until),
+                    f32::from(enemy.is_some()),
+                    old_flank_anchor
+                        .map(|p| (distance(unit.position, p) / 10.0).min(1.0))
+                        .unwrap_or(1.0),
+                ];
+                sink.push(telemetry::DecisionRecord::capture(
+                    self.tick, unit, features,
+                ));
+            }
             if unit.action == 1
                 && enemy.as_ref().is_some_and(|e| e.visible)
                 && d < unit.role.range()
@@ -547,6 +627,25 @@ impl Battle {
                 for c in &mut unit.contacts {
                     c.visible = false;
                 }
+            }
+        }
+        for team in 0..2 {
+            let alive: Vec<_> = self
+                .units
+                .iter()
+                .filter(|u| u.team == team && u.health > 0.0)
+                .collect();
+            let mut sum = 0.0;
+            let mut pairs = 0;
+            for (i, a) in alive.iter().enumerate() {
+                for b in alive.iter().skip(i + 1) {
+                    sum += distance(a.position, b.position) as f64;
+                    pairs += 1;
+                }
+            }
+            if pairs > 0 {
+                self.ally_distance_sum[team] += sum / pairs as f64;
+                self.ally_distance_samples[team] += 1;
             }
         }
         self.tick += 1;
