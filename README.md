@@ -4,7 +4,7 @@
 
 Players shape battlefields and agent personalities, then observe autonomous teams fight. PHALANX explores how terrain, individual psychology, and teamwork affect collective behavior—and how to make those decisions explainable and measurable.
 
-> **Status: early playable prototype.** Rust/Bevy now runs a 5-versus-5 battle with editable personalities, a central ridge, decision inspection, and replayable headless execution. Python analysis, tactical pathfinding, and generative cognition remain planned. No model has been trained or integrated.
+> **Status: early playable prototype.** Rust/Bevy runs 5-versus-5 battles with three melee fighters and two rock throwers per team, personality-weighted routes, cover, rough ground, three arena presets, and decision inspection. Python analysis, arena editing, and generative cognition remain planned. No model has been trained or integrated.
 
 ![PHALANX prototype: two autonomous teams, terrain, and live decision inspector](docs/images/demo.gif)
 
@@ -12,14 +12,16 @@ Players shape battlefields and agent personalities, then observe autonomous team
 
 ## Implemented
 
-- A 3D arena with a continuous central ridge and red/blue capsule fighters.
-- Seven editable mind traits and seven scored tactical actions.
+- Three 3D arenas: Ridge, Choke, and Open Field; green cover, brown rough ground, and solid choke walls.
+- Three melee fighters and two rock throwers per team, with visible rocks, travel time, possible misses, and blocked shots.
+- Seven editable mind traits and eight scored tactical actions (including seeking cover).
 - Run, pause, single-step, reset, profile swap, and x1/x2/x4/x10 speed controls.
 - Click selection, decision scores, personality presets, and individual trait adjustments.
-- Camera orbit/zoom and movement-target overlays.
+- Camera orbit/zoom; actual route, terrain, threat, and elevation overlays.
+- Route costs include distance, terrain difficulty, exposure, enemy threat, cover protection, and uphill travel; personality affects the weights.
 - Fixed-step combat, simultaneous damage, deterministic seeded decision variation, and JSON battle summaries.
 
-Movement follows direct targets with ally separation and uphill slowdown. Agents currently have full enemy knowledge; there is no obstacle navigation or line-of-sight perception. The lines show movement targets, not computed tactical paths.
+Agents follow routes on a one-unit grid, with ally separation, terrain slowdown, and wall clearance. Attacks require a clear segment through the arena. Enemy positions are still globally known: line-of-sight attack validation is implemented, but limited perception is not. Cover is an abstract defensive terrain bonus, not a physical shield.
 
 ## The experience
 
@@ -35,7 +37,7 @@ The project first establishes deterministic combat and terrain-aware navigation.
 
 ## Stack and planned extensions
 
-- **Rust / Bevy 0.19.1:** implemented interactive simulation, combat, and agent inspection; tactical pathfinding is planned.
+- **Rust / Bevy 0.19.1:** implemented interactive simulation, tactical pathfinding, combat, and agent inspection.
 - **Python (planned):** sequential telemetry analysis, statistical comparisons, and experiment reporting.
 - **Optional local LLM:** structured tactical proposals, legality validation, deterministic fallback.
 - **PyTorch:** a later learned-policy baseline or training experiment, only once real simulation data and an evaluation pipeline exist.
@@ -75,17 +77,21 @@ On Linux, Bevy requires graphical drivers and development libraries for the wind
 
 Click **Run**. Click a fighter to inspect it, then use the presets or trait buttons to change its mind. **Swap profiles** resets the battle with the teams' psychological profiles exchanged. **Reset** restores the original profiles for the current orientation and seed, including discarding individual edits.
 
-Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **W/S** zoom.
+**Arena** cycles Ridge → Choke → Open Field and resets the battle. **Overlay** cycles Off → Terrain → Threat → Elevation. Threat is relative to the selected unit’s team.
+
+Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **W/S** zoom, **M** arena, **O** overlay.
+
+You can also launch a specific setup: `cargo run --locked --bin phalanx -- --arena choke --seed 42`.
 
 Headless execution needs no graphics dependencies:
 
 ```bash
-cargo run --locked --no-default-features --bin phalanx-batch -- --seed 42 --output battle.json
-cargo run --locked --no-default-features --bin phalanx-batch -- --seed 42 --swap --output swapped.json
+cargo run --locked --no-default-features --bin phalanx-batch -- --arena ridge --seed 42 --output battle.json
+cargo run --locked --no-default-features --bin phalanx-batch -- --arena choke --seed 42 --swap --output swapped.json
 cargo test --locked --no-default-features
 ```
 
-The JSON contains final unit state, traits, decision counts, damage, and movement distance. It is an initial summary format; sequential decision logging and Python analysis remain future work. Reproducibility applies to the same build/configuration; cross-platform floating-point equivalence is not guaranteed.
+The JSON contains arena, roles, final unit state, traits, decision counts, damage, movement distance, route cost components, cover/rough-ground ticks, rocks thrown, and target-hit counts. A rock can hit several enemies within its impact radius, so target-hit counts can exceed rocks thrown. It is an initial summary format; sequential decision logging and Python analysis remain future work. Reproducibility applies to the same build/configuration; cross-platform floating-point equivalence is not guaranteed.
 
 See [implementation and validation notes](docs/prototype.md).
 
