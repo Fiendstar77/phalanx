@@ -59,7 +59,11 @@ pub fn update(units: &mut [Unit], arena: Arena, tick: u32) {
                 .map(|e| Contact {
                     enemy: e.id,
                     position: e.position,
-                    health: e.health,
+                    health: if e.max_health() == 100.0 {
+                        e.health
+                    } else {
+                        e.health_fraction() * 100.0
+                    },
                     role: e.role,
                     seen_tick: tick,
                     source: Source::OwnSight,

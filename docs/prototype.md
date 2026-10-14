@@ -89,3 +89,13 @@ Top disagreement rows are clickable. A filter selects living agents whose **late
 Static grid neighbor clearance is cached per authored arena while dynamic threats and personality costs remain recomputed. Choke seed-42 and Citadel seed-42 full summaries matched byte-for-byte before/after caching. Four additional tests verify the expanded roster/footprint, collision-safe routes and complete 20-agent battles in both controller modes, and exclusion of dead/superseded decisions from live filters.
 
 Two raised passerelles cross the central lanes at 3.2 units, with ramp entrances and side rails. Walking checks surface-height steps separately from projectile/visibility clearance, preventing agents from jumping onto a deck through its side. Rendering shows the underlying ground and the deck separately. Navigation still has one traversable surface at each horizontal location: **true stacked underpass/overpass navigation is not implemented**. These are walkable raised routes, not a multi-level navigation system.
+
+## Founders setup
+
+The graphical app now defaults to three fighters per team: King, Queen, and General, centered in each deployment zone. Command titles are independent of melee/rock-thrower roles. Initial King and General are melee fighters; Queen is a rock thrower. Royals have 110 maximum HP and multiply base weapon damage by 1.10. General retains 100 HP and normal damage. Own injury and ally-support calculations use health relative to maximum HP; observed enemy health is represented as a percentage for utility features. Gold/silver crown meshes and a chest chevron patch follow these titles.
+
+Founders/Lab switches between the new setup and the original experiment rosters. Reset, profile swap, and arena changes preserve the active setup and controller. Graphical `--lab` and the default headless batch preserve original Lab behavior; batch `--founders` enables the new setup. The Lab's seed-42 Choke output still matches byte-for-byte. Three new tests cover roster composition, actual royal melee/projectile damage, and deterministic finite battles on every arena.
+
+There is no automatic loss on royal elimination, no new command aura, and no persistent fighter storage yet. This slice establishes visible squad identity on the same measured simulation core.
+
+The original learned policy was trained on Lab rosters, so its original agreement metrics do not establish accuracy or combat quality for royal Founders battles. Utility remains the default and eligibility authority.

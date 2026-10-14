@@ -78,6 +78,24 @@ impl Role {
         }
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum CommandTitle {
+    King,
+    Queen,
+    General,
+}
+impl CommandTitle {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::King => "KING",
+            Self::Queen => "QUEEN",
+            Self::General => "GENERAL",
+        }
+    }
+    pub fn royal(self) -> bool {
+        matches!(self, Self::King | Self::Queen)
+    }
+}
 #[derive(Clone, Debug, Serialize)]
 pub struct Rock {
     pub shooter: usize,
@@ -93,6 +111,8 @@ pub struct Unit {
     pub id: usize,
     pub team: usize,
     pub role: Role,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub command_title: Option<CommandTitle>,
     pub position: [f32; 2],
     pub health: f32,
     pub mind: Mind,
@@ -125,9 +145,30 @@ pub struct Unit {
     #[serde(skip_serializing_if = "search_not_started")]
     pub search_waypoint: u32,
 }
+impl Unit {
+    pub fn max_health(&self) -> f32 {
+        if self.command_title.is_some_and(CommandTitle::royal) {
+            110.0
+        } else {
+            100.0
+        }
+    }
+    pub fn health_fraction(&self) -> f32 {
+        self.health / self.max_health()
+    }
+    pub fn damage_multiplier(&self) -> f32 {
+        if self.command_title.is_some_and(CommandTitle::royal) {
+            1.10
+        } else {
+            1.0
+        }
+    }
+}
 #[derive(Clone, Debug, Serialize)]
 pub struct Battle {
     pub seed: u64,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub founders: bool,
     pub tick: u32,
     pub units: Vec<Unit>,
     pub finished: bool,
@@ -172,22 +213,65 @@ impl Battle {
         Self::with_arena(seed, swapped, Arena::Ridge)
     }
     pub fn with_arena(seed: u64, swapped: bool, arena: Arena) -> Self {
-        let team_size = arena.team_size();
+        Self::with_setup(seed, swapped, arena, false)
+    }
+    pub fn with_founders(seed: u64, swapped: bool, arena: Arena) -> Self {
+        Self::with_setup(seed, swapped, arena, true)
+    }
+    pub fn team_size(&self) -> usize {
+        if self.founders {
+            3
+        } else {
+            self.arena.team_size()
+        }
+    }
+    pub fn unit_label(&self, id: usize) -> String {
+        let u = &self.units[id];
+        let team = if u.team == 0 { "RED" } else { "BLUE" };
+        if let Some(title) = u.command_title {
+            format!("{team} {}", title.name())
+        } else {
+            format!("{team}-{:02}", id % self.team_size() + 1)
+        }
+    }
+    pub fn with_setup(seed: u64, swapped: bool, arena: Arena, founders: bool) -> Self {
+        let team_size = if founders { 3 } else { arena.team_size() };
         let units = (0..2 * team_size)
             .map(|id| {
                 let team = id / team_size;
                 let aggressive = (team == 0) != swapped;
-                let position = arena.spawn(team, id % team_size);
+                let position = if founders {
+                    [arena.spawn(team, 0)[0], (id % team_size) as f32 * 1.6 - 1.6]
+                } else {
+                    arena.spawn(team, id % team_size)
+                };
                 Unit {
                     id,
                     team,
-                    role: if id % team_size >= arena.fighters() {
+                    command_title: if founders {
+                        Some(
+                            [
+                                CommandTitle::King,
+                                CommandTitle::Queen,
+                                CommandTitle::General,
+                            ][id % team_size],
+                        )
+                    } else {
+                        None
+                    },
+                    role: if (founders && id % team_size == 1)
+                        || (!founders && id % team_size >= arena.fighters())
+                    {
                         Role::RockThrower
                     } else {
                         Role::Fighter
                     },
                     position,
-                    health: 100.0,
+                    health: if founders && id % team_size < 2 {
+                        110.0
+                    } else {
+                        100.0
+                    },
                     mind: if aggressive {
                         Mind::aggressive()
                     } else {
@@ -225,6 +309,7 @@ impl Battle {
             .collect();
         Self {
             seed,
+            founders,
             tick: 0,
             units,
             finished: false,
@@ -280,6 +365,7 @@ impl Battle {
         let snapshot = self.units.clone();
         let mut damage = vec![0.0; self.units.len()];
         let arena = self.arena;
+        let team_size = self.team_size();
         let mut landed = Vec::new();
         for rock in &mut self.rocks {
             rock.age += 1;
@@ -324,17 +410,20 @@ impl Battle {
             let enemy = cognition::focus_target(unit, &allies, self.tick);
             // Enemy deployment zones are authored objectives, not live enemy positions.
             let mut objective =
-                arena.search_waypoint(unit.team, unit.id % arena.team_size(), unit.search_waypoint);
+                arena.search_waypoint(unit.team, unit.id % team_size, unit.search_waypoint);
             if arena == Arena::Citadel
                 && enemy.is_none()
                 && distance(unit.position, objective) < 1.8
             {
                 unit.search_waypoint += 1;
-                objective = arena.search_waypoint(
-                    unit.team,
-                    unit.id % arena.team_size(),
-                    unit.search_waypoint,
-                );
+                objective =
+                    arena.search_waypoint(unit.team, unit.id % team_size, unit.search_waypoint);
+            }
+            if self.founders && unit.search_waypoint.is_multiple_of(5) {
+                objective = [
+                    arena.spawn(1 - unit.team, 0)[0],
+                    (unit.id % team_size) as f32 * 1.6 - 1.6,
+                ];
             }
             let enemy_position = enemy.as_ref().map(|e| e.position).unwrap_or(objective);
             let d = enemy
@@ -352,7 +441,7 @@ impl Battle {
                 ]
             };
             let isolation = (distance(unit.position, center) / 5.0).min(1.0);
-            let injury = 1.0 - unit.health / 100.0;
+            let injury = 1.0 - unit.health_fraction();
             let local_threat = (unit
                 .contacts
                 .iter()
@@ -490,7 +579,7 @@ impl Battle {
                     m.patience,
                     m.self_preservation,
                     m.discipline,
-                    unit.health / 100.0,
+                    unit.health_fraction(),
                     f32::from(unit.role == Role::RockThrower),
                     unit.position[0] / arena.half_size()[0],
                     unit.position[1] / arena.half_size()[1],
@@ -500,19 +589,19 @@ impl Battle {
                     arena.roughness(unit.position),
                     (d / 20.0).min(1.0),
                     f32::from(enemy.as_ref().is_some_and(|e| e.visible)),
-                    unit.contacts.len() as f32 / arena.team_size() as f32,
+                    unit.contacts.len() as f32 / team_size as f32,
                     enemy.as_ref().map(|e| e.health / 100.0).unwrap_or(0.0),
                     enemy
                         .as_ref()
                         .map(|e| e.confidence(self.tick))
                         .unwrap_or(0.0),
-                    allies.len() as f32 / (arena.team_size() - 1) as f32,
+                    allies.len() as f32 / (team_size - 1) as f32,
                     isolation,
                     local_threat,
                     support
                         .map(|(_, urgency)| (urgency / 2.0).min(1.0))
                         .unwrap_or(0.0),
-                    engaged as f32 / (arena.team_size() - 1) as f32,
+                    engaged as f32 / (team_size - 1) as f32,
                     f32::from(distance(unit.position, ridge) < 0.9),
                     f32::from(self.tick < 180),
                     f32::from(self.tick >= old_flank_until),
@@ -654,12 +743,15 @@ impl Battle {
                         to: enemy_position,
                         age: 0,
                         flight_ticks: (d / 10.0 / DT).ceil().max(1.0) as u32,
-                        damage: 7.0 * advantage,
+                        damage: 7.0 * unit.damage_multiplier() * advantage,
                     });
                     unit.rocks_thrown += 1;
                     unit.cooldown = 1.6;
                 } else {
-                    let dealt = 10.0 * advantage * (1.0 - 0.3 * arena.cover(enemy_position));
+                    let dealt = 10.0
+                        * unit.damage_multiplier()
+                        * advantage
+                        * (1.0 - 0.3 * arena.cover(enemy_position));
                     damage[enemy.as_ref().unwrap().enemy] += dealt;
                     unit.damage_dealt += dealt;
                     unit.cooldown = 0.8;

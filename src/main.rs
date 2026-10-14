@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
 };
 use phalanx::{
-    ACTION_COUNT, ACTIONS, Battle, DT, Mind, Role,
+    ACTION_COUNT, ACTIONS, Battle, CommandTitle, DT, Mind, Role,
     learned::Controller,
     navigation::threat_at_known,
     perception::{self, Source},
@@ -87,12 +87,16 @@ struct Slab;
 struct Bridge;
 #[derive(Component)]
 struct PawnPart(usize, bool);
+#[derive(Component)]
+struct Insignia(usize, bool);
 #[derive(Resource)]
 struct PawnAssets {
     fighter: Handle<Mesh>,
     thrower: Handle<Mesh>,
     red: Handle<StandardMaterial>,
     blue: Handle<StandardMaterial>,
+    gold: Handle<StandardMaterial>,
+    silver: Handle<StandardMaterial>,
 }
 #[derive(Component, Default)]
 struct PressLatch(bool);
@@ -120,6 +124,7 @@ enum Control {
     Controller,
     Pair(usize, usize),
     ClearPair,
+    Setup,
     NextMatch,
     Aggressive,
     Disciplined,
@@ -142,7 +147,12 @@ fn main() {
         })
         .unwrap_or(42);
     if args.iter().any(|a| a == "--headless") {
-        let mut battle = Battle::with_arena(seed, args.iter().any(|a| a == "--swap"), arena);
+        let mut battle = Battle::with_setup(
+            seed,
+            args.iter().any(|a| a == "--swap"),
+            arena,
+            !args.iter().any(|a| a == "--lab"),
+        );
         while !battle.finished {
             battle.step();
         }
@@ -154,7 +164,12 @@ fn main() {
         }
         return;
     }
-    let mut battle = Battle::with_arena(seed, args.iter().any(|a| a == "--swap"), arena);
+    let mut battle = Battle::with_setup(
+        seed,
+        args.iter().any(|a| a == "--swap"),
+        arena,
+        !args.iter().any(|a| a == "--lab"),
+    );
     battle.controller = if args.iter().any(|a| a == "--learned") {
         Controller::Learned
     } else {
@@ -200,6 +215,7 @@ fn main() {
             sync_bridges,
             sync_rocks,
             sync_pawns,
+            sync_insignia,
             pick,
             camera_motion,
             overlays,
@@ -337,11 +353,20 @@ fn setup(
     let base = meshes.add(Cylinder::new(0.43, 0.09));
     let red = materials.add(Color::srgb(0.92, 0.28, 0.25));
     let blue = materials.add(Color::srgb(0.2, 0.58, 0.94));
+    let gold = materials.add(Color::srgb(1.0, 0.72, 0.08));
+    let silver = materials.add(Color::srgb(0.88, 0.93, 1.0));
+    let badge_background = materials.add(Color::srgb(0.04, 0.07, 0.1));
+    let crown_band = meshes.add(Cylinder::new(0.25, 0.10));
+    let crown_tip = meshes.add(Cone::new(0.07, 0.17));
+    let patch = meshes.add(Cuboid::new(0.33, 0.32, 0.025));
+    let stripe = meshes.add(Cuboid::new(0.16, 0.045, 0.035));
     commands.insert_resource(PawnAssets {
         fighter: capsule.clone(),
         thrower: thrower.clone(),
         red: red.clone(),
         blue: blue.clone(),
+        gold: gold.clone(),
+        silver: silver.clone(),
     });
     for id in 0..20 {
         let material = if id < 5 { red.clone() } else { blue.clone() };
@@ -357,6 +382,42 @@ fn setup(
                 Transform::default(),
             ))
             .with_children(|p| {
+                p.spawn((
+                    Insignia(id, true),
+                    Mesh3d(crown_band.clone()),
+                    MeshMaterial3d(gold.clone()),
+                    Transform::from_xyz(0.0, 0.71, 0.0),
+                    Visibility::Hidden,
+                ));
+                for point in 0..5 {
+                    let angle = point as f32 * std::f32::consts::TAU / 5.0;
+                    p.spawn((
+                        Insignia(id, true),
+                        Mesh3d(crown_tip.clone()),
+                        MeshMaterial3d(gold.clone()),
+                        Transform::from_xyz(angle.cos() * 0.19, 0.81, angle.sin() * 0.19),
+                        Visibility::Hidden,
+                    ));
+                }
+                p.spawn((
+                    Insignia(id, false),
+                    Mesh3d(patch.clone()),
+                    MeshMaterial3d(badge_background.clone()),
+                    Transform::from_xyz(0.0, 0.0, 0.30),
+                    Visibility::Hidden,
+                ));
+                for row in [-0.07_f32, 0.06] {
+                    for sign in [-1.0_f32, 1.0] {
+                        p.spawn((
+                            Insignia(id, false),
+                            Mesh3d(stripe.clone()),
+                            MeshMaterial3d(gold.clone()),
+                            Transform::from_xyz(sign * 0.06, row, 0.32)
+                                .with_rotation(Quat::from_rotation_z(sign * 0.6)),
+                            Visibility::Hidden,
+                        ));
+                    }
+                }
                 {
                     p.spawn((
                         PawnPart(id, true),
@@ -532,7 +593,7 @@ fn setup(
     commands.spawn(Node { position_type: PositionType::Absolute, left: px(20), bottom: px(18), flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
         p.spawn((Text::new("Click a fighter to inspect | Space pause/run | R reset | N step | Q/E orbit | W/S zoom | M arena | O overlay | C controller"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
         p.spawn(Node { margin: UiRect::top(px(8)), ..default() }).with_children(|row| {
-            button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair);
+            button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup);
         });
     });
 }
@@ -548,19 +609,21 @@ fn apply(control: Control, session: &mut Session) {
             session.battle.step();
         }
         Control::Reset => {
-            session.battle = Battle::with_arena(
+            session.battle = Battle::with_setup(
                 session.battle.seed,
                 session.battle.swapped,
                 session.battle.arena,
+                session.battle.founders,
             );
             session.running = false;
             session.accumulator = 0.0;
         }
         Control::Swap => {
-            session.battle = Battle::with_arena(
+            session.battle = Battle::with_setup(
                 session.battle.seed,
                 !session.battle.swapped,
                 session.battle.arena,
+                session.battle.founders,
             );
             session.running = false;
             session.accumulator = 0.0;
@@ -615,13 +678,24 @@ fn apply(control: Control, session: &mut Session) {
                 }
             }
         }
+        Control::Setup => {
+            session.battle = Battle::with_setup(
+                session.battle.seed,
+                session.battle.swapped,
+                session.battle.arena,
+                !session.battle.founders,
+            );
+            session.running = false;
+            session.accumulator = 0.0;
+        }
         Control::Paths => session.paths = (session.paths + 1) % 3,
         Control::Overlay => session.overlay = (session.overlay + 1) % 5,
         Control::Arena => {
-            session.battle = Battle::with_arena(
+            session.battle = Battle::with_setup(
                 session.battle.seed,
                 session.battle.swapped,
                 session.battle.arena.next(),
+                session.battle.founders,
             );
             session.running = false;
             session.accumulator = 0.0;
@@ -642,7 +716,10 @@ fn apply(control: Control, session: &mut Session) {
             *field = (*field + change).clamp(0.0, 1.0);
         }
     }
-    if matches!(control, Control::Reset | Control::Swap | Control::Arena) {
+    if matches!(
+        control,
+        Control::Reset | Control::Swap | Control::Arena | Control::Setup
+    ) {
         if matches!(control, Control::Arena) {
             session.paths = if session.battle.arena == Arena::Citadel {
                 1
@@ -806,6 +883,46 @@ fn sync_pawns(
     }
 }
 
+fn sync_insignia(
+    session: Res<Session>,
+    assets: Res<PawnAssets>,
+    mut pieces: Query<(
+        &Insignia,
+        &mut Visibility,
+        &mut MeshMaterial3d<StandardMaterial>,
+    )>,
+) {
+    for (piece, mut visible, mut material) in &mut pieces {
+        let title = session
+            .battle
+            .units
+            .get(piece.0)
+            .and_then(|u| u.command_title);
+        let show = if piece.1 {
+            title.is_some_and(CommandTitle::royal)
+        } else {
+            title == Some(CommandTitle::General)
+        };
+        let next = if show {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+        if *visible != next {
+            *visible = next;
+        }
+        if piece.1 {
+            let color = if title == Some(CommandTitle::Queen) {
+                &assets.silver
+            } else {
+                &assets.gold
+            };
+            if material.0 != *color {
+                material.0 = color.clone();
+            }
+        }
+    }
+}
 fn pick(
     mouse: Res<ButtonInput<MouseButton>>,
     window: Single<&Window>,
@@ -1043,15 +1160,14 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
             } else {
                 match c.source {
                     Source::OwnSight => "own memory".into(),
-                    Source::Ally(id) => format!(
-                        "ally {:02} report",
-                        id % session.battle.arena.team_size() + 1
-                    ),
+                    Source::Ally(id) => {
+                        format!("ally {:02} report", id % session.battle.team_size() + 1)
+                    }
                 }
             };
             format!(
                 "Contact {:02}: {} ({:.1}s)",
-                c.enemy % session.battle.arena.team_size() + 1,
+                c.enemy % session.battle.team_size() + 1,
                 source,
                 session.battle.tick.saturating_sub(c.seen_tick) as f32 * DT
             )
@@ -1059,12 +1175,7 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
         .unwrap_or_else(|| "No contact: search deployment".into());
     let support = u
         .support_target
-        .map(|id| {
-            format!(
-                "Supporting ally {:02}",
-                id % session.battle.arena.team_size() + 1
-            )
-        })
+        .map(|id| format!("Supporting ally {:02}", id % session.battle.team_size() + 1))
         .unwrap_or_else(|| "".into());
     let comparison = u
         .comparison
@@ -1088,11 +1199,11 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
         .unwrap_or_else(|| "Comparison awaits first decision".into());
     for mut t in &mut text {
         let content = format!(
-            "{}-{:02}   HEALTH {:.0}%\n{} | {}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n{}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}\nWhy (last decision):\n{}",
-            if u.team == 0 { "RED" } else { "BLUE" },
-            u.id % session.battle.arena.team_size() + 1,
+            "{}  HP {:.0}/{:.0}\n{} | {}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n{}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}\nWhy (last decision):\n{}",
+            session.battle.unit_label(u.id),
             u.health,
-            u.role.name(),
+            u.max_health(),
+            format_args!("{} | dmg x{:.2}", u.role.name(), u.damage_multiplier()),
             if u.health <= 0.0 {
                 "ELIMINATED"
             } else {
@@ -1133,10 +1244,18 @@ fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>
             session.speed,
             session.battle.seed,
             session.battle.survivors(0),
-            session.battle.arena.team_size(),
+            session.battle.team_size(),
             session.battle.survivors(1),
-            session.battle.arena.team_size(),
-            session.battle.result,
+            session.battle.team_size(),
+            format_args!(
+                "{} | {}",
+                session.battle.result,
+                if session.battle.founders {
+                    "FOUNDERS"
+                } else {
+                    "LAB"
+                }
+            ),
             session.battle.arena.name(),
             session.battle.controller.name(),
             session.battle.disagreements.len(),

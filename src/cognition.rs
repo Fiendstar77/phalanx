@@ -36,7 +36,7 @@ pub fn support_ally<'a>(unit: &Unit, allies: &[&'a Unit], tick: u32) -> Option<(
             if d < 2.3 {
                 return None;
             }
-            let injury = 1.0 - ally.health / 100.0;
+            let injury = 1.0 - ally.health_fraction();
             let enemies = unit
                 .contacts
                 .iter()

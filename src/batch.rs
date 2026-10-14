@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help") {
         println!(
-            "phalanx-batch [--seed N] [--arena ridge|choke|open|citadel] [--swap] [--controller utility|learned] [--duel] [--trait teamwork|caution --low 0.2 --high 0.9] [--output FILE] [--trace FILE]"
+            "phalanx-batch [--seed N] [--arena ridge|choke|open|citadel] [--swap] [--controller utility|learned] [--duel] [--founders] [--trait teamwork|caution --low 0.2 --high 0.9] [--output FILE] [--trace FILE]"
         );
         return Ok(());
     }
@@ -33,7 +33,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .transpose()?
         .unwrap_or_default();
     let swapped = args.iter().any(|a| a == "--swap");
-    let mut battle = Battle::with_arena(seed, swapped, arena);
+    let mut battle =
+        Battle::with_setup(seed, swapped, arena, args.iter().any(|a| a == "--founders"));
     battle.controller = match value("--controller")?.as_deref().unwrap_or("utility") {
         "utility" => phalanx::learned::Controller::Utility,
         "learned" => phalanx::learned::Controller::Learned,
