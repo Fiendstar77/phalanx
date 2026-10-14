@@ -1,8 +1,8 @@
 //! Authored arena rules shared by movement, route planning, combat and rendering.
 use crate::distance;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum Arena {
     #[default]

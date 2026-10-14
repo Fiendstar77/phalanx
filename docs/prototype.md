@@ -96,6 +96,6 @@ The graphical app now defaults to three fighters per team: King, Queen, and Gene
 
 Founders/Lab switches between the new setup and the original experiment rosters. Reset, profile swap, and arena changes preserve the active setup and controller. Graphical `--lab` and the default headless batch preserve original Lab behavior; batch `--founders` enables the new setup. The Lab's seed-42 Choke output still matches byte-for-byte. Three new tests cover roster composition, actual royal melee/projectile damage, and deterministic finite battles on every arena.
 
-There is no automatic loss on royal elimination, no new command aura, and no persistent fighter storage yet. This slice establishes visible squad identity on the same measured simulation core.
+There is no automatic loss on royal elimination, no new command aura, at the original Founders milestone there was no persistent fighter storage. The subsequent [progression slice](progression.md) adds local identity, XP, saved colors, and a Paladin aura on the same measured simulation core.
 
 The original learned policy was trained on Lab rosters, so its original agreement metrics do not establish accuracy or combat quality for royal Founders battles. Utility remains the default and eligibility authority.

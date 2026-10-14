@@ -12,11 +12,11 @@ Players shape battlefields and agent personalities, then observe autonomous team
 
 ## The first Phalanx
 
-Every starting squad has a **King, Queen, and General**. King and Queen wear basic gold/silver crowns and have **110 HP and +10% damage**; the General wears a military chevron badge and has **100 HP with normal damage**. Command titles are separate from combat roles: the initial King and General fight in melee, while the Queen throws rocks. Winning still requires eliminating the opposing team; losing royalty does not automatically end a battle.
+Every starting squad has a **King, Queen, and General**. King and Queen wear basic gold/silver crowns and start at level 1 with **110 HP and +10% damage**; the General starts as a **Paladin**, with a military chevron badge, **100 HP**, and an aura that blesses and motivates nearby allies. Command titles are separate from combat roles: the initial King and General fight in melee, while the Queen throws rocks. Winning still requires eliminating the opposing team; losing royalty does not automatically end a battle.
 
 ![King, Queen, and General](docs/images/founders.png)
 
-This is a playable three-fighter foundation, not yet a persistent roster. Save/load, recruitment, and cross-battle progression follow the [commercial roadmap](PHALANX_COMMERCIAL_GAME_ROADMAP_v0.1.md). **Founders/Lab** switches setups; launch with `--lab` for the original experimental rosters. Both share the same simulation, controllers, telemetry, and inspector.
+The squads now persist locally: fighter IDs, minds, classes, XP, battle history, and chosen team colors survive save/load. Completed battles award XP and small battle-conditioned habit changes; **Next battle** continues with the same fighters. [Play the progression loop and see its current limits](docs/progression.md). Recruitment and the wider game follow the [commercial roadmap](PHALANX_COMMERCIAL_GAME_ROADMAP_v0.1.md). **Founders/Lab** switches setups; launch with `--lab` for the original experimental rosters. Both share the same simulation, controllers, telemetry, and inspector.
 
 ## Implemented
 

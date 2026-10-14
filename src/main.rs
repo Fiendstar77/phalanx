@@ -5,10 +5,11 @@ use bevy::{
     prelude::*,
 };
 use phalanx::{
-    ACTION_COUNT, ACTIONS, Battle, CommandTitle, DT, Mind, Role,
+    ACTION_COUNT, ACTIONS, Battle, CommandTitle, DT, FighterClass, Mind, PALADIN_AURA_RADIUS, Role,
     learned::Controller,
     navigation::threat_at_known,
     perception::{self, Source},
+    progression::{Campaign, PALETTE},
     terrain::Arena,
 };
 
@@ -28,9 +29,55 @@ struct Session {
     logged_disagreements: usize,
     run_id: u32,
     disagreement_log: Option<std::io::BufWriter<std::fs::File>>,
+    campaign: Campaign,
+    active_battle_id: Option<u64>,
+    rewarded: bool,
+    save_notice: String,
+    autosave: bool,
 }
 impl Session {
-    fn new(battle: Battle) -> Self {
+    fn new(mut battle: Battle) -> Self {
+        let path = std::path::Path::new("outputs/phalanx-save.json");
+        let mut notice = String::new();
+        let mut autosave = true;
+        let mut campaign = if path.exists() {
+            match Campaign::load(path) {
+                Ok(c) => {
+                    notice = "Loaded persistent squads".into();
+                    c
+                }
+                Err(e) => {
+                    notice = format!("Save unreadable: {e}; original untouched");
+                    autosave = false;
+                    Campaign::new()
+                }
+            }
+        } else {
+            Campaign::new()
+        };
+        let active_battle_id = if battle.founders {
+            let seed = if std::env::args().any(|a| a == "--seed") {
+                battle.seed
+            } else {
+                campaign.teams[0].fighters[0]
+                    .history
+                    .last()
+                    .map(|h| h.seed.wrapping_add(1))
+                    .unwrap_or(battle.seed)
+            };
+            match campaign.begin_battle(seed, battle.arena, battle.controller) {
+                Ok((id, b)) => {
+                    battle = b;
+                    Some(id)
+                }
+                Err(e) => {
+                    notice = e;
+                    None
+                }
+            }
+        } else {
+            None
+        };
         let previous_positions = battle.units.iter().map(|u| u.position).collect();
         let paths = if battle.arena == Arena::Citadel { 1 } else { 0 };
         let zoom = if battle.arena == Arena::Citadel {
@@ -38,7 +85,7 @@ impl Session {
         } else {
             24.0
         };
-        Self {
+        let mut session = Self {
             battle,
             running: false,
             selected: 0,
@@ -53,6 +100,109 @@ impl Session {
             logged_disagreements: 0,
             run_id: 0,
             disagreement_log: None,
+            campaign,
+            active_battle_id,
+            rewarded: false,
+            save_notice: notice,
+            autosave,
+        };
+        if session.battle.founders && session.autosave {
+            session.save_campaign();
+        }
+        session
+    }
+    fn team_color(&self, team: usize) -> Color {
+        if self.battle.founders {
+            let c = self.campaign.teams[team].color;
+            Color::srgb(c[0], c[1], c[2])
+        } else if team == 0 {
+            Color::srgb(0.92, 0.28, 0.25)
+        } else {
+            Color::srgb(0.20, 0.58, 0.94)
+        }
+    }
+    fn team_name(&self, team: usize) -> &str {
+        if self.battle.founders {
+            &self.campaign.teams[team].name
+        } else if team == 0 {
+            "RED"
+        } else {
+            "BLUE"
+        }
+    }
+    fn unit_label(&self, id: usize) -> String {
+        let u = &self.battle.units[id];
+        if self.battle.founders {
+            format!(
+                "{} {}",
+                self.team_name(u.team),
+                u.command_title.unwrap().name()
+            )
+        } else {
+            self.battle.unit_label(id)
+        }
+    }
+    fn save_campaign(&mut self) -> bool {
+        if !self.battle.founders {
+            self.save_notice = "Switch to Founders to save progression".into();
+            return false;
+        }
+        let capture = if self.rewarded {
+            Ok(())
+        } else {
+            self.campaign.capture_minds(&self.battle)
+        };
+        match capture.and_then(|()| {
+            self.campaign
+                .save(std::path::Path::new("outputs/phalanx-save.json"))
+        }) {
+            Ok(()) => {
+                self.save_notice = "Saved squads, experience and colors".into();
+                true
+            }
+            Err(e) => {
+                self.save_notice = format!("Save failed: {e}");
+                false
+            }
+        }
+    }
+    fn settle_finished(&mut self) {
+        if self.battle.founders
+            && self.battle.finished
+            && !self.rewarded
+            && let Some(id) = self.active_battle_id
+        {
+            match self.campaign.settle(id, &self.battle) {
+                Ok(()) => {
+                    self.rewarded = true;
+                    for u in &mut self.battle.units {
+                        u.mind = self.campaign.teams[u.team].fighters[u.id % 3].mind;
+                    }
+                    if self.autosave {
+                        if self.save_campaign() {
+                            self.save_notice =
+                                "XP + habits saved. Next battle continues your squads.".into();
+                        }
+                    } else {
+                        self.save_notice =
+                            "XP earned in memory; original unreadable save untouched.".into();
+                    }
+                }
+                Err(e) => {
+                    self.rewarded = true;
+                    self.save_notice = format!("Rewards rejected: {e}");
+                }
+            }
+        }
+    }
+    fn restart_founders(&mut self, seed: u64, arena: Arena, controller: Controller) {
+        match self.campaign.begin_battle(seed, arena, controller) {
+            Ok((id, b)) => {
+                self.battle = b;
+                self.active_battle_id = Some(id);
+                self.rewarded = false;
+            }
+            Err(e) => self.save_notice = e,
         }
     }
     fn remember_positions(&mut self) {
@@ -125,6 +275,10 @@ enum Control {
     Pair(usize, usize),
     ClearPair,
     Setup,
+    NextBattle,
+    Save,
+    Load,
+    TeamColor(usize),
     NextMatch,
     Aggressive,
     Disciplined,
@@ -210,6 +364,8 @@ fn main() {
             controls,
             keyboard,
             simulate,
+            settle_progression,
+            sync_team_colors,
             log_disagreements,
             sync_terrain,
             sync_bridges,
@@ -268,7 +424,11 @@ fn button(parent: &mut ChildSpawnerCommands, title: &str, control: Control) {
             b.spawn((
                 Text::new(title),
                 font(15.0),
-                TextColor(Color::srgb(0.85, 0.91, 0.96)),
+                TextColor(if matches!(control, Control::TeamColor(_)) {
+                    Color::srgb(0.03, 0.05, 0.07)
+                } else {
+                    Color::srgb(0.85, 0.91, 0.96)
+                }),
             ));
         });
 }
@@ -555,7 +715,7 @@ fn setup(
         .spawn(Node {
             position_type: PositionType::Absolute,
             left: px(26),
-            top: px(205),
+            top: px(230),
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Start,
             ..default()
@@ -592,14 +752,24 @@ fn setup(
         });
     commands.spawn(Node { position_type: PositionType::Absolute, left: px(20), bottom: px(18), flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
         p.spawn((Text::new("Click a fighter to inspect | Space pause/run | R reset | N step | Q/E orbit | W/S zoom | M arena | O overlay | C controller"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
-        p.spawn(Node { margin: UiRect::top(px(8)), ..default() }).with_children(|row| {
-            button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup);
+        p.spawn(Node { margin: UiRect::top(px(8)),flex_wrap:FlexWrap::Wrap,width:vw(95.0), ..default() }).with_children(|row| {
+            button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup); button(row,"Next battle",Control::NextBattle);button(row,"Save",Control::Save);button(row,"Load",Control::Load);
+            for (i,name) in ["Amber","Teal","Violet","Coral","Azure","Lime","Pink","Ivory"].iter().enumerate() {button(row,name,Control::TeamColor(i));}
         });
     });
 }
 fn apply(control: Control, session: &mut Session) {
     debug!(?control, "Battle control");
+    session.settle_finished();
     let controller = session.battle.controller;
+    let was_founders = session.battle.founders;
+    if matches!(
+        control,
+        Control::Reset | Control::Swap | Control::Arena | Control::Setup
+    ) && was_founders
+    {
+        let _ = session.campaign.capture_minds(&session.battle);
+    }
     match control {
         Control::Run => session.running = !session.battle.finished,
         Control::Pause => session.running = false,
@@ -627,6 +797,50 @@ fn apply(control: Control, session: &mut Session) {
             );
             session.running = false;
             session.accumulator = 0.0;
+        }
+        Control::NextBattle => {
+            if !session.battle.founders || !session.battle.finished {
+                session.save_notice = "Finish a Founders battle before advancing".into();
+                return;
+            }
+            session.restart_founders(
+                session.battle.seed.wrapping_add(1),
+                session.battle.arena,
+                controller,
+            );
+            session.running = false;
+            session.accumulator = 0.0;
+        }
+        Control::Save => {
+            session.autosave = true;
+            session.save_campaign();
+        }
+        Control::Load => match Campaign::load(std::path::Path::new("outputs/phalanx-save.json")) {
+            Ok(c) => {
+                session.campaign = c;
+                session.battle =
+                    Battle::with_founders(session.battle.seed, false, session.battle.arena);
+                session.restart_founders(session.battle.seed, session.battle.arena, controller);
+                session.running = false;
+                session.accumulator = 0.0;
+                session.autosave = true;
+                session.save_notice = "Loaded squads; fresh battle".into();
+            }
+            Err(e) => {
+                session.save_notice = format!("Load failed: {e}");
+                return;
+            }
+        },
+        Control::TeamColor(i) => {
+            if session.battle.founders {
+                let team = session.battle.units[session.selected].team;
+                session.campaign.teams[team].color = PALETTE[i];
+                if session.autosave {
+                    session.save_campaign();
+                }
+            } else {
+                session.save_notice = "Team heraldry is available in Founders".into();
+            }
         }
         Control::Speed => {
             session.speed = if session.speed < 10.0 {
@@ -719,6 +933,36 @@ fn apply(control: Control, session: &mut Session) {
     if matches!(
         control,
         Control::Reset | Control::Swap | Control::Arena | Control::Setup
+    ) && session.battle.founders
+    {
+        if matches!(control, Control::Swap) && was_founders {
+            for i in 0..3 {
+                let a = session.campaign.teams[0].fighters[i].mind;
+                session.campaign.teams[0].fighters[i].mind =
+                    session.campaign.teams[1].fighters[i].mind;
+                session.campaign.teams[1].fighters[i].mind = a;
+            }
+        }
+        session.restart_founders(session.battle.seed, session.battle.arena, controller);
+    }
+    if matches!(
+        control,
+        Control::Trait(..) | Control::Aggressive | Control::Disciplined
+    ) && session.battle.founders
+    {
+        let _ = session.campaign.capture_minds(&session.battle);
+        if session.autosave {
+            session.save_campaign();
+        }
+    }
+    if matches!(
+        control,
+        Control::Reset
+            | Control::Swap
+            | Control::Arena
+            | Control::Setup
+            | Control::NextBattle
+            | Control::Load
     ) {
         if matches!(control, Control::Arena) {
             session.paths = if session.battle.arena == Arena::Citadel {
@@ -754,7 +998,14 @@ fn controls(
         color.0 = match interaction {
             Interaction::Pressed => Color::srgb(0.2, 0.43, 0.47),
             Interaction::Hovered => Color::srgb(0.2, 0.29, 0.36),
-            _ => Color::srgb(0.12, 0.18, 0.25),
+            _ => {
+                if let Control::TeamColor(i) = control {
+                    let c = PALETTE[*i];
+                    Color::srgb(c[0], c[1], c[2])
+                } else {
+                    Color::srgb(0.12, 0.18, 0.25)
+                }
+            }
         };
         if *interaction == Interaction::Pressed && !latch.0 {
             apply(*control, &mut session);
@@ -808,6 +1059,23 @@ fn simulate(time: Res<Time>, mut session: ResMut<Session>) {
         if session.battle.finished {
             session.running = false;
             break;
+        }
+    }
+}
+fn settle_progression(mut session: ResMut<Session>) {
+    session.settle_finished();
+}
+fn sync_team_colors(
+    session: Res<Session>,
+    assets: Res<PawnAssets>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    for (team, handle) in [&assets.red, &assets.blue].into_iter().enumerate() {
+        let color = session.team_color(team);
+        if materials.get(handle).is_some_and(|m| m.base_color != color)
+            && let Some(mut material) = materials.get_mut(handle)
+        {
+            material.base_color = color;
         }
     }
 }
@@ -1032,16 +1300,36 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
             );
         }
     }
+    for unit in &session.battle.units {
+        if unit.health > 0.0 && unit.class == Some(FighterClass::Paladin) {
+            let p = session.presented(unit.id);
+            gizmos.circle(
+                Isometry3d::new(
+                    Vec3::new(p[0], arena.elevation(p) + 0.1, p[1]),
+                    Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
+                ),
+                PALADIN_AURA_RADIUS,
+                Color::srgb(1.0, 0.9, 0.45),
+            );
+        }
+        if unit.health > 0.0 && unit.blessed {
+            let p = session.presented(unit.id);
+            gizmos.circle(
+                Isometry3d::new(
+                    Vec3::new(p[0], arena.elevation(p) + 1.7, p[1]),
+                    Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
+                ),
+                0.22,
+                Color::srgb(1.0, 0.9, 0.45),
+            );
+        }
+    }
     if session.paths < 2 {
         for unit in &session.battle.units {
             if unit.health <= 0.0 || (session.paths == 1 && unit.id != session.selected) {
                 continue;
             }
-            let color = if unit.team == 0 {
-                Color::srgb(1.0, 0.4, 0.3)
-            } else {
-                Color::srgb(0.3, 0.7, 1.0)
-            };
+            let color = session.team_color(unit.team);
             let mut previous = session.presented(unit.id);
             for waypoint in unit.route.points.iter().skip(unit.path_cursor) {
                 // Sample each actual route edge so its overlay follows the ground.
@@ -1136,6 +1424,18 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
 }
 fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>>) {
     let u = &session.battle.units[session.selected];
+    let progress = if session.battle.founders {
+        let f = &session.campaign.teams[u.team].fighters[u.id % 3];
+        format!(
+            "{} L{} XP{} B{}",
+            if session.battle.finished { "NEXT" } else { "" },
+            1 + (f.experience / 100).min(9),
+            f.experience % 100,
+            f.battles
+        )
+    } else {
+        String::new()
+    };
     let scores: String = if u.decision_counts.iter().sum::<u32>() == 0 {
         "Awaiting first decision.\n".into()
     } else {
@@ -1200,10 +1500,27 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
     for mut t in &mut text {
         let content = format!(
             "{}  HP {:.0}/{:.0}\n{} | {}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n{}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}\nWhy (last decision):\n{}",
-            session.battle.unit_label(u.id),
+            session.unit_label(u.id),
             u.health,
             u.max_health(),
-            format_args!("{} | dmg x{:.2}", u.role.name(), u.damage_multiplier()),
+            format_args!(
+                "{} {} {}",
+                u.class_name(),
+                progress,
+                if !session.battle.founders {
+                    ""
+                } else if u.class == Some(FighterClass::Paladin) {
+                    if u.health > 0.0 {
+                        "AURA SOURCE"
+                    } else {
+                        "AURA OFFLINE"
+                    }
+                } else if u.blessed {
+                    "BLESSED/MOTIVATED"
+                } else {
+                    "OUTSIDE AURA"
+                }
+            ),
             if u.health <= 0.0 {
                 "ELIMINATED"
             } else {
@@ -1238,18 +1555,24 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
 fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>) {
     for mut t in &mut text {
         let content = format!(
-            "{} | {:.1}s | x{:.0} | Seed {}\nRED {} / {}     BLUE {} / {}\n{} | {}\nController: {} | disagreements {} | Paths {}\nOverlay: {} | {}",
+            "{} | {:.1}s | x{:.0} | Seed {}\n{} {} / {}     {} {} / {}\n{} | {}\nController: {} | disagreements {} | Paths {}\nOverlay: {} | {}",
             if session.running { "RUNNING" } else { "PAUSED" },
             session.battle.tick as f32 * DT,
             session.speed,
             session.battle.seed,
+            session.team_name(0),
             session.battle.survivors(0),
             session.battle.team_size(),
+            session.team_name(1),
             session.battle.survivors(1),
             session.battle.team_size(),
             format_args!(
                 "{} | {}",
-                session.battle.result,
+                session
+                    .battle
+                    .winner()
+                    .map(|team| format!("{} wins", session.team_name(team)))
+                    .unwrap_or_else(|| session.battle.result.clone()),
                 if session.battle.founders {
                     "FOUNDERS"
                 } else {
@@ -1274,6 +1597,11 @@ fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>
                 _ => "green=cover / brown=rough",
             }
         );
+        let content = if session.battle.founders {
+            format!("{content}\n{}", session.save_notice)
+        } else {
+            content
+        };
         if t.0 != content {
             t.0 = content;
         }

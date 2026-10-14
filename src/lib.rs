@@ -1,9 +1,10 @@
 //! Fixed-step combat model, independent of rendering and wall-clock time.
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 pub mod cognition;
 pub mod learned;
 pub mod navigation;
 pub mod perception;
+pub mod progression;
 pub mod telemetry;
 pub mod terrain;
 use learned::{Comparison, ComparisonSummary, Controller, LearnedPolicy};
@@ -27,7 +28,7 @@ pub const ACTIONS: [&str; ACTION_COUNT] = [
     "SUPPORT ALLY",
 ];
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Mind {
     pub aggression: f32,
     pub caution: f32,
@@ -78,7 +79,7 @@ impl Role {
         }
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CommandTitle {
     King,
     Queen,
@@ -95,6 +96,35 @@ impl CommandTitle {
     pub fn royal(self) -> bool {
         matches!(self, Self::King | Self::Queen)
     }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FighterClass {
+    Warrior,
+    RockThrower,
+    Paladin,
+}
+impl FighterClass {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Warrior => "WARRIOR",
+            Self::RockThrower => "ROCK THROWER",
+            Self::Paladin => "PALADIN",
+        }
+    }
+    pub fn role(self) -> Role {
+        if self == Self::RockThrower {
+            Role::RockThrower
+        } else {
+            Role::Fighter
+        }
+    }
+}
+pub const PALADIN_AURA_RADIUS: f32 = 4.0;
+fn is_zero(v: &u32) -> bool {
+    *v == 0
+}
+fn is_false(v: &bool) -> bool {
+    !*v
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Rock {
@@ -113,6 +143,16 @@ pub struct Unit {
     pub role: Role,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub command_title: Option<CommandTitle>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub class: Option<FighterClass>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fighter_id: Option<String>,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub experience: u32,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub battle_count: u32,
+    #[serde(skip_serializing_if = "is_false")]
+    pub blessed: bool,
     pub position: [f32; 2],
     pub health: f32,
     pub mind: Mind,
@@ -146,22 +186,34 @@ pub struct Unit {
     pub search_waypoint: u32,
 }
 impl Unit {
+    pub fn level(&self) -> u32 {
+        1 + (self.experience / 100).min(9)
+    }
+    pub fn class_name(&self) -> &'static str {
+        self.class
+            .map(FighterClass::name)
+            .unwrap_or(self.role.name())
+    }
+    pub fn incoming_multiplier(&self) -> f32 {
+        if self.blessed { 0.90 } else { 1.0 }
+    }
     pub fn max_health(&self) -> f32 {
         if self.command_title.is_some_and(CommandTitle::royal) {
-            110.0
+            110.0 + (self.level() - 1) as f32 * 2.0
         } else {
-            100.0
+            100.0 + (self.level() - 1) as f32 * 2.0
         }
     }
     pub fn health_fraction(&self) -> f32 {
         self.health / self.max_health()
     }
     pub fn damage_multiplier(&self) -> f32 {
-        if self.command_title.is_some_and(CommandTitle::royal) {
+        (if self.command_title.is_some_and(CommandTitle::royal) {
             1.10
         } else {
             1.0
-        }
+        }) * (1.0 + (self.level() - 1) as f32 * 0.01)
+            * (if self.blessed { 1.05 } else { 1.0 })
     }
 }
 #[derive(Clone, Debug, Serialize)]
@@ -218,6 +270,13 @@ impl Battle {
     pub fn with_founders(seed: u64, swapped: bool, arena: Arena) -> Self {
         Self::with_setup(seed, swapped, arena, true)
     }
+    pub fn winner(&self) -> Option<usize> {
+        match self.result.as_str() {
+            "Red wins" => Some(0),
+            "Blue wins" => Some(1),
+            _ => None,
+        }
+    }
     pub fn team_size(&self) -> usize {
         if self.founders {
             3
@@ -259,6 +318,21 @@ impl Battle {
                     } else {
                         None
                     },
+                    class: if founders {
+                        Some(
+                            [
+                                FighterClass::Warrior,
+                                FighterClass::RockThrower,
+                                FighterClass::Paladin,
+                            ][id % team_size],
+                        )
+                    } else {
+                        None
+                    },
+                    fighter_id: None,
+                    experience: 0,
+                    battle_count: 0,
+                    blessed: false,
                     role: if (founders && id % team_size == 1)
                         || (!founders && id % team_size >= arena.fighters())
                     {
@@ -361,6 +435,24 @@ impl Battle {
         if self.finished {
             return;
         }
+        let aura: Vec<_> = self
+            .units
+            .iter()
+            .map(|unit| {
+                unit.health > 0.0
+                    && self.units.iter().any(|p| {
+                        p.id != unit.id
+                            && p.team == unit.team
+                            && p.health > 0.0
+                            && p.class == Some(FighterClass::Paladin)
+                            && distance(p.position, unit.position) <= PALADIN_AURA_RADIUS
+                            && self.arena.clear_segment(p.position, unit.position)
+                    })
+            })
+            .collect();
+        for (unit, blessed) in self.units.iter_mut().zip(aura) {
+            unit.blessed = blessed;
+        }
         perception::update(&mut self.units, self.arena, self.tick);
         let snapshot = self.units.clone();
         let mut damage = vec![0.0; self.units.len()];
@@ -375,7 +467,9 @@ impl Battle {
                         && target.health > 0.0
                         && distance(target.position, rock.to) < 0.75
                     {
-                        let dealt = rock.damage * (1.0 - 0.3 * arena.cover(target.position));
+                        let dealt = rock.damage
+                            * target.incoming_multiplier()
+                            * (1.0 - 0.3 * arena.cover(target.position));
                         damage[target.id] += dealt;
                         landed.push((rock.shooter, dealt));
                     }
@@ -462,7 +556,11 @@ impl Battle {
             let old_flank_until = unit.flank_until;
             let old_flank_anchor = unit.flank_anchor;
             if self.tick.is_multiple_of(5) {
-                let m = unit.mind;
+                let mut m = unit.mind;
+                if unit.blessed {
+                    m.courage = (m.courage + 0.10).min(1.0);
+                    m.discipline = (m.discipline + 0.10).min(1.0);
+                }
                 let ranged = unit.role == Role::RockThrower;
                 let in_range = enemy.as_ref().is_some_and(|e| e.visible)
                     && d < unit.role.range()
@@ -750,6 +848,7 @@ impl Battle {
                 } else {
                     let dealt = 10.0
                         * unit.damage_multiplier()
+                        * snapshot[enemy.as_ref().unwrap().enemy].incoming_multiplier()
                         * advantage
                         * (1.0 - 0.3 * arena.cover(enemy_position));
                     damage[enemy.as_ref().unwrap().enemy] += dealt;
