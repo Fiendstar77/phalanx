@@ -1,0 +1,30 @@
+[package]
+name = "phalanx"
+version = "0.1.0"
+edition = "2024"
+description = "Interpretable terrain-aware autonomous combat prototype"
+publish = false
+
+[features]
+default = ["graphics"]
+graphics = ["dep:bevy"]
+
+[[bin]]
+name = "phalanx"
+path = "src/main.rs"
+required-features = ["graphics"]
+
+[[bin]]
+name = "phalanx-batch"
+path = "src/batch.rs"
+
+[dependencies]
+bevy = { version = "=0.19.1", optional = true, default-features = false, features = ["3d", "ui"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.dev]
+debug = 0
+
+[profile.dev.package."*"]
+opt-level = 2

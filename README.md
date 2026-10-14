@@ -4,7 +4,22 @@
 
 Players shape battlefields and agent personalities, then observe autonomous teams fight. PHALANX explores how terrain, individual psychology, and teamwork affect collective behavior—and how to make those decisions explainable and measurable.
 
-> **Status: design foundation.** This repository currently contains the project specification and evaluation plan. The Rust/Bevy simulation, Python analysis tools, and optional generative controller are planned; there is no playable build or measured result yet.
+> **Status: early playable prototype.** Rust/Bevy now runs a 5-versus-5 battle with editable personalities, a central ridge, decision inspection, and replayable headless execution. Python analysis, tactical pathfinding, and generative cognition remain planned. No model has been trained or integrated.
+
+![PHALANX prototype: two autonomous teams, terrain, and live decision inspector](docs/images/demo.gif)
+
+[Full-resolution inspector screenshot](docs/images/prototype.png)
+
+## Implemented
+
+- A 3D arena with a continuous central ridge and red/blue capsule fighters.
+- Seven editable mind traits and seven scored tactical actions.
+- Run, pause, single-step, reset, profile swap, and x1/x2/x4/x10 speed controls.
+- Click selection, decision scores, personality presets, and individual trait adjustments.
+- Camera orbit/zoom and movement-target overlays.
+- Fixed-step combat, simultaneous damage, deterministic seeded decision variation, and JSON battle summaries.
+
+Movement follows direct targets with ally separation and uphill slowdown. Agents currently have full enemy knowledge; there is no obstacle navigation or line-of-sight perception. The lines show movement targets, not computed tactical paths.
 
 ## The experience
 
@@ -18,10 +33,10 @@ Seven personality traits influence tactical utility: aggression, caution, courag
 
 The project first establishes deterministic combat and terrain-aware navigation. A later local LLM may propose an action from a validated set when tactical choices are ambiguous. The simulation retains authority over movement, damage, and world state.
 
-## Planned stack
+## Stack and planned extensions
 
-- **Rust / Bevy:** interactive simulation, tactical navigation, combat, and agent inspection.
-- **Python:** sequential telemetry analysis, statistical comparisons, and experiment reporting.
+- **Rust / Bevy 0.19.1:** implemented interactive simulation, combat, and agent inspection; tactical pathfinding is planned.
+- **Python (planned):** sequential telemetry analysis, statistical comparisons, and experiment reporting.
 - **Optional local LLM:** structured tactical proposals, legality validation, deterministic fallback.
 - **PyTorch:** a later learned-policy baseline or training experiment, only once real simulation data and an evaluation pipeline exist.
 
@@ -50,7 +65,29 @@ PHALANX is designed to connect game-design questions to measurable system behavi
 
 ## Running the project
 
-There is no executable yet. This initial publication documents the scope and evaluation protocol; implementation starts with milestone 1. Future run instructions will accompany a verified build.
+Install a current stable Rust toolchain, then:
+
+```bash
+cargo run --locked --bin phalanx
+```
+
+On Linux, Bevy requires graphical drivers and development libraries for the window/input stack. On Debian/Ubuntu, install `build-essential pkg-config libudev-dev libwayland-dev libxkbcommon-dev libx11-dev libxi-dev libxrandr-dev`.
+
+Click **Run**. Click a fighter to inspect it, then use the presets or trait buttons to change its mind. **Swap profiles** resets the battle with the teams' psychological profiles exchanged. **Reset** restores the original profiles for the current orientation and seed, including discarding individual edits.
+
+Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **W/S** zoom.
+
+Headless execution needs no graphics dependencies:
+
+```bash
+cargo run --locked --no-default-features --bin phalanx-batch -- --seed 42 --output battle.json
+cargo run --locked --no-default-features --bin phalanx-batch -- --seed 42 --swap --output swapped.json
+cargo test --locked --no-default-features
+```
+
+The JSON contains final unit state, traits, decision counts, damage, and movement distance. It is an initial summary format; sequential decision logging and Python analysis remain future work. Reproducibility applies to the same build/configuration; cross-platform floating-point equivalence is not guaranteed.
+
+See [implementation and validation notes](docs/prototype.md).
 
 ## Author
 

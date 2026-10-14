@@ -1,0 +1,22 @@
+name: Rust checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  simulation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo test --locked --no-default-features
+      - run: cargo clippy --locked --no-default-features --all-targets -- -D warnings
+  graphics-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y libudev-dev libwayland-dev libxkbcommon-dev
+      - run: cargo check --locked --bin phalanx
