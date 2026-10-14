@@ -6,6 +6,7 @@ use bevy::{
 };
 use phalanx::{
     ACTIONS, Battle, DT, Mind, Role,
+    learned::Controller,
     navigation::threat_at_known,
     perception::{self, Source},
     terrain::Arena,
@@ -23,6 +24,9 @@ struct Session {
     orbit: f32,
     zoom: f32,
     previous_positions: [[f32; 2]; 10],
+    logged_disagreements: usize,
+    run_id: u32,
+    disagreement_log: Option<std::io::BufWriter<std::fs::File>>,
 }
 impl Session {
     fn new(battle: Battle) -> Self {
@@ -38,6 +42,9 @@ impl Session {
             orbit: 0.0,
             zoom: 24.0,
             previous_positions,
+            logged_disagreements: 0,
+            run_id: 0,
+            disagreement_log: None,
         }
     }
     fn remember_positions(&mut self) {
@@ -71,6 +78,8 @@ struct PressLatch(bool);
 #[derive(Component)]
 struct Inspector;
 #[derive(Component)]
+struct TraitValue(usize);
+#[derive(Component)]
 struct Status;
 #[derive(Component, Clone, Copy, Debug)]
 enum Control {
@@ -83,6 +92,7 @@ enum Control {
     Paths,
     Arena,
     Overlay,
+    Controller,
     Aggressive,
     Disciplined,
     Trait(usize, f32),
@@ -116,6 +126,29 @@ fn main() {
         }
         return;
     }
+    let mut battle = Battle::with_arena(seed, args.iter().any(|a| a == "--swap"), arena);
+    battle.controller = if args.iter().any(|a| a == "--learned") {
+        Controller::Learned
+    } else {
+        Controller::Utility
+    };
+    let mut session = Session::new(battle);
+    std::fs::create_dir_all("outputs").expect("create log directory");
+    let log_path = format!(
+        "outputs/disagreements-{}.jsonl",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
+    session.disagreement_log = Some(std::io::BufWriter::new(
+        std::fs::File::create(&log_path).expect("create disagreement log"),
+    ));
+    if let Some(log) = &mut session.disagreement_log {
+        use std::io::Write;
+        writeln!(log,"{}",serde_json::json!({"event":"session","schema_version":1,"simulation_version":env!("CARGO_PKG_VERSION"),"actions":ACTIONS,"policy_source_sha256":session.battle.policy.as_ref().map(|p|&p.source_sha256)})).expect("write log header");
+    }
+    info!("Live controller disagreement log: {log_path}");
     let mut app = App::new();
     app.add_plugins(DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
@@ -126,11 +159,7 @@ fn main() {
         ..default()
     }))
     .insert_resource(ClearColor(Color::srgb(0.025, 0.035, 0.055)))
-    .insert_resource(Session::new(Battle::with_arena(
-        seed,
-        args.iter().any(|a| a == "--swap"),
-        arena,
-    )))
+    .insert_resource(session)
     .add_systems(Startup, setup)
     .add_systems(
         Update,
@@ -138,6 +167,7 @@ fn main() {
             controls,
             keyboard,
             simulate,
+            log_disagreements,
             sync_terrain,
             sync_rocks,
             sync_pawns,
@@ -145,6 +175,7 @@ fn main() {
             camera_motion,
             overlays,
             update_text,
+            update_minds,
             update_status,
         )
             .chain(),
@@ -370,6 +401,7 @@ fn setup(
                 })
                 .with_children(|row| {
                     row.spawn((
+                        TraitValue(i),
                         Text::new(*name),
                         font(13.0),
                         Node {
@@ -383,14 +415,15 @@ fn setup(
             }
         });
     commands.spawn(Node { position_type: PositionType::Absolute, left: px(20), bottom: px(18), flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
-        p.spawn((Text::new("Click a fighter to inspect | Space pause/run | R reset | N step | Q/E orbit | W/S zoom | M arena | O overlay"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
+        p.spawn((Text::new("Click a fighter to inspect | Space pause/run | R reset | N step | Q/E orbit | W/S zoom | M arena | O overlay | C controller"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
         p.spawn(Node { margin: UiRect::top(px(8)), ..default() }).with_children(|row| {
-            button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay);
+            button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller);
         });
     });
 }
 fn apply(control: Control, session: &mut Session) {
     debug!(?control, "Battle control");
+    let controller = session.battle.controller;
     match control {
         Control::Run => session.running = !session.battle.finished,
         Control::Pause => session.running = false,
@@ -428,6 +461,14 @@ fn apply(control: Control, session: &mut Session) {
                 1.0
             }
         }
+        Control::Controller => {
+            session.battle.controller = if session.battle.controller == Controller::Utility {
+                Controller::Learned
+            } else {
+                Controller::Utility
+            };
+            session.battle.learned_team = None;
+        }
         Control::Paths => session.paths = !session.paths,
         Control::Overlay => session.overlay = (session.overlay + 1) % 5,
         Control::Arena => {
@@ -456,6 +497,9 @@ fn apply(control: Control, session: &mut Session) {
         }
     }
     if matches!(control, Control::Reset | Control::Swap | Control::Arena) {
+        session.battle.controller = controller;
+        session.logged_disagreements = 0;
+        session.run_id += 1;
         session.remember_positions();
     }
 }
@@ -494,6 +538,9 @@ fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
     }
     if keys.just_pressed(KeyCode::KeyN) {
         apply(Control::Step, &mut session);
+    }
+    if keys.just_pressed(KeyCode::KeyC) {
+        apply(Control::Controller, &mut session);
     }
     if keys.just_pressed(KeyCode::KeyM) {
         apply(Control::Arena, &mut session);
@@ -728,7 +775,6 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
 }
 fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>>) {
     let u = &session.battle.units[session.selected];
-    let m = u.mind;
     let scores: String = if u.decision_counts.iter().sum::<u32>() == 0 {
         "Awaiting first decision.\n".into()
     } else {
@@ -768,9 +814,29 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
         .support_target
         .map(|id| format!("Supporting ally {:02}", id % 5 + 1))
         .unwrap_or_else(|| "".into());
+    let comparison = u
+        .comparison
+        .as_ref()
+        .map(|c| {
+            format!(
+                "UTILITY: {}\nPYTORCH: {}\nAGREEMENT: {}\nEXECUTED [{}]: {}",
+                ACTIONS[c.utility],
+                c.learned.map(|i| ACTIONS[i]).unwrap_or("UNAVAILABLE"),
+                if c.disagreed {
+                    "NO"
+                } else if c.learned.is_some() {
+                    "YES"
+                } else {
+                    "UNKNOWN"
+                },
+                c.controller.name(),
+                ACTIONS[c.executed]
+            )
+        })
+        .unwrap_or_else(|| "Comparison awaits first decision".into());
     for mut t in &mut text {
         let content = format!(
-            "{}-{:02}   HEALTH {:.0}%\n{} | {}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n\nAggression {:.1} | Caution {:.1}\nCourage {:.1} | Teamwork {:.1}\nPatience {:.1} | Preservation {:.1}\nDiscipline {:.1}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}\nWhy (last decision):\n{}",
+            "{}-{:02}   HEALTH {:.0}%\n{} | {}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n{}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}\nWhy (last decision):\n{}",
             if u.team == 0 { "RED" } else { "BLUE" },
             u.id % 5 + 1,
             u.health,
@@ -790,13 +856,7 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
                 .count(),
             focus,
             support,
-            m.aggression,
-            m.caution,
-            m.courage,
-            m.teamwork,
-            m.patience,
-            m.self_preservation,
-            m.discipline,
+            comparison,
             scores,
             u.route.cost.total(),
             u.route.points.len().saturating_sub(u.path_cursor),
@@ -815,7 +875,7 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
 fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>) {
     for mut t in &mut text {
         let content = format!(
-            "{} | {:.1}s | x{:.0} | Seed {}\nRED {} / 5     BLUE {} / 5\n{} | {}\nOverlay: {} | {}",
+            "{} | {:.1}s | x{:.0} | Seed {}\nRED {} / 5     BLUE {} / 5\n{} | {}\nController: {} | disagreements {}\nOverlay: {} | {}",
             if session.running { "RUNNING" } else { "PAUSED" },
             session.battle.tick as f32 * DT,
             session.speed,
@@ -824,6 +884,8 @@ fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>
             session.battle.survivors(1),
             session.battle.result,
             session.battle.arena.name(),
+            session.battle.controller.name(),
+            session.battle.disagreements.len(),
             [
                 "OFF",
                 "TERRAIN",
@@ -920,6 +982,56 @@ fn sync_rocks(
             transform.translation = Vec3::new(x, y, z);
         } else {
             *visibility = Visibility::Hidden;
+        }
+    }
+}
+
+fn update_minds(session: Res<Session>, mut values: Query<(&TraitValue, &mut Text)>) {
+    let m = session.battle.units[session.selected].mind;
+    let traits = [
+        m.aggression,
+        m.caution,
+        m.courage,
+        m.teamwork,
+        m.patience,
+        m.self_preservation,
+        m.discipline,
+    ];
+    let names = [
+        "Aggression",
+        "Caution",
+        "Courage",
+        "Teamwork",
+        "Patience",
+        "Self-preservation",
+        "Discipline",
+    ];
+    for (value, mut text) in &mut values {
+        let label = format!("{} {:.2}", names[value.0], traits[value.0]);
+        if text.0 != label {
+            text.0 = label;
+        }
+    }
+}
+fn log_disagreements(mut session: ResMut<Session>) {
+    use std::io::Write;
+    if session.logged_disagreements >= session.battle.disagreements.len() {
+        return;
+    }
+    let fresh = session.battle.disagreements[session.logged_disagreements..].to_vec();
+    session.logged_disagreements = session.battle.disagreements.len();
+    let run_id = session.run_id;
+    let seed = session.battle.seed;
+    let arena = session.battle.arena;
+    if let Some(log) = &mut session.disagreement_log {
+        for comparison in fresh {
+            let event = serde_json::json!({"event":"disagreement","run_id":run_id,"seed":seed,"arena":arena,"comparison":comparison});
+            if let Err(e) = writeln!(log, "{event}") {
+                error!("Disagreement log write failed: {e}");
+            }
+        }
+        if let Err(e) = log.flush() {
+            error!("Disagreement log flush failed: {e}");
         }
     }
 }

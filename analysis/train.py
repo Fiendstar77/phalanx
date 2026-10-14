@@ -22,6 +22,7 @@ def load(paths, train_end=32, val_end=40):
         for file in sorted(Path(directory).glob("*.jsonl")):
             with file.open() as stream:
                 header = json.loads(next(stream))
+                if header.get("controller","Utility")!="Utility": raise ValueError("imitation labels must come from the utility teacher")
                 schema = (header["feature_names"], header["actions"])
                 if schemas is not None and schema != schemas: raise ValueError("inconsistent feature/action schema")
                 schemas = schema

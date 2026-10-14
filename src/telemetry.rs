@@ -20,6 +20,7 @@ pub struct DecisionRecord {
     pub support_target: Option<usize>,
     pub reason: String,
     pub features: Vec<f32>,
+    pub comparison: Option<crate::learned::Comparison>,
     pub action_mask: Vec<bool>,
 }
 impl DecisionRecord {
@@ -42,6 +43,7 @@ impl DecisionRecord {
             support_target: u.support_target,
             reason: u.decision_reason.clone(),
             features,
+            comparison: u.comparison.clone(),
             action_mask: u.scores.iter().map(|s| *s >= 0.0).collect(),
         }
     }

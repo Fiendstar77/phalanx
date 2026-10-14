@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help") {
         println!(
-            "phalanx-batch [--seed N] [--arena ridge|choke|open] [--swap] [--trait teamwork|caution --low 0.2 --high 0.9] [--output FILE] [--trace FILE]"
+            "phalanx-batch [--seed N] [--arena ridge|choke|open] [--swap] [--controller utility|learned] [--duel] [--trait teamwork|caution --low 0.2 --high 0.9] [--output FILE] [--trace FILE]"
         );
         return Ok(());
     }
@@ -34,6 +34,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_default();
     let swapped = args.iter().any(|a| a == "--swap");
     let mut battle = Battle::with_arena(seed, swapped, arena);
+    battle.controller = match value("--controller")?.as_deref().unwrap_or("utility") {
+        "utility" => phalanx::learned::Controller::Utility,
+        "learned" => phalanx::learned::Controller::Learned,
+        _ => return Err("controller must be utility or learned".into()),
+    };
     let trait_name = value("--trait")?;
     let low = value("--low")?
         .map(|s| s.parse::<f32>())
@@ -73,6 +78,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+    if args.iter().any(|a| a == "--duel") {
+        if trait_name.is_some() {
+            return Err("controller duel cannot also change traits".into());
+        }
+        battle.learned_team = Some(if swapped { 0 } else { 1 });
+        for u in &mut battle.units {
+            u.mind = Mind {
+                aggression: 0.5,
+                caution: 0.5,
+                courage: 0.5,
+                teamwork: 0.5,
+                patience: 0.5,
+                self_preservation: 0.5,
+                discipline: 0.5,
+            };
+        }
+    }
     let mut trace = value("--trace")?
         .map(File::create)
         .transpose()?
@@ -81,7 +103,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         writeln!(
             w,
             "{}",
-            json!({"event":"start","schema_version":1,"simulation_version":env!("CARGO_PKG_VERSION"),"seed":seed,"arena":arena,"swapped":swapped,"trait":trait_name,"low":low,"high":high,"feature_names":phalanx::telemetry::FEATURE_NAMES,"actions":ACTIONS,"initial_units":battle.units})
+            json!({"event":"start","schema_version":1,"simulation_version":env!("CARGO_PKG_VERSION"),"seed":seed,"arena":arena,"swapped":swapped,"controller":battle.controller,"learned_team":battle.learned_team,"policy_source_sha256":battle.policy.as_ref().map(|p|&p.source_sha256),"trait":trait_name,"low":low,"high":high,"feature_names":phalanx::telemetry::FEATURE_NAMES,"actions":ACTIONS,"initial_units":battle.units})
         )?;
     }
     while !battle.finished {

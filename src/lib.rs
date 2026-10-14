@@ -1,12 +1,15 @@
 //! Fixed-step combat model, independent of rendering and wall-clock time.
 use serde::Serialize;
 pub mod cognition;
+pub mod learned;
 pub mod navigation;
 pub mod perception;
 pub mod telemetry;
 pub mod terrain;
+use learned::{Comparison, Controller, LearnedPolicy};
 use navigation::{Route, plan_known};
 use perception::{COMMUNICATION_RANGE, Contact, can_see, cooperative, threats};
+use std::sync::Arc;
 use terrain::Arena;
 
 pub const ACTION_COUNT: usize = 9;
@@ -118,6 +121,7 @@ pub struct Unit {
     pub flank_anchor: Option<[f32; 2]>,
     pub flank_until: u32,
     pub decision_reason: String,
+    pub comparison: Option<Comparison>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Battle {
@@ -130,6 +134,12 @@ pub struct Battle {
     pub arena: Arena,
     pub rocks: Vec<Rock>,
     pub schema_version: u32,
+    pub controller: Controller,
+    pub learned_team: Option<usize>,
+    #[serde(skip)]
+    pub policy: Option<Arc<LearnedPolicy>>,
+    pub disagreements: Vec<Comparison>,
+    pub learned_fallbacks: u32,
     pub simulation_version: String,
     pub ally_distance_sum: [f64; 2],
     pub ally_distance_samples: [u32; 2],
@@ -204,6 +214,7 @@ impl Battle {
                     flank_anchor: None,
                     flank_until: 0,
                     decision_reason: "Awaiting first decision".into(),
+                    comparison: None,
                 }
             })
             .collect();
@@ -216,7 +227,12 @@ impl Battle {
             swapped,
             arena,
             rocks: Vec::new(),
-            schema_version: 1,
+            schema_version: 2,
+            controller: Controller::Utility,
+            learned_team: None,
+            policy: Some(LearnedPolicy::bundled()),
+            disagreements: Vec::new(),
+            learned_fallbacks: 0,
             simulation_version: env!("CARGO_PKG_VERSION").into(),
             ally_distance_sum: [0.0; 2],
             ally_distance_samples: [0; 2],
@@ -320,6 +336,7 @@ impl Battle {
                 if unit.team == 0 { -0.6 } else { 0.6 },
                 unit.position[1].clamp(-2.0, 2.0),
             ];
+            let mut decision_features = Vec::new();
             let old_flank_until = unit.flank_until;
             let old_flank_anchor = unit.flank_anchor;
             if self.tick.is_multiple_of(5) {
@@ -418,65 +435,6 @@ impl Battle {
                         *score += noise(self.seed, self.tick, unit.id, i);
                     }
                 }
-                unit.action = unit
-                    .scores
-                    .iter()
-                    .enumerate()
-                    .max_by(|a, b| a.1.total_cmp(b.1))
-                    .unwrap()
-                    .0;
-                unit.decision_counts[unit.action] += 1;
-                if unit.action == 3 && previous_action != 3 {
-                    unit.flank_anchor = enemy
-                        .as_ref()
-                        .map(|e| cognition::flank_position(arena, unit, e));
-                    unit.flank_until = self.tick + 60;
-                } else if unit.action != 3 {
-                    unit.flank_anchor = None;
-                }
-                unit.decision_reason = match unit.action {
-                    0 => {
-                        if enemy.is_some() {
-                            "Advance on observed/reported contact"
-                        } else {
-                            "Search opposing deployment zone"
-                        }
-                    }
-                    1 => "Current sighting inside weapon range",
-                    2 => "Caution, discipline and patience favor ridge",
-                    3 => "Ally engages target; approach another angle",
-                    4 => "Teamwork favors reducing ally separation",
-                    5 => "Injury or close threat favors withdrawal",
-                    6 => "Patience favors holding ridge position",
-                    7 => "Exposure and self-preservation favor cover",
-                    _ => "Known ally injury or pressure favors support",
-                }
-                .into();
-            }
-            unit.enemy = enemy.as_ref().map(|e| e.enemy);
-            unit.support_target = if unit.action == 8 {
-                support.map(|(ally, _)| ally.id)
-            } else {
-                None
-            };
-            unit.target = match unit.action {
-                2 => ridge,
-                3 => unit.flank_anchor.unwrap_or(enemy_position),
-                4 => center,
-                5 => [
-                    (unit.position[0] + (unit.position[0] - enemy_position[0])).clamp(-10.5, 10.5),
-                    (unit.position[1] + (unit.position[1] - enemy_position[1])).clamp(-7.0, 7.0),
-                ],
-                6 => unit.position,
-                7 => arena.nearest_cover(unit.position).unwrap_or(unit.position),
-                8 => support
-                    .map(|(ally, _)| cognition::support_position(arena, unit, ally))
-                    .unwrap_or(unit.position),
-                _ => enemy_position,
-            };
-            if self.tick.is_multiple_of(5)
-                && let Some(sink) = records.as_deref_mut()
-            {
                 let m = unit.mind;
                 let engaged = enemy
                     .as_ref()
@@ -487,7 +445,7 @@ impl Battle {
                             .count()
                     })
                     .unwrap_or(0);
-                let features = vec![
+                decision_features = vec![
                     m.aggression,
                     m.caution,
                     m.courage,
@@ -525,8 +483,114 @@ impl Battle {
                         .map(|p| (distance(unit.position, p) / 10.0).min(1.0))
                         .unwrap_or(1.0),
                 ];
+                let utility_action = unit
+                    .scores
+                    .iter()
+                    .enumerate()
+                    .max_by(|a, b| a.1.total_cmp(b.1))
+                    .unwrap()
+                    .0;
+                let mask = std::array::from_fn(|i| unit.scores[i] >= 0.0);
+                let prediction = self
+                    .policy
+                    .as_ref()
+                    .and_then(|model| model.predict(&decision_features, &mask));
+                let learned_action = prediction
+                    .map(|p| p.0)
+                    .filter(|i| *i < ACTION_COUNT && mask[*i]);
+                let active_controller = self
+                    .learned_team
+                    .map(|team| {
+                        if unit.team == team {
+                            Controller::Learned
+                        } else {
+                            Controller::Utility
+                        }
+                    })
+                    .unwrap_or(self.controller);
+                unit.action = if active_controller == Controller::Learned {
+                    if let Some(action) = learned_action {
+                        action
+                    } else {
+                        self.learned_fallbacks += 1;
+                        utility_action
+                    }
+                } else {
+                    utility_action
+                };
+                let comparison = Comparison {
+                    tick: self.tick,
+                    unit: unit.id,
+                    utility: utility_action,
+                    learned: learned_action,
+                    executed: unit.action,
+                    confidence: prediction.map(|p| p.1),
+                    controller: active_controller,
+                    disagreed: learned_action.is_some_and(|a| a != utility_action),
+                };
+                if comparison.disagreed {
+                    self.disagreements.push(comparison.clone());
+                }
+                unit.comparison = Some(comparison);
+                unit.decision_counts[unit.action] += 1;
+                if unit.action == 3 && previous_action != 3 {
+                    unit.flank_anchor = enemy
+                        .as_ref()
+                        .map(|e| cognition::flank_position(arena, unit, e));
+                    unit.flank_until = self.tick + 60;
+                } else if unit.action != 3 {
+                    unit.flank_anchor = None;
+                }
+                unit.decision_reason = match unit.action {
+                    0 => {
+                        if enemy.is_some() {
+                            "Advance on observed/reported contact"
+                        } else {
+                            "Search opposing deployment zone"
+                        }
+                    }
+                    1 => "Current sighting inside weapon range",
+                    2 => "Caution, discipline and patience favor ridge",
+                    3 => "Ally engages target; approach another angle",
+                    4 => "Teamwork favors reducing ally separation",
+                    5 => "Injury or close threat favors withdrawal",
+                    6 => "Patience favors holding ridge position",
+                    7 => "Exposure and self-preservation favor cover",
+                    _ => "Known ally injury or pressure favors support",
+                }
+                .into();
+                if active_controller == Controller::Learned && learned_action.is_some() {
+                    unit.decision_reason = "Learned proposal; scores show utility baseline".into();
+                }
+            }
+            unit.enemy = enemy.as_ref().map(|e| e.enemy);
+            unit.support_target = if unit.action == 8 {
+                support.map(|(ally, _)| ally.id)
+            } else {
+                None
+            };
+            unit.target = match unit.action {
+                2 => ridge,
+                3 => unit.flank_anchor.unwrap_or(enemy_position),
+                4 => center,
+                5 => [
+                    (unit.position[0] + (unit.position[0] - enemy_position[0])).clamp(-10.5, 10.5),
+                    (unit.position[1] + (unit.position[1] - enemy_position[1])).clamp(-7.0, 7.0),
+                ],
+                6 => unit.position,
+                7 => arena.nearest_cover(unit.position).unwrap_or(unit.position),
+                8 => support
+                    .map(|(ally, _)| cognition::support_position(arena, unit, ally))
+                    .unwrap_or(unit.position),
+                _ => enemy_position,
+            };
+            if self.tick.is_multiple_of(5)
+                && let Some(sink) = records.as_deref_mut()
+            {
                 sink.push(telemetry::DecisionRecord::capture(
-                    self.tick, unit, features,
+                    self.tick,
+                    unit,
+                    decision_features.clone(),
                 ));
             }
             if unit.action == 1
