@@ -79,3 +79,97 @@ fn missing_policy_falls_back_to_utility_and_invalid_inputs_are_rejected() {
     assert!(policy.predict(&[0.0; 29], &[false; ACTION_COUNT]).is_none());
     assert!(LearnedPolicy::from_json("{}").is_err());
 }
+
+#[test]
+fn summary_counts_real_pairs_and_excludes_missing_predictions() {
+    use phalanx::learned::{Comparison, ComparisonSummary};
+    let mut summary = ComparisonSummary::default();
+    assert_eq!(summary.agreement_rate(), None);
+    let mut c = Comparison {
+        tick: 0,
+        unit: 0,
+        utility: 8,
+        learned: Some(1),
+        executed: 8,
+        confidence: None,
+        controller: Controller::Utility,
+        disagreed: true,
+    };
+    summary.record(&c);
+    summary.record(&c);
+    c.utility = 7;
+    c.learned = Some(3);
+    summary.record(&c);
+    c.utility = 1;
+    c.learned = Some(1);
+    summary.record(&c);
+    c.learned = None;
+    summary.record(&c);
+    assert_eq!(
+        (summary.compared, summary.agreements, summary.unavailable),
+        (4, 1, 1)
+    );
+    assert_eq!(summary.agreement_rate(), Some(0.25));
+    assert_eq!(summary.action_pairs.iter().flatten().sum::<u32>(), 4);
+    let top = summary.top_disagreements(3);
+    assert_eq!(top.len(), 2);
+    assert_eq!(
+        (top[0].utility, top[0].learned, top[0].count),
+        ("SUPPORT ALLY", "ATTACK", 2)
+    );
+    assert_eq!(
+        (top[1].utility, top[1].learned, top[1].count),
+        ("SEEK COVER", "FLANK", 1)
+    );
+    let output = serde_json::to_value(&summary).unwrap();
+    assert_eq!(output["agreement_rate"], 0.25);
+    assert_eq!(output["top_disagreements"][0]["count"], 2);
+}
+
+#[test]
+fn live_summary_conserves_decisions_across_controller_switch_and_reset() {
+    let mut battle = Battle::new(42, false);
+    for _ in 0..150 {
+        battle.step();
+    }
+    let before = battle.comparison_summary.compared;
+    battle.controller = Controller::Learned;
+    while !battle.finished {
+        battle.step();
+    }
+    let summary = &battle.comparison_summary;
+    assert!(summary.compared > before);
+    assert_eq!(
+        summary.compared + summary.unavailable,
+        battle
+            .units
+            .iter()
+            .flat_map(|u| u.decision_counts)
+            .sum::<u32>()
+    );
+    assert_eq!(
+        summary.compared - summary.agreements,
+        battle.disagreements.len() as u32
+    );
+    for u in 0..ACTION_COUNT {
+        for l in 0..ACTION_COUNT {
+            if u != l {
+                assert_eq!(
+                    summary.action_pairs[u][l],
+                    battle
+                        .disagreements
+                        .iter()
+                        .filter(|c| c.utility == u && c.learned == Some(l))
+                        .count() as u32
+                );
+            }
+        }
+    }
+    battle = Battle::new(42, false);
+    assert_eq!(battle.comparison_summary.compared, 0);
+    assert_eq!(battle.comparison_summary.agreement_rate(), None);
+    battle.policy = None;
+    battle.step();
+    assert_eq!(battle.comparison_summary.unavailable, 10);
+    assert_eq!(battle.comparison_summary.agreement_rate(), None);
+}

@@ -33,7 +33,7 @@ Agents follow routes on a one-unit grid, with ally separation, terrain slowdown,
 
 ![Matched-seed controller comparison](docs/results/v05/comparison.png)
 
-Press **C** or **Utility/Learned** to switch controllers. The inspector compares utility and PyTorch proposals on the same observation, shows agreement and the executed action, and disagreements are logged to JSONL. Utility remains the default, eligibility authority, and fallback. [Protocol, interpretation, limitations, and reproduction](docs/results/v05/README.md).
+Press **C** or **Utility/Learned** to switch controllers. The inspector compares utility and PyTorch proposals on the same observation, shows agreement and the executed action, and disagreements are logged to JSONL. A tiny live summary shows agreement and the top three Utility → Learned action pairs; battle JSON includes the full count matrix. Utility remains the default, eligibility authority, and fallback. [Protocol, interpretation, limitations, and reproduction](docs/results/v05/README.md).
 
 ## First measured results
 

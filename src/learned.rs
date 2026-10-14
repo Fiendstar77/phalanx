@@ -42,6 +42,76 @@ pub struct Comparison {
     pub controller: Controller,
     pub disagreed: bool,
 }
+/// Cumulative same-state comparisons across all live teams and controller modes.
+/// Missing predictions are counted separately and never enter agreement's denominator.
+#[derive(Clone, Debug, Default)]
+pub struct ComparisonSummary {
+    pub compared: u32,
+    pub agreements: u32,
+    pub unavailable: u32,
+    /// Rows are utility actions, columns learned actions, including agreements.
+    pub action_pairs: [[u32; ACTION_COUNT]; ACTION_COUNT],
+}
+#[derive(Debug, Serialize)]
+pub struct ActionPair {
+    pub utility: &'static str,
+    pub learned: &'static str,
+    pub count: u32,
+}
+impl ComparisonSummary {
+    pub fn record(&mut self, comparison: &Comparison) {
+        if let Some(learned) = comparison.learned.filter(|i| *i < ACTION_COUNT)
+            && comparison.utility < ACTION_COUNT
+        {
+            self.compared += 1;
+            self.agreements += u32::from(learned == comparison.utility);
+            self.action_pairs[comparison.utility][learned] += 1;
+        } else {
+            self.unavailable += 1;
+        }
+    }
+    pub fn agreement_rate(&self) -> Option<f64> {
+        (self.compared > 0).then(|| self.agreements as f64 / self.compared as f64)
+    }
+    pub fn top_disagreements(&self, limit: usize) -> Vec<ActionPair> {
+        let mut pairs = Vec::new();
+        for (utility, row) in self.action_pairs.iter().enumerate() {
+            for (learned, count) in row.iter().enumerate() {
+                if utility != learned && *count > 0 {
+                    pairs.push((utility, learned, *count));
+                }
+            }
+        }
+        // Deterministic action-index order resolves tied counts.
+        pairs.sort_by_key(|(u, l, count)| (std::cmp::Reverse(*count), *u, *l));
+        pairs
+            .into_iter()
+            .take(limit)
+            .map(|(u, l, count)| ActionPair {
+                utility: ACTIONS[u],
+                learned: ACTIONS[l],
+                count,
+            })
+            .collect()
+    }
+}
+impl Serialize for ComparisonSummary {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("ComparisonSummary", 7)?;
+        state.serialize_field("compared", &self.compared)?;
+        state.serialize_field("agreements", &self.agreements)?;
+        state.serialize_field("unavailable", &self.unavailable)?;
+        state.serialize_field("agreement_rate", &self.agreement_rate())?;
+        state.serialize_field("actions", &ACTIONS)?;
+        state.serialize_field("action_pairs", &self.action_pairs)?;
+        state.serialize_field(
+            "top_disagreements",
+            &self.top_disagreements(ACTION_COUNT * ACTION_COUNT),
+        )?;
+        state.end()
+    }
+}
 impl LearnedPolicy {
     pub fn from_json(text: &str) -> Result<Self, String> {
         let model: Self = serde_json::from_str(text).map_err(|e| e.to_string())?;

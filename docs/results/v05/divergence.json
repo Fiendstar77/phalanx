@@ -1,0 +1,97 @@
+{
+  "scope": "Learned-controlled teams only; same-state Utility/PyTorch comparison",
+  "source_manifest_sha256": "d1da320fc70bbf3b17e30b2ba06e6cbc10c883049673713344df5a928d58d587",
+  "arena": "choke",
+  "battles": 64,
+  "compared": 20517,
+  "agreements": 19164,
+  "unavailable": 0,
+  "agreement_rate": 0.9340546863576547,
+  "top_disagreements": [
+    {
+      "utility": "ATTACK",
+      "learned": "SUPPORT ALLY",
+      "count": 591
+    },
+    {
+      "utility": "ADVANCE",
+      "learned": "SEEK COVER",
+      "count": 318
+    },
+    {
+      "utility": "ATTACK",
+      "learned": "RETREAT",
+      "count": 83
+    },
+    {
+      "utility": "SEEK COVER",
+      "learned": "RETREAT",
+      "count": 83
+    },
+    {
+      "utility": "ADVANCE",
+      "learned": "SUPPORT ALLY",
+      "count": 70
+    },
+    {
+      "utility": "FLANK",
+      "learned": "SUPPORT ALLY",
+      "count": 35
+    },
+    {
+      "utility": "SUPPORT ALLY",
+      "learned": "SEEK COVER",
+      "count": 32
+    },
+    {
+      "utility": "ADVANCE",
+      "learned": "RETREAT",
+      "count": 27
+    },
+    {
+      "utility": "RETREAT",
+      "learned": "SEEK COVER",
+      "count": 25
+    },
+    {
+      "utility": "SEEK COVER",
+      "learned": "SUPPORT ALLY",
+      "count": 17
+    },
+    {
+      "utility": "RETREAT",
+      "learned": "SUPPORT ALLY",
+      "count": 15
+    },
+    {
+      "utility": "RETREAT",
+      "learned": "ATTACK",
+      "count": 14
+    },
+    {
+      "utility": "ADVANCE",
+      "learned": "REGROUP",
+      "count": 12
+    },
+    {
+      "utility": "SEEK COVER",
+      "learned": "ADVANCE",
+      "count": 11
+    },
+    {
+      "utility": "SUPPORT ALLY",
+      "learned": "ADVANCE",
+      "count": 11
+    },
+    {
+      "utility": "SUPPORT ALLY",
+      "learned": "FLANK",
+      "count": 5
+    },
+    {
+      "utility": "SUPPORT ALLY",
+      "learned": "RETREAT",
+      "count": 4
+    }
+  ]
+}

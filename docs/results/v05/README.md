@@ -27,6 +27,28 @@ The learned team won more battles in this configuration, but the interval includ
 
 This is a small exploratory study on one map and one frozen imitation policy. It does not establish generalization across maps, calibrated confidence, human enjoyment, or a generative-AI benefit. Eligibility still comes from utility rules; the policy has not learned action legality. Timeout draws remain in the primary analysis. Decision agreement is descriptive, not thousands of independent experimental observations.
 
+## Inspecting the divergence
+
+On the **learned-controlled teams** in these same 64 battles, 19,164 of 20,517 proposals agreed (**93.4%**). The largest disagreement pairs were:
+
+| Utility proposal | Learned proposal | Count |
+| --- | --- | ---: |
+| ATTACK | SUPPORT ALLY | 591 |
+| ADVANCE | SEEK COVER | 318 |
+| ATTACK | RETREAT | 83 |
+
+These are repeated decision events, not independent samples or evidence of intent. They suggest inspecting support-versus-engagement and cover-versus-advance behavior; they do not establish why the model diverges or whether those choices are better. [Full action-pair counts](divergence.json).
+
+Reproduce the summary from the original batch (checks full battle file hashes and requires zero learned fallbacks):
+
+```bash
+python3 -m analysis.divergence outputs/my-choke-duel --output divergence.json
+```
+
+The **live UI** instead summarizes all teams and all controller modes in the current battle. It displays agreement, the valid comparison count, unavailable predictions, and the top three Utility → Learned pairs. Reset or arena change starts fresh counts; a controller toggle preserves them. Each new battle JSON includes `comparison_summary` with named pairs and a full 9×9 matrix (utility rows, learned columns). Missing predictions are excluded from agreement, which is N/A before any valid comparison.
+
+![Live disagreement summary](../../images/disagreement-summary.png)
+
 ## Live demonstration and reproduction
 
 The inspector shows **UTILITY / PYTORCH / AGREEMENT / EXECUTED**, including the controller that made the last executed decision. Changing modes preserves the battle state. Disagreements are recorded in `outputs/disagreements-*.jsonl`, with seed, arena, run ID, tick, unit, both proposals, executed action, mode, and masked confidence. The session header maps numeric action IDs to names and identifies the checkpoint. A [real desktop log excerpt](runtime-disagreements.jsonl) records disagreements from the shown seed-42 demo; it is separate from the controlled batch. Confidence is an uncalibrated masked softmax score.

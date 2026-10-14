@@ -6,7 +6,7 @@ pub mod navigation;
 pub mod perception;
 pub mod telemetry;
 pub mod terrain;
-use learned::{Comparison, Controller, LearnedPolicy};
+use learned::{Comparison, ComparisonSummary, Controller, LearnedPolicy};
 use navigation::{Route, plan_known};
 use perception::{COMMUNICATION_RANGE, Contact, can_see, cooperative, threats};
 use std::sync::Arc;
@@ -139,6 +139,7 @@ pub struct Battle {
     #[serde(skip)]
     pub policy: Option<Arc<LearnedPolicy>>,
     pub disagreements: Vec<Comparison>,
+    pub comparison_summary: ComparisonSummary,
     pub learned_fallbacks: u32,
     pub simulation_version: String,
     pub ally_distance_sum: [f64; 2],
@@ -232,6 +233,7 @@ impl Battle {
             learned_team: None,
             policy: Some(LearnedPolicy::bundled()),
             disagreements: Vec::new(),
+            comparison_summary: ComparisonSummary::default(),
             learned_fallbacks: 0,
             simulation_version: env!("CARGO_PKG_VERSION").into(),
             ally_distance_sum: [0.0; 2],
@@ -528,6 +530,7 @@ impl Battle {
                     controller: active_controller,
                     disagreed: learned_action.is_some_and(|a| a != utility_action),
                 };
+                self.comparison_summary.record(&comparison);
                 if comparison.disagreed {
                     self.disagreements.push(comparison.clone());
                 }

@@ -1,4 +1,4 @@
-import tempfile,unittest,csv
+import tempfile,unittest,csv,json,hashlib
 from pathlib import Path
 from analysis.compare import interval,summarize
 class AnalysisTests(unittest.TestCase):
@@ -18,4 +18,25 @@ class AnalysisTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory)/"battles.csv").write_text("arena,seed,swapped\nridge,1,0\n")
             with self.assertRaises(ValueError):summarize(directory)
+    def test_duel_divergence_filters_utility_team_and_rejects_missing_predictions(self):
+        from analysis.divergence import summarize as divergence
+        for fallback in [0, 1]:
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory); hashes = {}
+                for side in ["normal", "swap"]:
+                    path = root / f"choke-0000-{side}.json"
+                    path.write_text(json.dumps({"learned_team": 1, "learned_fallbacks": fallback,
+                        "units": [{"team": 0, "decision_counts": [50]}, {"team": 1, "decision_counts": [5]}],
+                        "disagreements": [{"unit": 7, "utility": 8, "learned": 1}, {"unit": 0, "utility": 0, "learned": 3}]}))
+                    hashes[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
+                (root / "manifest.json").write_text(json.dumps({"files_sha256": hashes, "map": "choke", "seeds": [0]}))
+                if fallback:
+                    with self.assertRaisesRegex(ValueError, "valid predictions"): divergence(root)
+                else:
+                    result = divergence(root)
+                    self.assertEqual(result["compared"], 10)
+                    self.assertEqual(result["agreement_rate"], .8)
+                    self.assertEqual(result["top_disagreements"], [{"utility": "SUPPORT ALLY", "learned": "ATTACK", "count": 2}])
+                    path.write_text("tampered")
+                    with self.assertRaisesRegex(ValueError, "hash mismatch"): divergence(root)
 if __name__=="__main__":unittest.main()

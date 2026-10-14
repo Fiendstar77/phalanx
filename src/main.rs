@@ -81,6 +81,8 @@ struct Inspector;
 struct TraitValue(usize);
 #[derive(Component)]
 struct Status;
+#[derive(Component)]
+struct DivergenceSummary;
 #[derive(Component, Clone, Copy, Debug)]
 enum Control {
     Run,
@@ -177,6 +179,7 @@ fn main() {
             update_text,
             update_minds,
             update_status,
+            update_divergence,
         )
             .chain(),
     );
@@ -414,6 +417,18 @@ fn setup(
                 });
             }
         });
+    commands.spawn((
+        DivergenceSummary,
+        Text::new(""),
+        font(13.0),
+        TextColor(Color::srgb(0.6, 0.78, 0.82)),
+        Node {
+            position_type: PositionType::Absolute,
+            left: px(26),
+            top: px(205),
+            ..default()
+        },
+    ));
     commands.spawn(Node { position_type: PositionType::Absolute, left: px(20), bottom: px(18), flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
         p.spawn((Text::new("Click a fighter to inspect | Space pause/run | R reset | N step | Q/E orbit | W/S zoom | M arena | O overlay | C controller"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
         p.spawn(Node { margin: UiRect::top(px(8)), ..default() }).with_children(|row| {
@@ -902,6 +917,35 @@ fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>
         );
         if t.0 != content {
             t.0 = content;
+        }
+    }
+}
+
+fn update_divergence(session: Res<Session>, mut text: Query<&mut Text, With<DivergenceSummary>>) {
+    let summary = &session.battle.comparison_summary;
+    let agreement = summary
+        .agreement_rate()
+        .map(|r| format!("{:.1}%", r * 100.0))
+        .unwrap_or_else(|| "N/A".into());
+    let mut content = format!(
+        "ALL DECISIONS | Agreement: {agreement} / {} compared / {} unavailable",
+        summary.compared, summary.unavailable
+    );
+    let pairs = summary.top_disagreements(3);
+    if pairs.is_empty() {
+        content.push_str("\nTop disagreements: none yet");
+    } else {
+        content.push_str("\nTop disagreements (UTILITY -> LEARNED):");
+        for pair in pairs {
+            content.push_str(&format!(
+                "\n{} -> {}  {}",
+                pair.utility, pair.learned, pair.count
+            ));
+        }
+    }
+    for mut t in &mut text {
+        if t.0 != content {
+            t.0 = content.clone();
         }
     }
 }

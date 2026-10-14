@@ -61,3 +61,11 @@ python3 -m analysis.duel --output outputs/my-choke-duel
 ```
 
 The fixed Choke protocol uses 32 fresh seeds, opposite spawn sides, identical neutral traits, and seed-block uncertainty. [Published results and limitations](../docs/results/v05/README.md). Headless `--controller learned` controls both teams; `--duel` controls one team with the frozen policy and the other with utility (`--swap` moves the learner to the other side). Training rejects learned-controller traces to preserve utility-teacher labels. Live UI defaults to utility, shadows PyTorch, switches with C, and logs disagreements.
+
+To inspect the divergence in a completed Choke duel batch:
+
+```bash
+python3 -m analysis.divergence outputs/my-choke-duel --output divergence.json
+```
+
+This hashes the original battle files and summarizes only the learned-controlled teams, requiring zero learned fallbacks for a valid denominator. Live battle outputs separately include `comparison_summary` for all teams/modes, with missing predictions counted separately. The matrix rows are Utility and columns are Learned, including diagonal agreements.
