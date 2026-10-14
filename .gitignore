@@ -1,0 +1,12 @@
+/target/
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+*.log
+.directory
+.DS_Store
+/outputs/
+/models/
