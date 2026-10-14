@@ -1,21 +1,69 @@
 //! Deterministic Dijkstra search over a one-unit grid. All edge costs are positive.
 use crate::{Mind, Unit, distance, terrain::Arena};
 use serde::Serialize;
-use std::{cmp::Ordering, collections::BinaryHeap};
-const WIDTH: usize = 22;
-const HEIGHT: usize = 16;
-const COUNT: usize = WIDTH * HEIGHT;
-fn point(id: usize) -> [f32; 2] {
-    [(id % WIDTH) as f32 - 10.5, (id / WIDTH) as f32 - 7.5]
+use std::{cmp::Ordering, collections::BinaryHeap, sync::OnceLock};
+fn point(arena: Arena, id: usize) -> [f32; 2] {
+    let size = arena.half_size();
+    let width = (size[0] * 2.0) as usize;
+    [
+        (id % width) as f32 - size[0] + 0.5,
+        (id / width) as f32 - size[1] + 0.5,
+    ]
+}
+/// Static wall-clearance graph: authored terrain does not change within an arena.
+/// Neighbor order matches the original dz/dx traversal to preserve deterministic ties.
+fn neighbors(arena: Arena) -> &'static Vec<Vec<usize>> {
+    static RIDGE: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
+    static CHOKE: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
+    static OPEN: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
+    static CITADEL: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
+    let cache = match arena {
+        Arena::Ridge => &RIDGE,
+        Arena::Choke => &CHOKE,
+        Arena::OpenField => &OPEN,
+        Arena::Citadel => &CITADEL,
+    };
+    cache.get_or_init(|| {
+        let size = arena.half_size();
+        let width = (size[0] * 2.0) as usize;
+        let height = (size[1] * 2.0) as usize;
+        (0..width * height)
+            .map(|id| {
+                let x = (id % width) as i32;
+                let z = (id / width) as i32;
+                let mut edges = Vec::new();
+                for dz in -1..=1 {
+                    for dx in -1..=1 {
+                        let nx = x + dx;
+                        let nz = z + dz;
+                        if (dx != 0 || dz != 0)
+                            && nx >= 0
+                            && nx < width as i32
+                            && nz >= 0
+                            && nz < height as i32
+                        {
+                            let next = nz as usize * width + nx as usize;
+                            if arena.walk_segment(point(arena, id), point(arena, next)) {
+                                edges.push(next);
+                            }
+                        }
+                    }
+                }
+                edges
+            })
+            .collect()
+    })
 }
 fn nearest(arena: Arena, p: [f32; 2]) -> Option<usize> {
+    let size = arena.half_size();
+    let count = (size[0] * 2.0 * size[1] * 2.0) as usize;
     let mut best = None;
     let mut best_distance = f32::INFINITY;
-    for id in 0..COUNT {
-        let candidate = point(id);
+    for id in 0..count {
+        let candidate = point(arena, id);
         let d = distance(p, candidate);
         // Preserve stable tie order; only test clearance for a closer anchor.
-        if d < best_distance && !arena.blocked(candidate) && arena.clear_segment(p, candidate) {
+        if d < best_distance && !arena.blocked(candidate) && arena.walk_segment(p, candidate) {
             best = Some(id);
             best_distance = d;
         }
@@ -144,15 +192,19 @@ pub fn plan_known(
     let (Some(s), Some(g)) = (nearest(arena, start), nearest(arena, goal)) else {
         return Route::default();
     };
-    let mut costs = [f32::INFINITY; COUNT];
-    let mut previous = [usize::MAX; COUNT];
+    let size = arena.half_size();
+    let width = (size[0] * 2.0) as usize;
+    let height = (size[1] * 2.0) as usize;
+    let count = width * height;
+    let mut costs = vec![f32::INFINITY; count];
+    let mut previous = vec![usize::MAX; count];
     let mut heap = BinaryHeap::new();
-    let threat: Vec<_> = (0..COUNT)
+    let threat: Vec<_> = (0..count)
         .map(|i| {
-            if arena.blocked(point(i)) {
+            if arena.blocked(point(arena, i)) {
                 0.0
             } else {
-                threat_at_known(arena, point(i), threats)
+                threat_at_known(arena, point(arena, i), threats)
             }
         })
         .collect();
@@ -165,32 +217,23 @@ pub fn plan_known(
         if id == g {
             break;
         }
-        let x = (id % WIDTH) as i32;
-        let z = (id / WIDTH) as i32;
-        for dz in -1..=1 {
-            for dx in -1..=1 {
-                if dx == 0 && dz == 0 {
-                    continue;
-                }
-                let nx = x + dx;
-                let nz = z + dz;
-                if nx < 0 || nx >= WIDTH as i32 || nz < 0 || nz >= HEIGHT as i32 {
-                    continue;
-                }
-                let next = nz as usize * WIDTH + nx as usize;
-                if !arena.clear_segment(point(id), point(next)) {
-                    continue;
-                }
-                let candidate =
-                    cost + edge(arena, point(id), point(next), mind, threat[next]).total();
-                if candidate < costs[next] {
-                    costs[next] = candidate;
-                    previous[next] = id;
-                    heap.push(Entry {
-                        cost: candidate,
-                        id: next,
-                    });
-                }
+        for &next in &neighbors(arena)[id] {
+            let candidate = cost
+                + edge(
+                    arena,
+                    point(arena, id),
+                    point(arena, next),
+                    mind,
+                    threat[next],
+                )
+                .total();
+            if candidate < costs[next] {
+                costs[next] = candidate;
+                previous[next] = id;
+                heap.push(Entry {
+                    cost: candidate,
+                    id: next,
+                });
             }
         }
     }
@@ -205,8 +248,8 @@ pub fn plan_known(
     }
     ids.reverse();
     let mut points = vec![start];
-    let skip = usize::from(ids.len() > 1 && arena.clear_segment(start, point(ids[1])));
-    points.extend(ids.iter().skip(skip).map(|i| point(*i)));
+    let skip = usize::from(ids.len() > 1 && arena.walk_segment(start, point(arena, ids[1])));
+    points.extend(ids.iter().skip(skip).map(|i| point(arena, *i)));
     points.push(goal);
     let mut cost = PathCost::default();
     for pair in points.windows(2) {

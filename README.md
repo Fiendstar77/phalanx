@@ -4,16 +4,17 @@
 
 Players shape battlefields and agent personalities, then observe autonomous teams fight. PHALANX explores how terrain, individual psychology, and teamwork affect collective behavior—and how to make those decisions explainable and measurable.
 
-> **Status: early playable prototype.** Rust/Bevy runs 5-versus-5 battles with three melee fighters and two rock throwers per team, personality-weighted routes, cover, rough ground, three arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
+> **Status: early playable prototype.** Rust/Bevy runs 5-versus-5 standard battles and a 10-versus-10 Citadel arena, personality-weighted routes, cover, rough ground, four arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
 
-![Live utility/PyTorch disagreement in the actual game](docs/images/learned-comparison.png)
+![Citadel: 20 agents and clickable disagreement highlights](docs/images/citadel-filter.png)
 
 [Live learned-controller gameplay recording](docs/images/learned-demo.gif)
 
 ## Implemented
 
-- Three 3D arenas: Ridge, Choke, and Open Field; green cover, brown rough ground, and solid choke walls.
-- Three melee fighters and two rock throwers per team, with visible rocks, travel time, possible misses, and blocked shots.
+- Four 3D arenas: Ridge, Choke, Open Field, and Citadel; green cover, brown rough ground, and solid choke walls.
+- Standard arenas: three melee fighters and two rock throwers per team. Citadel: **six warriors and four rock throwers per team**, on a **44 × 40 footprint (5× the standard area)**, with twin elevated positions, multiple choke passages, barricades, cover, rough ground, and **two walkable raised passerelles with ramps**.
+- Visible rocks, travel time, possible misses, and blocked shots.
 - Seven editable mind traits and nine scored tactical actions (including seeking cover and supporting allies).
 - Run, pause, single-step, reset, profile swap, and x1/x2/x4/x10 speed controls.
 - Click selection, decision scores, personality presets, and individual trait adjustments.
@@ -97,9 +98,15 @@ On Linux, Bevy requires graphical drivers and development libraries for the wind
 
 Click **Run**. Click a fighter to inspect it, then use the presets or trait buttons to change its mind. **Swap profiles** resets the battle with the teams' psychological profiles exchanged. **Reset** restores the original profiles for the current orientation and seed, including discarding individual edits.
 
-**Arena** cycles Ridge → Choke → Open Field and resets the battle. **Overlay** cycles Off → Terrain → Threat → Elevation → Knowledge. Threat uses the selected unit’s known contacts; the knowledge view marks last-observed positions, including stale ones.
+**Arena** cycles Ridge → Choke → Open Field → Citadel and resets the battle. **Overlay** cycles Off → Terrain → Threat → Elevation → Knowledge. Threat uses the selected unit’s known contacts; the knowledge view marks last-observed positions, including stale ones.
 
-Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **W/S** zoom, **M** arena, **O** overlay, **C** Utility/Learned controller.
+Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **W/S** zoom, **M** arena, **O** overlay, **C** Utility/Learned controller, **D** next filtered match, **Esc** clear filter.
+
+**Paths** cycles All → Selected → Off; Citadel starts with only the selected route to keep a 20-agent battle readable.
+
+Click a top disagreement pair to filter living agents by their latest Utility → Learned proposals. Matching agents glow pink; a live match pauses and opens its inspector. **D** cycles matches, and **Show all / Esc** clears the filter. Historical counts can remain high while there are zero live matches.
+
+Launch the larger map with `cargo run --locked --bin phalanx -- --arena citadel`. The frozen learned policy was trained on the three smaller arenas; Citadel control is exploratory and its feature distribution differs from training.
 
 Add `--learned` to start with learned control. Disagreement logs are written to `outputs/disagreements-*.jsonl`.
 

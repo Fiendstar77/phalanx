@@ -32,3 +32,7 @@ The first command reports median, p95, p99, and maximum CPU step time for three 
 ## Live policy check (v0.5)
 
 On the same development desktop, Choke with the bundled policy evaluated beside utility AI remained about 60 FPS (steady diagnostic averages around 16.67 ms/frame). This verifies local responsiveness, not a controller latency benchmark. The forward pass runs natively in Rust at decision time; no Python service blocks gameplay.
+
+## Citadel (20 agents, five times the grid area)
+
+A local seed-42 utility run with shadow inference measured median CPU step **0.04 ms**, p95 **5.47 ms**, p99 **13.27 ms**, maximum **22.24 ms** over 678 ticks, after the patrol and walkway changes. The maximum can exceed a 60-FPS frame budget; steady desktop diagnostics remained around 60 FPS. This is one local run, not a statistical benchmark. Caching static neighbor clearance preserved full Choke and Citadel replay summaries byte-for-byte; dynamic route costs still use each agent's known threats and traits.

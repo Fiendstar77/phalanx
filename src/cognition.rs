@@ -62,8 +62,10 @@ pub fn support_position(arena: Arena, unit: &Unit, ally: &Unit) -> [f32; 2] {
         0.8
     };
     let p = [
-        (ally.position[0] + if unit.team == 0 { -back } else { back }).clamp(-10.5, 10.5),
-        (ally.position[1] + if unit.id.is_multiple_of(2) { 0.8 } else { -0.8 }).clamp(-7.0, 7.0),
+        (ally.position[0] + if unit.team == 0 { -back } else { back })
+            .clamp(-arena.half_size()[0] + 0.5, arena.half_size()[0] - 0.5),
+        (ally.position[1] + if unit.id.is_multiple_of(2) { 0.8 } else { -0.8 })
+            .clamp(-arena.half_size()[1] + 1.0, arena.half_size()[1] - 1.0),
     ];
     if arena.blocked(p) { ally.position } else { p }
 }
@@ -76,8 +78,10 @@ pub fn flank_position(arena: Arena, unit: &Unit, enemy: &Contact) -> [f32; 2] {
         [own * 2.5, -side * 1.5],
     ] {
         let p = [
-            (enemy.position[0] + offset[0]).clamp(-10.5, 10.5),
-            (enemy.position[1] + offset[1]).clamp(-7.0, 7.0),
+            (enemy.position[0] + offset[0])
+                .clamp(-arena.half_size()[0] + 0.5, arena.half_size()[0] - 0.5),
+            (enemy.position[1] + offset[1])
+                .clamp(-arena.half_size()[1] + 1.0, arena.half_size()[1] - 1.0),
         ];
         if !arena.blocked(p) {
             return p;

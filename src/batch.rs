@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help") {
         println!(
-            "phalanx-batch [--seed N] [--arena ridge|choke|open] [--swap] [--controller utility|learned] [--duel] [--trait teamwork|caution --low 0.2 --high 0.9] [--output FILE] [--trace FILE]"
+            "phalanx-batch [--seed N] [--arena ridge|choke|open|citadel] [--swap] [--controller utility|learned] [--duel] [--trait teamwork|caution --low 0.2 --high 0.9] [--output FILE] [--trace FILE]"
         );
         return Ok(());
     }
@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .transpose()?
         .unwrap_or(42);
     let arena = value("--arena")?
-        .map(|s| Arena::parse(&s).ok_or("arena must be ridge, choke, or open"))
+        .map(|s| Arena::parse(&s).ok_or("arena must be ridge, choke, open, or citadel"))
         .transpose()?
         .unwrap_or_default();
     let swapped = args.iter().any(|a| a == "--swap");

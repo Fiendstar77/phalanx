@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
 };
 use phalanx::{
-    ACTIONS, Battle, DT, Mind, Role,
+    ACTION_COUNT, ACTIONS, Battle, DT, Mind, Role,
     learned::Controller,
     navigation::threat_at_known,
     perception::{self, Source},
@@ -19,28 +19,36 @@ struct Session {
     selected: usize,
     speed: f32,
     accumulator: f32,
-    paths: bool,
+    paths: usize,
     overlay: usize,
+    disagreement_pair: Option<(usize, usize)>,
     orbit: f32,
     zoom: f32,
-    previous_positions: [[f32; 2]; 10],
+    previous_positions: Vec<[f32; 2]>,
     logged_disagreements: usize,
     run_id: u32,
     disagreement_log: Option<std::io::BufWriter<std::fs::File>>,
 }
 impl Session {
     fn new(battle: Battle) -> Self {
-        let previous_positions = std::array::from_fn(|i| battle.units[i].position);
+        let previous_positions = battle.units.iter().map(|u| u.position).collect();
+        let paths = if battle.arena == Arena::Citadel { 1 } else { 0 };
+        let zoom = if battle.arena == Arena::Citadel {
+            52.0
+        } else {
+            24.0
+        };
         Self {
             battle,
             running: false,
             selected: 0,
             speed: 1.0,
             accumulator: 0.0,
-            paths: true,
+            paths,
             overlay: 0,
+            disagreement_pair: None,
             orbit: 0.0,
-            zoom: 24.0,
+            zoom,
             previous_positions,
             logged_disagreements: 0,
             run_id: 0,
@@ -72,7 +80,20 @@ struct RockVisual(usize);
 #[derive(Component)]
 struct GroundArena(Arena);
 #[derive(Component)]
-struct ChokeWall;
+struct ChokeWall(usize);
+#[derive(Component)]
+struct Slab;
+#[derive(Component)]
+struct Bridge;
+#[derive(Component)]
+struct PawnPart(usize, bool);
+#[derive(Resource)]
+struct PawnAssets {
+    fighter: Handle<Mesh>,
+    thrower: Handle<Mesh>,
+    red: Handle<StandardMaterial>,
+    blue: Handle<StandardMaterial>,
+}
 #[derive(Component, Default)]
 struct PressLatch(bool);
 #[derive(Component)]
@@ -83,6 +104,8 @@ struct TraitValue(usize);
 struct Status;
 #[derive(Component)]
 struct DivergenceSummary;
+#[derive(Component)]
+struct PairRow(usize);
 #[derive(Component, Clone, Copy, Debug)]
 enum Control {
     Run,
@@ -95,6 +118,9 @@ enum Control {
     Arena,
     Overlay,
     Controller,
+    Pair(usize, usize),
+    ClearPair,
+    NextMatch,
     Aggressive,
     Disciplined,
     Trait(usize, f32),
@@ -105,7 +131,7 @@ fn main() {
     let arena = args
         .windows(2)
         .find(|w| w[0] == "--arena")
-        .map(|w| Arena::parse(&w[1]).expect("arena must be ridge, choke, or open"))
+        .map(|w| Arena::parse(&w[1]).expect("arena must be ridge, choke, open, or citadel"))
         .unwrap_or_default();
     let seed = args
         .windows(2)
@@ -171,6 +197,7 @@ fn main() {
             simulate,
             log_disagreements,
             sync_terrain,
+            sync_bridges,
             sync_rocks,
             sync_pawns,
             pick,
@@ -241,14 +268,51 @@ fn setup(
         MeshMaterial3d(materials.add(Color::WHITE)),
         Transform::default(),
     ));
-    for z in [-5.0, 5.0] {
+    for id in 0..5 {
         commands.spawn((
-            ChokeWall,
-            Mesh3d(meshes.add(Cuboid::new(2.0, 2.4, 6.0))),
+            ChokeWall(id),
+            Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
             MeshMaterial3d(materials.add(Color::srgb(0.3, 0.35, 0.4))),
-            Transform::from_xyz(0.0, 1.2, z),
+            Transform::default(),
             Visibility::Hidden,
         ));
+    }
+    let deck_material = materials.add(Color::srgb(0.48, 0.38, 0.24));
+    let rail_material = materials.add(Color::srgb(0.62, 0.68, 0.72));
+    for z in [-6.0, 6.0] {
+        commands.spawn((
+            Bridge,
+            Mesh3d(meshes.add(Cuboid::new(16.0, 0.22, 2.5))),
+            MeshMaterial3d(deck_material.clone()),
+            Transform::from_xyz(0.0, 3.09, z),
+            Visibility::Hidden,
+        ));
+        for sign in [-1.0_f32, 1.0] {
+            commands.spawn((
+                Bridge,
+                Mesh3d(meshes.add(Cuboid::new((4.0_f32 * 4.0 + 3.2 * 3.2).sqrt(), 0.16, 2.5))),
+                MeshMaterial3d(deck_material.clone()),
+                Transform::from_xyz(sign * 10.0, 1.52, z)
+                    .with_rotation(Quat::from_rotation_z(-sign * 0.8_f32.atan())),
+                Visibility::Hidden,
+            ));
+            commands.spawn((
+                Bridge,
+                Mesh3d(meshes.add(Cuboid::new(16.0, 0.25, 0.12))),
+                MeshMaterial3d(rail_material.clone()),
+                Transform::from_xyz(0.0, 3.45, z + sign * 1.12),
+                Visibility::Hidden,
+            ));
+            let base = Arena::Citadel.ground_elevation([sign * 6.0, z]);
+            let height = 3.0 - base;
+            commands.spawn((
+                Bridge,
+                Mesh3d(meshes.add(Cuboid::new(0.5, height, 0.5))),
+                MeshMaterial3d(rail_material.clone()),
+                Transform::from_xyz(sign * 6.0, base + height * 0.5, z),
+                Visibility::Hidden,
+            ));
+        }
     }
     let rock_mesh = meshes.add(Sphere::new(0.16));
     let rock_material = materials.add(Color::srgb(0.85, 0.8, 0.65));
@@ -262,6 +326,7 @@ fn setup(
         ));
     }
     commands.spawn((
+        Slab,
         Mesh3d(meshes.add(Cuboid::new(22.4, 0.5, 16.4))),
         MeshMaterial3d(materials.add(Color::srgb(0.07, 0.11, 0.15))),
         Transform::from_xyz(0.0, -0.3, 0.0),
@@ -272,7 +337,13 @@ fn setup(
     let base = meshes.add(Cylinder::new(0.43, 0.09));
     let red = materials.add(Color::srgb(0.92, 0.28, 0.25));
     let blue = materials.add(Color::srgb(0.2, 0.58, 0.94));
-    for id in 0..10 {
+    commands.insert_resource(PawnAssets {
+        fighter: capsule.clone(),
+        thrower: thrower.clone(),
+        red: red.clone(),
+        blue: blue.clone(),
+    });
+    for id in 0..20 {
         let material = if id < 5 { red.clone() } else { blue.clone() };
         commands
             .spawn((
@@ -286,14 +357,16 @@ fn setup(
                 Transform::default(),
             ))
             .with_children(|p| {
-                if id % 5 >= 3 {
+                {
                     p.spawn((
+                        PawnPart(id, true),
                         Mesh3d(head.clone()),
                         MeshMaterial3d(material.clone()),
                         Transform::from_xyz(0.0, 0.45, 0.0),
                     ));
                 }
                 p.spawn((
+                    PawnPart(id, false),
                     Mesh3d(base.clone()),
                     MeshMaterial3d(material),
                     Transform::from_xyz(0.0, -0.57, 0.0),
@@ -417,22 +490,49 @@ fn setup(
                 });
             }
         });
-    commands.spawn((
-        DivergenceSummary,
-        Text::new(""),
-        font(13.0),
-        TextColor(Color::srgb(0.6, 0.78, 0.82)),
-        Node {
+    commands
+        .spawn(Node {
             position_type: PositionType::Absolute,
             left: px(26),
             top: px(205),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Start,
             ..default()
-        },
-    ));
+        })
+        .with_children(|p| {
+            p.spawn((
+                DivergenceSummary,
+                Text::new(""),
+                font(13.0),
+                TextColor(Color::srgb(0.6, 0.78, 0.82)),
+            ));
+            for rank in 0..3 {
+                p.spawn((
+                    Button,
+                    PairRow(rank),
+                    Control::Pair(ACTION_COUNT, ACTION_COUNT),
+                    PressLatch::default(),
+                    BackgroundColor(Color::srgb(0.12, 0.18, 0.25)),
+                    Node {
+                        padding: UiRect::axes(px(5), px(2)),
+                        margin: UiRect::top(px(2)),
+                        display: Display::None,
+                        ..default()
+                    },
+                ))
+                .with_children(|row| {
+                    row.spawn((
+                        Text::new(""),
+                        font(13.0),
+                        TextColor(Color::srgb(0.85, 0.91, 0.96)),
+                    ));
+                });
+            }
+        });
     commands.spawn(Node { position_type: PositionType::Absolute, left: px(20), bottom: px(18), flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
         p.spawn((Text::new("Click a fighter to inspect | Space pause/run | R reset | N step | Q/E orbit | W/S zoom | M arena | O overlay | C controller"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
         p.spawn(Node { margin: UiRect::top(px(8)), ..default() }).with_children(|row| {
-            button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller);
+            button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair);
         });
     });
 }
@@ -484,7 +584,38 @@ fn apply(control: Control, session: &mut Session) {
             };
             session.battle.learned_team = None;
         }
-        Control::Paths => session.paths = !session.paths,
+        Control::Pair(utility, learned) => {
+            if utility < ACTION_COUNT && learned < ACTION_COUNT {
+                let pair = (utility, learned);
+                session.disagreement_pair = if session.disagreement_pair == Some(pair) {
+                    None
+                } else {
+                    Some(pair)
+                };
+                if let Some((u, l)) = session.disagreement_pair
+                    && let Some(id) = session.battle.disagreement_units(u, l).first()
+                {
+                    session.selected = *id;
+                    session.running = false;
+                }
+            }
+        }
+        Control::ClearPair => session.disagreement_pair = None,
+        Control::NextMatch => {
+            if let Some((u, l)) = session.disagreement_pair {
+                let ids = session.battle.disagreement_units(u, l);
+                if let Some(id) = ids
+                    .iter()
+                    .copied()
+                    .find(|id| *id > session.selected)
+                    .or_else(|| ids.first().copied())
+                {
+                    session.selected = id;
+                    session.running = false;
+                }
+            }
+        }
+        Control::Paths => session.paths = (session.paths + 1) % 3,
         Control::Overlay => session.overlay = (session.overlay + 1) % 5,
         Control::Arena => {
             session.battle = Battle::with_arena(
@@ -512,9 +643,24 @@ fn apply(control: Control, session: &mut Session) {
         }
     }
     if matches!(control, Control::Reset | Control::Swap | Control::Arena) {
+        if matches!(control, Control::Arena) {
+            session.paths = if session.battle.arena == Arena::Citadel {
+                1
+            } else {
+                0
+            };
+        }
+        session.disagreement_pair = None;
         session.battle.controller = controller;
         session.logged_disagreements = 0;
         session.run_id += 1;
+        session.previous_positions = session.battle.units.iter().map(|u| u.position).collect();
+        session.selected = session.selected.min(session.battle.units.len() - 1);
+        session.zoom = if session.battle.arena == Arena::Citadel {
+            52.0
+        } else {
+            24.0
+        };
         session.remember_positions();
     }
 }
@@ -563,8 +709,14 @@ fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
     if keys.just_pressed(KeyCode::KeyO) {
         apply(Control::Overlay, &mut session);
     }
+    if keys.just_pressed(KeyCode::Escape) {
+        apply(Control::ClearPair, &mut session);
+    }
+    if keys.just_pressed(KeyCode::KeyD) {
+        apply(Control::NextMatch, &mut session);
+    }
     if keys.just_pressed(KeyCode::Tab) {
-        session.selected = (session.selected + 1) % 10;
+        session.selected = (session.selected + 1) % session.battle.units.len();
     }
 }
 fn simulate(time: Res<Time>, mut session: ResMut<Session>) {
@@ -582,13 +734,50 @@ fn simulate(time: Res<Time>, mut session: ResMut<Session>) {
         }
     }
 }
-fn sync_pawns(session: Res<Session>, mut pawns: Query<(&Pawn, &mut Transform, &mut Visibility)>) {
-    for (pawn, mut transform, mut visible) in &mut pawns {
-        let unit = &session.battle.units[pawn.0];
+fn sync_pawns(
+    session: Res<Session>,
+    assets: Res<PawnAssets>,
+    mut pawns: Query<(
+        &Pawn,
+        &mut Transform,
+        &mut Visibility,
+        &mut Mesh3d,
+        &mut MeshMaterial3d<StandardMaterial>,
+    )>,
+    mut parts: Query<
+        (
+            &PawnPart,
+            &mut Visibility,
+            &mut MeshMaterial3d<StandardMaterial>,
+        ),
+        Without<Pawn>,
+    >,
+) {
+    for (pawn, mut transform, mut visible, mut mesh, mut material) in &mut pawns {
+        let Some(unit) = session.battle.units.get(pawn.0) else {
+            *visible = Visibility::Hidden;
+            continue;
+        };
         let p = session.presented(unit.id);
         let next = Vec3::new(p[0], session.battle.arena.elevation(p) + 0.64, p[1]);
         if transform.translation != next {
             transform.translation = next;
+        }
+        let body = if unit.role == Role::RockThrower {
+            &assets.thrower
+        } else {
+            &assets.fighter
+        };
+        if mesh.0 != *body {
+            mesh.0 = body.clone();
+        }
+        let color = if unit.team == 0 {
+            &assets.red
+        } else {
+            &assets.blue
+        };
+        if material.0 != *color {
+            material.0 = color.clone();
         }
         *visible = if unit.health > 0.0 {
             Visibility::Inherited
@@ -596,14 +785,35 @@ fn sync_pawns(session: Res<Session>, mut pawns: Query<(&Pawn, &mut Transform, &m
             Visibility::Hidden
         };
     }
+    for (part, mut visible, mut material) in &mut parts {
+        if let Some(unit) = session.battle.units.get(part.0) {
+            *visible = if !part.1 || unit.role == Role::RockThrower {
+                Visibility::Inherited
+            } else {
+                Visibility::Hidden
+            };
+            let color = if unit.team == 0 {
+                &assets.red
+            } else {
+                &assets.blue
+            };
+            if material.0 != *color {
+                material.0 = color.clone();
+            }
+        } else {
+            *visible = Visibility::Hidden;
+        }
+    }
 }
+
 fn pick(
     mouse: Res<ButtonInput<MouseButton>>,
     window: Single<&Window>,
     camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
+    buttons: Query<&Interaction, With<Button>>,
     mut session: ResMut<Session>,
 ) {
-    if !mouse.just_pressed(MouseButton::Left) {
+    if !mouse.just_pressed(MouseButton::Left) || buttons.iter().any(|i| *i != Interaction::None) {
         return;
     }
     let Some(cursor) = window.cursor_position() else {
@@ -651,7 +861,7 @@ fn camera_motion(
     if keys.pressed(KeyCode::KeyS) {
         session.zoom += dt * 8.0;
     }
-    session.zoom = session.zoom.clamp(13.0, 38.0);
+    session.zoom = session.zoom.clamp(13.0, 75.0);
     let next = Transform::from_xyz(
         session.orbit.sin() * session.zoom,
         session.zoom * 0.88,
@@ -686,9 +896,28 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
             );
         }
     }
-    if session.paths {
+    if let Some((utility, learned)) = session.disagreement_pair {
+        for id in session.battle.disagreement_units(utility, learned) {
+            let p = session.presented(id);
+            let height = arena.elevation(p);
+            gizmos.circle(
+                Isometry3d::new(
+                    Vec3::new(p[0], height + 0.15, p[1]),
+                    Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
+                ),
+                0.9,
+                Color::srgb(1.0, 0.3, 0.85),
+            );
+            gizmos.line(
+                Vec3::new(p[0], height + 1.3, p[1]),
+                Vec3::new(p[0], height + 2.1, p[1]),
+                Color::srgb(1.0, 0.3, 0.85),
+            );
+        }
+    }
+    if session.paths < 2 {
         for unit in &session.battle.units {
-            if unit.health <= 0.0 {
+            if unit.health <= 0.0 || (session.paths == 1 && unit.id != session.selected) {
                 continue;
             }
             let color = if unit.team == 0 {
@@ -751,8 +980,8 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
     }
     if session.overlay > 0 && session.overlay < 4 {
         let known = perception::threats(u, session.battle.tick);
-        for x in -10..=10 {
-            for z in -7..=7 {
+        for x in -(arena.half_size()[0] as i32 - 1)..=(arena.half_size()[0] as i32 - 1) {
+            for z in -(arena.half_size()[1] as i32 - 1)..=(arena.half_size()[1] as i32 - 1) {
                 let p = [x as f32 + 0.5, z as f32 + 0.5];
                 if arena.blocked(p) {
                     continue;
@@ -814,12 +1043,15 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
             } else {
                 match c.source {
                     Source::OwnSight => "own memory".into(),
-                    Source::Ally(id) => format!("ally {:02} report", id % 5 + 1),
+                    Source::Ally(id) => format!(
+                        "ally {:02} report",
+                        id % session.battle.arena.team_size() + 1
+                    ),
                 }
             };
             format!(
                 "Contact {:02}: {} ({:.1}s)",
-                c.enemy % 5 + 1,
+                c.enemy % session.battle.arena.team_size() + 1,
                 source,
                 session.battle.tick.saturating_sub(c.seen_tick) as f32 * DT
             )
@@ -827,7 +1059,12 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
         .unwrap_or_else(|| "No contact: search deployment".into());
     let support = u
         .support_target
-        .map(|id| format!("Supporting ally {:02}", id % 5 + 1))
+        .map(|id| {
+            format!(
+                "Supporting ally {:02}",
+                id % session.battle.arena.team_size() + 1
+            )
+        })
         .unwrap_or_else(|| "".into());
     let comparison = u
         .comparison
@@ -853,7 +1090,7 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
         let content = format!(
             "{}-{:02}   HEALTH {:.0}%\n{} | {}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n{}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}\nWhy (last decision):\n{}",
             if u.team == 0 { "RED" } else { "BLUE" },
-            u.id % 5 + 1,
+            u.id % session.battle.arena.team_size() + 1,
             u.health,
             u.role.name(),
             if u.health <= 0.0 {
@@ -890,17 +1127,20 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
 fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>) {
     for mut t in &mut text {
         let content = format!(
-            "{} | {:.1}s | x{:.0} | Seed {}\nRED {} / 5     BLUE {} / 5\n{} | {}\nController: {} | disagreements {}\nOverlay: {} | {}",
+            "{} | {:.1}s | x{:.0} | Seed {}\nRED {} / {}     BLUE {} / {}\n{} | {}\nController: {} | disagreements {} | Paths {}\nOverlay: {} | {}",
             if session.running { "RUNNING" } else { "PAUSED" },
             session.battle.tick as f32 * DT,
             session.speed,
             session.battle.seed,
             session.battle.survivors(0),
+            session.battle.arena.team_size(),
             session.battle.survivors(1),
+            session.battle.arena.team_size(),
             session.battle.result,
             session.battle.arena.name(),
             session.battle.controller.name(),
             session.battle.disagreements.len(),
+            ["ALL", "SELECTED", "OFF"][session.paths],
             [
                 "OFF",
                 "TERRAIN",
@@ -921,7 +1161,12 @@ fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>
     }
 }
 
-fn update_divergence(session: Res<Session>, mut text: Query<&mut Text, With<DivergenceSummary>>) {
+fn update_divergence(
+    session: Res<Session>,
+    summary_entity: Single<Entity, With<DivergenceSummary>>,
+    mut rows: Query<(&PairRow, &mut Control, &Children, &mut Node)>,
+    mut texts: Query<&mut Text>,
+) {
     let summary = &session.battle.comparison_summary;
     let agreement = summary
         .agreement_rate()
@@ -931,21 +1176,45 @@ fn update_divergence(session: Res<Session>, mut text: Query<&mut Text, With<Dive
         "ALL DECISIONS | Agreement: {agreement} / {} compared / {} unavailable",
         summary.compared, summary.unavailable
     );
+    if let Some((u, l)) = session.disagreement_pair {
+        let count = session.battle.disagreement_units(u, l).len();
+        content.push_str(&format!("\nFILTER: {} -> {} | {count} live matches\nPink = latest matching decisions | D next | Esc clear", ACTIONS[u], ACTIONS[l]));
+    } else {
+        content.push_str("\nClick a pair to inspect live matches (pauses if found)");
+    }
     let pairs = summary.top_disagreements(3);
     if pairs.is_empty() {
         content.push_str("\nTop disagreements: none yet");
-    } else {
-        content.push_str("\nTop disagreements (UTILITY -> LEARNED):");
-        for pair in pairs {
-            content.push_str(&format!(
-                "\n{} -> {}  {}",
-                pair.utility, pair.learned, pair.count
-            ));
-        }
     }
-    for mut t in &mut text {
-        if t.0 != content {
-            t.0 = content.clone();
+    if let Ok(mut t) = texts.get_mut(*summary_entity)
+        && t.0 != content
+    {
+        t.0 = content;
+    }
+    for (rank, mut control, children, mut node) in &mut rows {
+        if let Some(pair) = pairs.get(rank.0) {
+            node.display = Display::Flex;
+            let u = ACTIONS.iter().position(|a| *a == pair.utility).unwrap();
+            let l = ACTIONS.iter().position(|a| *a == pair.learned).unwrap();
+            *control = Control::Pair(u, l);
+            let marker = if session.disagreement_pair == Some((u, l)) {
+                "* "
+            } else {
+                ""
+            };
+            let label = format!(
+                "{marker}{} -> {}  {}",
+                pair.utility, pair.learned, pair.count
+            );
+            for child in children.iter() {
+                if let Ok(mut t) = texts.get_mut(child)
+                    && t.0 != label
+                {
+                    t.0 = label.clone();
+                }
+            }
+        } else {
+            node.display = Display::None;
         }
     }
 }
@@ -953,8 +1222,9 @@ fn update_divergence(session: Res<Session>, mut text: Query<&mut Text, With<Dive
 fn terrain_mesh(arena: Arena) -> Mesh {
     let mut positions = Vec::new();
     let mut colors = Vec::new();
-    for x in -22..22 {
-        for z in -16..16 {
+    let size = arena.half_size();
+    for x in -(size[0] as i32 * 2)..(size[0] as i32 * 2) {
+        for z in -(size[1] as i32 * 2)..(size[1] as i32 * 2) {
             let a = [x as f32 * 0.5, z as f32 * 0.5];
             let b = [a[0] + 0.5, a[1]];
             let c = [a[0], a[1] + 0.5];
@@ -968,7 +1238,7 @@ fn terrain_mesh(arena: Arena) -> Mesh {
                 Color::srgb(0.17, 0.23, 0.24)
             };
             for p in [a, c, b, b, c, d] {
-                positions.push([p[0], arena.elevation(p), p[1]]);
+                positions.push([p[0], arena.ground_elevation(p), p[1]]);
                 colors.push(color.to_linear().to_f32_array());
             }
         }
@@ -986,7 +1256,8 @@ fn sync_terrain(
     session: Res<Session>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut ground: Single<(&Mesh3d, &mut GroundArena)>,
-    mut walls: Query<&mut Visibility, With<ChokeWall>>,
+    mut walls: Query<(&ChokeWall, &mut Visibility, &mut Transform), Without<Slab>>,
+    mut slab: Single<&mut Transform, With<Slab>>,
 ) {
     let (mesh, rendered) = &mut *ground;
     if rendered.0 != session.battle.arena {
@@ -995,12 +1266,42 @@ fn sync_terrain(
         }
         rendered.0 = session.battle.arena;
     }
-    for mut wall in &mut walls {
-        *wall = if session.battle.arena == Arena::Choke {
-            Visibility::Inherited
+    let arena = session.battle.arena;
+    let size = arena.half_size();
+    let slab_scale = Vec3::new(
+        (size[0] * 2.0 + 0.4) / 22.4,
+        1.0,
+        (size[1] * 2.0 + 0.4) / 16.4,
+    );
+    if slab.scale != slab_scale {
+        slab.scale = slab_scale;
+    }
+    for (wall, mut visible, mut transform) in &mut walls {
+        if let Some((center, extent)) = arena.walls().get(wall.0) {
+            *visible = Visibility::Inherited;
+            let wall_translation = Vec3::new(center[0], arena.elevation(*center) + 1.2, center[1]);
+            let wall_scale = Vec3::new(extent[0], 2.4, extent[1]);
+            if transform.translation != wall_translation {
+                transform.translation = wall_translation;
+            }
+            if transform.scale != wall_scale {
+                transform.scale = wall_scale;
+            }
         } else {
-            Visibility::Hidden
-        };
+            *visible = Visibility::Hidden;
+        }
+    }
+}
+fn sync_bridges(session: Res<Session>, mut bridges: Query<&mut Visibility, With<Bridge>>) {
+    let visible = if session.battle.arena == Arena::Citadel {
+        Visibility::Inherited
+    } else {
+        Visibility::Hidden
+    };
+    for mut bridge in &mut bridges {
+        if *bridge != visible {
+            *bridge = visible;
+        }
     }
 }
 fn sync_rocks(

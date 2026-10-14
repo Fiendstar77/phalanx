@@ -122,6 +122,8 @@ pub struct Unit {
     pub flank_until: u32,
     pub decision_reason: String,
     pub comparison: Option<Comparison>,
+    #[serde(skip_serializing_if = "search_not_started")]
+    pub search_waypoint: u32,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Battle {
@@ -162,23 +164,24 @@ fn noise(seed: u64, tick: u32, id: usize, action: usize) -> f32 {
     n = (n ^ (n >> 27)).wrapping_mul(0x94d049bb133111eb);
     ((n ^ (n >> 31)) as u32 as f32 / u32::MAX as f32 - 0.5) * 0.035
 }
+fn search_not_started(leg: &u32) -> bool {
+    *leg == 0
+}
 impl Battle {
     pub fn new(seed: u64, swapped: bool) -> Self {
         Self::with_arena(seed, swapped, Arena::Ridge)
     }
     pub fn with_arena(seed: u64, swapped: bool, arena: Arena) -> Self {
-        let units = (0..10)
+        let team_size = arena.team_size();
+        let units = (0..2 * team_size)
             .map(|id| {
-                let team = id / 5;
+                let team = id / team_size;
                 let aggressive = (team == 0) != swapped;
-                let position = [
-                    if team == 0 { -8.0 } else { 8.0 },
-                    (id % 5) as f32 * 1.6 - 3.2,
-                ];
+                let position = arena.spawn(team, id % team_size);
                 Unit {
                     id,
                     team,
-                    role: if id % 5 >= 3 {
+                    role: if id % team_size >= arena.fighters() {
                         Role::RockThrower
                     } else {
                         Role::Fighter
@@ -216,6 +219,7 @@ impl Battle {
                     flank_until: 0,
                     decision_reason: "Awaiting first decision".into(),
                     comparison: None,
+                    search_waypoint: 0,
                 }
             })
             .collect();
@@ -240,6 +244,20 @@ impl Battle {
             ally_distance_samples: [0; 2],
         }
     }
+    /// Living agents whose latest decision has this exact, valid disagreement pair.
+    pub fn disagreement_units(&self, utility: usize, learned: usize) -> Vec<usize> {
+        self.units
+            .iter()
+            .filter(|u| {
+                u.health > 0.0
+                    && utility != learned
+                    && u.comparison
+                        .as_ref()
+                        .is_some_and(|c| c.utility == utility && c.learned == Some(learned))
+            })
+            .map(|u| u.id)
+            .collect()
+    }
     pub fn survivors(&self, team: usize) -> usize {
         self.units
             .iter()
@@ -260,7 +278,7 @@ impl Battle {
         }
         perception::update(&mut self.units, self.arena, self.tick);
         let snapshot = self.units.clone();
-        let mut damage = [0.0; 10];
+        let mut damage = vec![0.0; self.units.len()];
         let arena = self.arena;
         let mut landed = Vec::new();
         for rock in &mut self.rocks {
@@ -305,10 +323,19 @@ impl Battle {
                 .collect();
             let enemy = cognition::focus_target(unit, &allies, self.tick);
             // Enemy deployment zones are authored objectives, not live enemy positions.
-            let objective = [
-                if unit.team == 0 { 8.0 } else { -8.0 },
-                (unit.id % 5) as f32 * 1.6 - 3.2,
-            ];
+            let mut objective =
+                arena.search_waypoint(unit.team, unit.id % arena.team_size(), unit.search_waypoint);
+            if arena == Arena::Citadel
+                && enemy.is_none()
+                && distance(unit.position, objective) < 1.8
+            {
+                unit.search_waypoint += 1;
+                objective = arena.search_waypoint(
+                    unit.team,
+                    unit.id % arena.team_size(),
+                    unit.search_waypoint,
+                );
+            }
             let enemy_position = enemy.as_ref().map(|e| e.position).unwrap_or(objective);
             let d = enemy
                 .as_ref()
@@ -334,10 +361,14 @@ impl Battle {
                 .sum::<f32>()
                 / 3.0)
                 .min(1.0);
-            let ridge = [
-                if unit.team == 0 { -0.6 } else { 0.6 },
-                unit.position[1].clamp(-2.0, 2.0),
-            ];
+            let ridge = if arena == Arena::Citadel {
+                arena.high_ground(unit.position)
+            } else {
+                [
+                    if unit.team == 0 { -0.6 } else { 0.6 },
+                    unit.position[1].clamp(-2.0, 2.0),
+                ]
+            };
             let mut decision_features = Vec::new();
             let old_flank_until = unit.flank_until;
             let old_flank_anchor = unit.flank_anchor;
@@ -357,7 +388,11 @@ impl Battle {
                     } else {
                         -1.0
                     },
-                    if arena != Arena::Ridge || arrived || in_range {
+                    if !arena.has_high_ground()
+                        || arrived
+                        || in_range
+                        || (arena == Arena::Citadel && enemy.is_none() && self.tick >= 180)
+                    {
                         -1.0
                     } else {
                         0.25 + 0.35 * m.caution + 0.25 * m.discipline + 0.2 * m.patience
@@ -409,7 +444,7 @@ impl Battle {
                     } else {
                         -1.0
                     },
-                    if arena == Arena::Ridge && arrived && d > 3.0 && self.tick < 180 {
+                    if arena.has_high_ground() && arrived && d > 3.0 && self.tick < 180 {
                         0.35 + 0.35 * m.patience + 0.2 * m.discipline
                     } else {
                         -1.0
@@ -457,26 +492,27 @@ impl Battle {
                     m.discipline,
                     unit.health / 100.0,
                     f32::from(unit.role == Role::RockThrower),
-                    unit.position[0] / 11.0,
-                    unit.position[1] / 8.0,
-                    arena.elevation(unit.position) / 1.7,
+                    unit.position[0] / arena.half_size()[0],
+                    unit.position[1] / arena.half_size()[1],
+                    arena.elevation(unit.position)
+                        / if arena == Arena::Citadel { 3.8 } else { 1.7 },
                     arena.cover(unit.position),
                     arena.roughness(unit.position),
                     (d / 20.0).min(1.0),
                     f32::from(enemy.as_ref().is_some_and(|e| e.visible)),
-                    unit.contacts.len() as f32 / 5.0,
+                    unit.contacts.len() as f32 / arena.team_size() as f32,
                     enemy.as_ref().map(|e| e.health / 100.0).unwrap_or(0.0),
                     enemy
                         .as_ref()
                         .map(|e| e.confidence(self.tick))
                         .unwrap_or(0.0),
-                    allies.len() as f32 / 4.0,
+                    allies.len() as f32 / (arena.team_size() - 1) as f32,
                     isolation,
                     local_threat,
                     support
                         .map(|(_, urgency)| (urgency / 2.0).min(1.0))
                         .unwrap_or(0.0),
-                    engaged as f32 / 4.0,
+                    engaged as f32 / (arena.team_size() - 1) as f32,
                     f32::from(distance(unit.position, ridge) < 0.9),
                     f32::from(self.tick < 180),
                     f32::from(self.tick >= old_flank_until),
@@ -546,7 +582,9 @@ impl Battle {
                 }
                 unit.decision_reason = match unit.action {
                     0 => {
-                        if enemy.is_some() {
+                        if arena == Arena::Citadel && enemy.is_none() && unit.search_waypoint > 0 {
+                            "Scout patrol after deployment search"
+                        } else if enemy.is_some() {
                             "Advance on observed/reported contact"
                         } else {
                             "Search opposing deployment zone"
@@ -577,8 +615,10 @@ impl Battle {
                 3 => unit.flank_anchor.unwrap_or(enemy_position),
                 4 => center,
                 5 => [
-                    (unit.position[0] + (unit.position[0] - enemy_position[0])).clamp(-10.5, 10.5),
-                    (unit.position[1] + (unit.position[1] - enemy_position[1])).clamp(-7.0, 7.0),
+                    (unit.position[0] + (unit.position[0] - enemy_position[0]))
+                        .clamp(-arena.half_size()[0] + 0.5, arena.half_size()[0] - 0.5),
+                    (unit.position[1] + (unit.position[1] - enemy_position[1]))
+                        .clamp(-arena.half_size()[1] + 1.0, arena.half_size()[1] - 1.0),
                 ],
                 6 => unit.position,
                 7 => arena.nearest_cover(unit.position).unwrap_or(unit.position),
@@ -671,14 +711,16 @@ impl Battle {
                                     next[0] + (next[0] - ally.position[0]) / gap * 0.045,
                                     next[1] + (next[1] - ally.position[1]) / gap * 0.045,
                                 ];
-                                if arena.clear_segment(unit.position, separated) {
+                                if arena.walk_segment(unit.position, separated) {
                                     next = separated;
                                 }
                             }
                         }
-                        next[0] = next[0].clamp(-10.5, 10.5);
-                        next[1] = next[1].clamp(-7.5, 7.5);
-                        if arena.clear_segment(unit.position, next) {
+                        next[0] =
+                            next[0].clamp(-arena.half_size()[0] + 0.5, arena.half_size()[0] - 0.5);
+                        next[1] =
+                            next[1].clamp(-arena.half_size()[1] + 0.5, arena.half_size()[1] - 0.5);
+                        if arena.walk_segment(unit.position, next) {
                             unit.distance_moved += distance(unit.position, next);
                             unit.position = next;
                         }

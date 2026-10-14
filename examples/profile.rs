@@ -2,7 +2,7 @@
 use phalanx::{Battle, terrain::Arena};
 use std::time::Instant;
 fn main() {
-    for arena in [Arena::Ridge, Arena::Choke, Arena::OpenField] {
+    for arena in [Arena::Ridge, Arena::Choke, Arena::OpenField, Arena::Citadel] {
         let mut b = Battle::with_arena(42, false, arena);
         let mut timings = Vec::new();
         let start = Instant::now();
