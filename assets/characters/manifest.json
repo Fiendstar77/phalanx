@@ -1,0 +1,14 @@
+{
+  "source_models_preserved": true,
+  "female_cheek_vertices_affected": 1279,
+  "clips": [
+    "Idle",
+    "Walk",
+    "Run",
+    "Attack",
+    "Throw",
+    "Hit",
+    "Death"
+  ],
+  "method": "Authored procedural motion; female weights transferred from matching male T-pose; female render copy decimated to 19 percent."
+}

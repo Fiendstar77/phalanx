@@ -17,11 +17,17 @@ fn neighbors(arena: Arena) -> &'static Vec<Vec<usize>> {
     static CHOKE: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
     static OPEN: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
     static CITADEL: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
+    static HIGHLANDS: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
+    static RUINS: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
+    static GRAND: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
     let cache = match arena {
         Arena::Ridge => &RIDGE,
         Arena::Choke => &CHOKE,
         Arena::OpenField => &OPEN,
         Arena::Citadel => &CITADEL,
+        Arena::Highlands => &HIGHLANDS,
+        Arena::Ruins => &RUINS,
+        Arena::GrandArena => &GRAND,
     };
     cache.get_or_init(|| {
         let size = arena.half_size();

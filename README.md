@@ -4,7 +4,7 @@
 
 Players shape battlefields and agent personalities, then observe autonomous teams fight. PHALANX explores how terrain, individual psychology, and teamwork affect collective behavior—and how to make those decisions explainable and measurable.
 
-> **Status: early playable prototype.** The default Founders setup starts each team with a King, Queen, and General. The Lab keeps its original 5-versus-5 standard battles and 10-versus-10 Citadel arena, personality-weighted routes, cover, rough ground, four arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
+> **Status: early playable prototype.** The default Founders setup starts each team with a King, Queen, and General. The Lab keeps its original 5-versus-5 standard battles and 10-versus-10 Citadel arena, personality-weighted routes, cover, rough ground, seven arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
 
 ![Citadel: 20 agents and clickable disagreement highlights](docs/images/citadel-filter.png)
 
@@ -18,9 +18,23 @@ Every starting squad has a **King, Queen, and General**. King and Queen wear bas
 
 The squads now persist locally: fighter IDs, minds, classes, XP, battle history, and chosen team colors survive save/load. Completed battles award XP and small battle-conditioned habit changes; **Next battle** continues with the same fighters. [Play the progression loop and see its current limits](docs/progression.md). Recruitment and the wider game follow the [commercial roadmap](PHALANX_COMMERCIAL_GAME_ROADMAP_v0.1.md). **Founders/Lab** switches setups; launch with `--lab` for the original experimental rosters. Both share the same simulation, controllers, telemetry, and inspector.
 
+## Visual combat and wounded veterans
+
+The supplied male/female bases now have derived game-ready rigs with seven basic animation clips. Appearance uses real 3D hair, painted skin textures and an actual on-field camera portrait. Founders can survive limb loss, carry wounds across battles, earn salvage and craft Iron I prosthetics. The first iron arm grants **3× damage with a 15% movement penalty**. Blood sprays, spreading puddles, stylized organ debris and flying body pieces follow actual combat events.
+
+![Characters, blood and wounded veterans](docs/images/veteran-combat.png)
+
+[Asset pipeline, live verification and visual limits](docs/visual-combat.md) · [Wounds and crafting rules](docs/progression.md#wounds-salvage-and-first-crafting-recipe) · [Proposed reserve roster](docs/roster-design.md)
+
+## Local game loop
+
+Start in the main menu, enter the arena, select a fighter, customize its class/mind, then watch autonomous combat. Eight launch classes plus Rock Thrower and Paladin have real mechanics; the General remains a Paladin. Authored event barks and starter painted expressions reflect combat state. Earn gold, retrain for 10 gold, or fit an iron limb for 15 gold + 5 salvage. Save 1,000 gold to recruit the fourth fighter and enter a matched local 4v4 league.
+
+The menu includes the full **3 → 20 gold ladder**, ending at 650,000 gold for slot 20. **Playable leagues currently stop at 4**; later prices are tuning targets. [Economy and complete ladder](docs/economy.md) · [Class mechanics](docs/classes.md). No networking, automatic online discovery or LLM runtime is implemented in this slice.
+
 ## Implemented
 
-- Four 3D arenas: Ridge, Choke, Open Field, and Citadel; green cover, brown rough ground, and solid choke walls.
+- Seven 3D arenas: Ridge, Choke, Open Field, Citadel, Highlands, Ruins and Grand Arena; green cover, brown rough ground, and solid choke walls.
 - Standard arenas: three melee fighters and two rock throwers per team. Citadel: **six warriors and four rock throwers per team**, on a **44 × 40 footprint (5× the standard area)**, with twin elevated positions, multiple choke passages, barricades, cover, rough ground, and **two walkable raised passerelles with ramps**.
 - Visible rocks, travel time, possible misses, and blocked shots.
 - Seven editable mind traits and nine scored tactical actions (including seeking cover and supporting allies).
@@ -108,7 +122,7 @@ Click **Run**. Click a fighter to inspect it, then use the presets or trait butt
 
 **Arena** cycles Ridge → Choke → Open Field → Citadel and resets the battle. **Overlay** cycles Off → Terrain → Threat → Elevation → Knowledge. Threat uses the selected unit’s known contacts; the knowledge view marks last-observed positions, including stale ones.
 
-Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **W/S** zoom, **M** arena, **O** overlay, **C** Utility/Learned controller, **D** next filtered match, **Esc** clear filter.
+Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **W/S** zoom, **M** arena, **O** overlay, **C** Utility/Learned controller, **D** next filtered match, **Esc** menu. Mouse: **RMB** orbit, **MMB / Shift+RMB** pan, **wheel** zoom, **F** follow selected fighter, **Home** frame arena.
 
 **Paths** cycles All → Selected → Off; Citadel starts with only the selected route to keep a 20-agent battle readable.
 

@@ -1,3 +1,5 @@
+mod front;
+mod visuals;
 use bevy::{
     asset::RenderAssetUsages,
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
@@ -16,6 +18,8 @@ use phalanx::{
 #[derive(Resource)]
 struct Session {
     battle: Battle,
+    menu: bool,
+    ladder: bool,
     running: bool,
     selected: usize,
     speed: f32,
@@ -25,6 +29,9 @@ struct Session {
     disagreement_pair: Option<(usize, usize)>,
     orbit: f32,
     zoom: f32,
+    pitch: f32,
+    camera_target: Vec3,
+    camera_follow: bool,
     previous_positions: Vec<[f32; 2]>,
     logged_disagreements: usize,
     run_id: u32,
@@ -79,14 +86,12 @@ impl Session {
             None
         };
         let previous_positions = battle.units.iter().map(|u| u.position).collect();
-        let paths = if battle.arena == Arena::Citadel { 1 } else { 0 };
-        let zoom = if battle.arena == Arena::Citadel {
-            52.0
-        } else {
-            24.0
-        };
+        let paths = if battle.arena.large() { 1 } else { 0 };
+        let zoom = if battle.arena.large() { 52.0 } else { 24.0 };
         let mut session = Self {
             battle,
+            menu: true,
+            ladder: false,
             running: false,
             selected: 0,
             speed: 1.0,
@@ -96,6 +101,9 @@ impl Session {
             disagreement_pair: None,
             orbit: 0.0,
             zoom,
+            pitch: 0.72,
+            camera_target: Vec3::new(3.5, 0.0, 0.0),
+            camera_follow: false,
             previous_positions,
             logged_disagreements: 0,
             run_id: 0,
@@ -175,8 +183,9 @@ impl Session {
             match self.campaign.settle(id, &self.battle) {
                 Ok(()) => {
                     self.rewarded = true;
+                    let size = self.battle.team_size();
                     for u in &mut self.battle.units {
-                        u.mind = self.campaign.teams[u.team].fighters[u.id % 3].mind;
+                        u.mind = self.campaign.teams[u.team].fighters[u.id % size].mind;
                     }
                     if self.autosave {
                         if self.save_campaign() {
@@ -241,8 +250,6 @@ struct PawnPart(usize, bool);
 struct Insignia(usize, bool);
 #[derive(Resource)]
 struct PawnAssets {
-    fighter: Handle<Mesh>,
-    thrower: Handle<Mesh>,
     red: Handle<StandardMaterial>,
     blue: Handle<StandardMaterial>,
     gold: Handle<StandardMaterial>,
@@ -253,6 +260,9 @@ struct PressLatch(bool);
 #[derive(Component)]
 struct Inspector;
 #[derive(Component)]
+struct InspectorPanel;
+type MainCameraFilter = (With<Camera3d>, Without<visuals::PortraitCamera>);
+#[derive(Component)]
 struct TraitValue(usize);
 #[derive(Component)]
 struct Status;
@@ -262,6 +272,12 @@ struct DivergenceSummary;
 struct PairRow(usize);
 #[derive(Component, Clone, Copy, Debug)]
 enum Control {
+    Menu,
+    Ladder,
+    Recruit,
+    Continue,
+    Quit,
+    Class(FighterClass),
     Run,
     Pause,
     Step,
@@ -279,6 +295,8 @@ enum Control {
     Save,
     Load,
     TeamColor(usize),
+    Appearance(usize),
+    Prosthetic,
     NextMatch,
     Aggressive,
     Disciplined,
@@ -330,6 +348,17 @@ fn main() {
         Controller::Utility
     };
     let mut session = Session::new(battle);
+    let visual_witness = args.iter().any(|a| a == "--visual-witness");
+    if visual_witness {
+        session.menu = false;
+        session.running = true;
+        session.speed = 4.0;
+        if args.iter().any(|a| a == "--menu-witness") {
+            session.menu = true;
+            session.ladder = args.iter().any(|a| a == "--ladder-witness");
+            session.running = false;
+        }
+    }
     std::fs::create_dir_all("outputs").expect("create log directory");
     let log_path = format!(
         "outputs/disagreements-{}.jsonl",
@@ -347,41 +376,69 @@ fn main() {
     }
     info!("Live controller disagreement log: {log_path}");
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins.set(WindowPlugin {
-        primary_window: Some(Window {
-            title: "PHALANX | Minds x Terrain".into(),
-            resolution: (1440, 900).into(),
-            ..default()
-        }),
-        ..default()
-    }))
-    .insert_resource(ClearColor(Color::srgb(0.025, 0.035, 0.055)))
-    .insert_resource(session)
-    .add_systems(Startup, setup)
-    .add_systems(
-        Update,
-        (
-            controls,
-            keyboard,
-            simulate,
-            settle_progression,
-            sync_team_colors,
-            log_disagreements,
-            sync_terrain,
-            sync_bridges,
-            sync_rocks,
-            sync_pawns,
-            sync_insignia,
-            pick,
-            camera_motion,
-            overlays,
-            update_text,
-            update_minds,
-            update_status,
-            update_divergence,
+    if args.iter().any(|a| a == "--battle") {
+        session.menu = false;
+    }
+    app.add_plugins((visuals::BattleVisuals, front::FrontEnd))
+        .add_plugins(
+            DefaultPlugins
+                .set(AssetPlugin {
+                    file_path: if std::path::Path::new("assets/characters").exists() {
+                        std::env::current_dir()
+                            .unwrap()
+                            .join("assets")
+                            .to_string_lossy()
+                            .into_owned()
+                    } else {
+                        "assets".into()
+                    },
+                    ..default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: if visual_witness {
+                            "PHALANX | Visual QA".into()
+                        } else {
+                            "PHALANX | Minds x Terrain".into()
+                        },
+                        resolution: (1440, 900).into(),
+                        visible: !visual_witness,
+                        ..default()
+                    }),
+                    ..default()
+                }),
         )
-            .chain(),
-    );
+        .insert_resource(ClearColor(Color::srgb(0.025, 0.035, 0.055)))
+        .insert_resource(session)
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (
+                controls,
+                keyboard,
+                scroll_inspector,
+                simulate,
+                settle_progression,
+                sync_team_colors,
+                log_disagreements,
+                sync_terrain,
+                sync_bridges,
+                sync_rocks,
+                sync_pawns,
+                sync_insignia,
+                pick,
+                camera_motion,
+                overlays,
+                update_text,
+                update_minds,
+                update_status,
+                update_divergence,
+            )
+                .chain(),
+        );
+    if visual_witness {
+        app.insert_resource(bevy::winit::WinitSettings::continuous());
+    }
     if args.iter().any(|a| a == "--profile") {
         app.add_plugins((
             FrameTimeDiagnosticsPlugin::default(),
@@ -507,8 +564,6 @@ fn setup(
         MeshMaterial3d(materials.add(Color::srgb(0.07, 0.11, 0.15))),
         Transform::from_xyz(0.0, -0.3, 0.0),
     ));
-    let capsule = meshes.add(Capsule3d::new(0.28, 0.65));
-    let thrower = meshes.add(Cone::new(0.4, 1.1));
     let head = meshes.add(Sphere::new(0.2));
     let base = meshes.add(Cylinder::new(0.43, 0.09));
     let red = materials.add(Color::srgb(0.92, 0.28, 0.25));
@@ -521,8 +576,6 @@ fn setup(
     let patch = meshes.add(Cuboid::new(0.33, 0.32, 0.025));
     let stripe = meshes.add(Cuboid::new(0.16, 0.045, 0.035));
     commands.insert_resource(PawnAssets {
-        fighter: capsule.clone(),
-        thrower: thrower.clone(),
         red: red.clone(),
         blue: blue.clone(),
         gold: gold.clone(),
@@ -531,16 +584,7 @@ fn setup(
     for id in 0..20 {
         let material = if id < 5 { red.clone() } else { blue.clone() };
         commands
-            .spawn((
-                Pawn(id),
-                Mesh3d(if id % 5 >= 3 {
-                    thrower.clone()
-                } else {
-                    capsule.clone()
-                }),
-                MeshMaterial3d(material.clone()),
-                Transform::default(),
-            ))
+            .spawn((Pawn(id), Transform::default(), Visibility::Inherited))
             .with_children(|p| {
                 p.spawn((
                     Insignia(id, true),
@@ -595,6 +639,7 @@ fn setup(
             });
     }
     commands.spawn((
+        bevy::camera::visibility::RenderLayers::layer(0).with(1),
         DirectionalLight {
             illuminance: 10000.0,
             ..default()
@@ -603,6 +648,7 @@ fn setup(
     ));
     commands.spawn((
         Camera3d::default(),
+        IsDefaultUiCamera,
         Transform::from_xyz(0.0, 21.0, 24.0).looking_at(Vec3::new(3.5, 0.0, 0.0), Vec3::Y),
     ));
     commands
@@ -642,11 +688,14 @@ fn setup(
                 top: px(16),
                 bottom: px(90),
                 width: px(330),
+                overflow: Overflow::scroll_y(),
                 padding: UiRect::all(px(18)),
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
             BackgroundColor(Color::srgba(0.035, 0.055, 0.085, 0.97)),
+            InspectorPanel,
+            ScrollPosition::default(),
         ))
         .with_children(|p| {
             p.spawn((
@@ -664,13 +713,30 @@ fn setup(
                 },
             ));
             p.spawn((
-                Text::new("Edit mind | used at next decision"),
+                Text::new("LOOK | Body / Hair / Face / Eyes / Nose"),
                 font(12.0),
                 Node {
                     margin: UiRect::top(px(10)),
                     ..default()
                 },
             ));
+            p.spawn(Node {
+                flex_wrap: FlexWrap::Wrap,
+                ..default()
+            })
+            .with_children(|row| {
+                for (i, label) in ["Body", "Hair", "Face", "Eyes", "Nose"].iter().enumerate() {
+                    button(row, label, Control::Appearance(i));
+                }
+                button(
+                    row,
+                    "Craft iron I (15 gold + 5 salvage)",
+                    Control::Prosthetic,
+                );
+                for class in FighterClass::ALL {
+                    button(row, class.name(), Control::Class(class));
+                }
+            });
             p.spawn(Node {
                 flex_wrap: FlexWrap::Wrap,
                 ..default()
@@ -751,9 +817,9 @@ fn setup(
             }
         });
     commands.spawn(Node { position_type: PositionType::Absolute, left: px(20), bottom: px(18), flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
-        p.spawn((Text::new("Click a fighter to inspect | Space pause/run | R reset | N step | Q/E orbit | W/S zoom | M arena | O overlay | C controller"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
+        p.spawn((Text::new("LMB select | RMB orbit | MMB / Shift+RMB pan | Wheel zoom | F follow | Home arena | Space pause/run"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
         p.spawn(Node { margin: UiRect::top(px(8)),flex_wrap:FlexWrap::Wrap,width:vw(95.0), ..default() }).with_children(|row| {
-            button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup); button(row,"Next battle",Control::NextBattle);button(row,"Save",Control::Save);button(row,"Load",Control::Load);
+            button(row,"Menu",Control::Menu);button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup); button(row,"Next battle",Control::NextBattle);button(row,"Save",Control::Save);button(row,"Load",Control::Load);
             for (i,name) in ["Amber","Teal","Violet","Coral","Azure","Lime","Pink","Ivory"].iter().enumerate() {button(row,name,Control::TeamColor(i));}
         });
     });
@@ -771,6 +837,115 @@ fn apply(control: Control, session: &mut Session) {
         let _ = session.campaign.capture_minds(&session.battle);
     }
     match control {
+        Control::Ladder => session.ladder = !session.ladder,
+        Control::Recruit => {
+            if !session.battle.founders || (session.battle.tick != 0 && !session.battle.finished) {
+                session.save_notice = "Finish or reset your battle before recruiting".into();
+                return;
+            }
+            match session.campaign.unlock_fourth() {
+                Ok(()) => {
+                    session.restart_founders(
+                        session.battle.seed.wrapping_add(1),
+                        session.battle.arena,
+                        controller,
+                    );
+                    session.previous_positions =
+                        session.battle.units.iter().map(|u| u.position).collect();
+                    session.selected = 0;
+                    session.accumulator = 0.;
+                    session.run_id += 1;
+                    session.running = false;
+                    if session.autosave {
+                        session.save_campaign();
+                    }
+                    session.save_notice =
+                        "League 4 unlocked: a new Warrior joins each side. 1000 gold spent.".into();
+                }
+                Err(e) => session.save_notice = e,
+            }
+        }
+        Control::Menu => {
+            session.menu = true;
+            session.running = false;
+        }
+        Control::Continue => {
+            session.menu = false;
+        }
+        Control::Quit => {} // handled by the front-end AppExit writer
+        Control::Class(class) => {
+            if !session.battle.founders || (session.battle.tick != 0 && !session.battle.finished) {
+                session.save_notice = "Retrain before or after a Founders battle".into();
+                return;
+            }
+            let u = &session.battle.units[session.selected];
+            let (team, slot) = (u.team, u.id % session.battle.team_size());
+            match session.campaign.set_class(team, slot, class) {
+                Ok(()) => {
+                    if session.battle.tick == 0 {
+                        let u = &mut session.battle.units[session.selected];
+                        u.class = Some(class);
+                        u.role = class.role();
+                        u.health = u.max_health();
+                    }
+                    if session.autosave {
+                        session.save_campaign();
+                    }
+                    session.save_notice =
+                        format!("{}: {} (10 gold)", class.name(), class.description());
+                }
+                Err(e) => session.save_notice = e,
+            }
+        }
+        Control::Prosthetic => {
+            if session.battle.founders && (session.battle.tick == 0 || session.battle.finished) {
+                let u = &session.battle.units[session.selected];
+                let (team, slot) = (u.team, u.id % session.battle.team_size());
+                match session.campaign.craft_prosthetic(team, slot) {
+                    Ok(limb) => {
+                        if session.battle.tick == 0 {
+                            session.battle.units[session.selected].prosthetics =
+                                session.campaign.teams[team].fighters[slot].prosthetics;
+                        }
+                        if session.autosave {
+                            session.save_campaign();
+                        }
+                        session.save_notice = format!(
+                            "Crafted Iron I {limb}; 15 gold + 5 salvage spent. Ready next battle."
+                        );
+                    }
+                    Err(e) => session.save_notice = e,
+                }
+            } else {
+                session.save_notice = "Fit prosthetics before or after a Founders battle".into();
+            }
+        }
+        Control::Appearance(choice) => {
+            if session.battle.founders {
+                let u = &session.battle.units[session.selected];
+                let slot = u.id % session.battle.team_size();
+                let look = &mut session.campaign.teams[u.team].fighters[slot].appearance;
+                match choice {
+                    0 => {
+                        look.female = Some(
+                            !look
+                                .female
+                                .unwrap_or(u.command_title == Some(CommandTitle::Queen)),
+                        )
+                    }
+                    1 => look.hair = (look.hair + 1) % 7,
+                    2 => look.face = (look.face + 1) % 17,
+                    3 => look.eyes = (look.eyes + 1) % 16,
+                    _ => look.nose = (look.nose + 1) % 17,
+                }
+                if session.autosave {
+                    session.save_campaign();
+                }
+            } else {
+                session.save_notice = "Customization belongs to your persistent Founders".into();
+            }
+        }
+
         Control::Run => session.running = !session.battle.finished,
         Control::Pause => session.running = false,
         Control::Step => {
@@ -936,7 +1111,7 @@ fn apply(control: Control, session: &mut Session) {
     ) && session.battle.founders
     {
         if matches!(control, Control::Swap) && was_founders {
-            for i in 0..3 {
+            for i in 0..session.battle.team_size() {
                 let a = session.campaign.teams[0].fighters[i].mind;
                 session.campaign.teams[0].fighters[i].mind =
                     session.campaign.teams[1].fighters[i].mind;
@@ -965,19 +1140,18 @@ fn apply(control: Control, session: &mut Session) {
             | Control::Load
     ) {
         if matches!(control, Control::Arena) {
-            session.paths = if session.battle.arena == Arena::Citadel {
-                1
-            } else {
-                0
-            };
+            session.paths = if session.battle.arena.large() { 1 } else { 0 };
         }
         session.disagreement_pair = None;
+        session.camera_follow = false;
+        session.camera_target = Vec3::new(3.5, 0.0, 0.0);
+        session.pitch = 0.72;
         session.battle.controller = controller;
         session.logged_disagreements = 0;
         session.run_id += 1;
         session.previous_positions = session.battle.units.iter().map(|u| u.position).collect();
         session.selected = session.selected.min(session.battle.units.len() - 1);
-        session.zoom = if session.battle.arena == Arena::Citadel {
+        session.zoom = if session.battle.arena.large() {
             52.0
         } else {
             24.0
@@ -1007,13 +1181,35 @@ fn controls(
                 }
             }
         };
-        if *interaction == Interaction::Pressed && !latch.0 {
+        if *interaction == Interaction::Pressed
+            && !latch.0
+            && (!session.menu
+                || matches!(
+                    control,
+                    Control::Continue
+                        | Control::Ladder
+                        | Control::Recruit
+                        | Control::Quit
+                        | Control::Arena
+                        | Control::Save
+                        | Control::Load
+                        | Control::Setup
+                ))
+        {
             apply(*control, &mut session);
         }
         latch.0 = *interaction == Interaction::Pressed;
     }
 }
 fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
+    if keys.just_pressed(KeyCode::Escape) {
+        session.menu = !session.menu;
+        session.running = false;
+        return;
+    }
+    if session.menu {
+        return;
+    }
     if keys.just_pressed(KeyCode::Space) {
         let c = if session.running {
             Control::Pause
@@ -1048,7 +1244,7 @@ fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
     }
 }
 fn simulate(time: Res<Time>, mut session: ResMut<Session>) {
-    if !session.running || session.battle.finished {
+    if session.menu || !session.running || session.battle.finished {
         return;
     }
     session.accumulator += time.delta_secs().min(0.25) * session.speed;
@@ -1082,13 +1278,7 @@ fn sync_team_colors(
 fn sync_pawns(
     session: Res<Session>,
     assets: Res<PawnAssets>,
-    mut pawns: Query<(
-        &Pawn,
-        &mut Transform,
-        &mut Visibility,
-        &mut Mesh3d,
-        &mut MeshMaterial3d<StandardMaterial>,
-    )>,
+    mut pawns: Query<(&Pawn, &mut Transform, &mut Visibility)>,
     mut parts: Query<
         (
             &PawnPart,
@@ -1098,7 +1288,7 @@ fn sync_pawns(
         Without<Pawn>,
     >,
 ) {
-    for (pawn, mut transform, mut visible, mut mesh, mut material) in &mut pawns {
+    for (pawn, mut transform, mut visible) in &mut pawns {
         let Some(unit) = session.battle.units.get(pawn.0) else {
             *visible = Visibility::Hidden;
             continue;
@@ -1108,31 +1298,19 @@ fn sync_pawns(
         if transform.translation != next {
             transform.translation = next;
         }
-        let body = if unit.role == Role::RockThrower {
-            &assets.thrower
-        } else {
-            &assets.fighter
-        };
-        if mesh.0 != *body {
-            mesh.0 = body.clone();
+        let direction = Vec3::new(unit.target[0] - p[0], 0.0, unit.target[1] - p[1]);
+        if direction.length_squared() > 0.01 && unit.health > 0.0 {
+            let facing = Transform::IDENTITY
+                .looking_to(-direction.normalize(), Vec3::Y)
+                .rotation;
+            transform.rotation = transform.rotation.slerp(facing, 0.18);
         }
-        let color = if unit.team == 0 {
-            &assets.red
-        } else {
-            &assets.blue
-        };
-        if material.0 != *color {
-            material.0 = color.clone();
-        }
-        *visible = if unit.health > 0.0 {
-            Visibility::Inherited
-        } else {
-            Visibility::Hidden
-        };
+        // Corpses remain visible so the death clip can finish.
+        *visible = Visibility::Inherited;
     }
     for (part, mut visible, mut material) in &mut parts {
         if let Some(unit) = session.battle.units.get(part.0) {
-            *visible = if !part.1 || unit.role == Role::RockThrower {
+            *visible = if !part.1 {
                 Visibility::Inherited
             } else {
                 Visibility::Hidden
@@ -1166,11 +1344,17 @@ fn sync_insignia(
             .units
             .get(piece.0)
             .and_then(|u| u.command_title);
-        let show = if piece.1 {
-            title.is_some_and(CommandTitle::royal)
-        } else {
-            title == Some(CommandTitle::General)
-        };
+        let alive = session
+            .battle
+            .units
+            .get(piece.0)
+            .is_some_and(|u| u.health > 0.0);
+        let show = alive
+            && if piece.1 {
+                title.is_some_and(CommandTitle::royal)
+            } else {
+                title == Some(CommandTitle::General)
+            };
         let next = if show {
             Visibility::Inherited
         } else {
@@ -1194,11 +1378,14 @@ fn sync_insignia(
 fn pick(
     mouse: Res<ButtonInput<MouseButton>>,
     window: Single<&Window>,
-    camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
+    camera: Single<(&Camera, &GlobalTransform), MainCameraFilter>,
     buttons: Query<&Interaction, With<Button>>,
     mut session: ResMut<Session>,
 ) {
-    if !mouse.just_pressed(MouseButton::Left) || buttons.iter().any(|i| *i != Interaction::None) {
+    if session.menu
+        || !mouse.just_pressed(MouseButton::Left)
+        || buttons.iter().any(|i| *i != Interaction::None)
+    {
         return;
     }
     let Some(cursor) = window.cursor_position() else {
@@ -1227,13 +1414,50 @@ fn pick(
     session.selected = best.1;
     debug!(?cursor, selected = best.1, "Agent selection");
 }
+// Mouse/window/input are separate Bevy-injected parameters.
+#[allow(clippy::too_many_arguments)]
 fn camera_motion(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
+    mouse: Res<ButtonInput<MouseButton>>,
+    mut motion: MessageReader<bevy::input::mouse::MouseMotion>,
+    mut wheel: MessageReader<bevy::input::mouse::MouseWheel>,
+    window: Single<&Window>,
     mut session: ResMut<Session>,
-    mut camera: Single<&mut Transform, With<Camera3d>>,
+    mut camera: Single<&mut Transform, MainCameraFilter>,
+    mut initialized: Local<bool>,
 ) {
-    let dt = time.delta_secs();
+    let dt = time.delta_secs().min(0.1);
+    let over_world = !session.menu
+        && window
+            .cursor_position()
+            .is_some_and(|p| p.x < window.width() - 365.0 && p.y < window.height() - 100.0);
+    let delta = motion.read().fold(Vec2::ZERO, |sum, e| sum + e.delta);
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+    if over_world {
+        if mouse.pressed(MouseButton::Middle) || (mouse.pressed(MouseButton::Right) && shift) {
+            let right = Vec3::new(session.orbit.cos(), 0.0, -session.orbit.sin());
+            let forward = Vec3::new(session.orbit.sin(), 0.0, session.orbit.cos());
+            let scale = session.zoom * 0.0014;
+            session.camera_target += (-right * delta.x + forward * delta.y) * scale;
+            if delta.length_squared() > 0.0 {
+                session.camera_follow = false;
+            }
+        } else if mouse.pressed(MouseButton::Right) {
+            session.orbit -= delta.x * 0.005;
+            session.pitch = (session.pitch + delta.y * 0.004).clamp(0.07, 1.47);
+        }
+    }
+    for event in wheel.read() {
+        if over_world {
+            let amount = if event.unit == bevy::input::mouse::MouseScrollUnit::Line {
+                event.y
+            } else {
+                event.y * 0.04
+            };
+            session.zoom *= (-amount * 0.12).exp();
+        }
+    }
     if keys.pressed(KeyCode::KeyQ) {
         session.orbit -= dt * 0.7;
     }
@@ -1246,16 +1470,48 @@ fn camera_motion(
     if keys.pressed(KeyCode::KeyS) {
         session.zoom += dt * 8.0;
     }
-    session.zoom = session.zoom.clamp(13.0, 75.0);
-    let next = Transform::from_xyz(
-        session.orbit.sin() * session.zoom,
-        session.zoom * 0.88,
-        session.orbit.cos() * session.zoom,
-    )
-    .looking_at(Vec3::new(3.5, 0.0, 0.0), Vec3::Y);
-    if camera.translation != next.translation || camera.rotation != next.rotation {
-        **camera = next;
+    if keys.just_pressed(KeyCode::KeyF) {
+        session.camera_follow = true;
+        session.zoom = 2.6;
+        session.pitch = 0.18;
     }
+    if keys.just_pressed(KeyCode::Home) {
+        session.camera_follow = false;
+        session.camera_target = Vec3::new(3.5, 0.0, 0.0);
+        session.zoom = if session.battle.arena.large() {
+            52.0
+        } else {
+            24.0
+        };
+        session.pitch = 0.72;
+    }
+    if session.camera_follow {
+        let p = session.presented(session.selected);
+        session.camera_target = Vec3::new(p[0], session.battle.arena.elevation(p) + 0.85, p[1]);
+    }
+    session.zoom = session.zoom.clamp(1.1, 100.0);
+    let size = session.battle.arena.half_size();
+    session.camera_target.x = session.camera_target.x.clamp(-size[0] * 1.5, size[0] * 1.5);
+    session.camera_target.z = session.camera_target.z.clamp(-size[1] * 1.5, size[1] * 1.5);
+    let radius = session.zoom * session.pitch.cos();
+    let mut eye = session.camera_target
+        + Vec3::new(
+            session.orbit.sin() * radius,
+            session.zoom * session.pitch.sin(),
+            session.orbit.cos() * radius,
+        );
+    eye.y = eye
+        .y
+        .max(session.battle.arena.elevation([eye.x, eye.z]) + 0.22);
+    let wanted = Transform::from_translation(eye).looking_at(session.camera_target, Vec3::Y);
+    let blend = if *initialized {
+        1.0 - (-dt * 18.0).exp()
+    } else {
+        1.0
+    };
+    *initialized = true;
+    camera.translation = camera.translation.lerp(wanted.translation, blend);
+    camera.rotation = camera.rotation.slerp(wanted.rotation, blend);
 }
 fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
     let arena = session.battle.arena;
@@ -1425,7 +1681,7 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
 fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>>) {
     let u = &session.battle.units[session.selected];
     let progress = if session.battle.founders {
-        let f = &session.campaign.teams[u.team].fighters[u.id % 3];
+        let f = &session.campaign.teams[u.team].fighters[u.id % session.battle.team_size()];
         format!(
             "{} L{} XP{} B{}",
             if session.battle.finished { "NEXT" } else { "" },
@@ -1500,7 +1756,21 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
     for mut t in &mut text {
         let content = format!(
             "{}  HP {:.0}/{:.0}\n{} | {}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n{}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}\nWhy (last decision):\n{}",
-            session.unit_label(u.id),
+            format_args!(
+                "{}
+Missing {} / Iron I {} | Salvage {}
+Damage x{:.2} / Movement x{:.2}",
+                session.unit_label(u.id),
+                limb_names(u.lost_limbs),
+                limb_names(u.prosthetics),
+                if session.battle.founders {
+                    session.campaign.teams[u.team].salvage
+                } else {
+                    0
+                },
+                u.damage_multiplier(),
+                u.movement_multiplier()
+            ),
             u.health,
             u.max_health(),
             format_args!(
@@ -1598,7 +1868,12 @@ fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>
             }
         );
         let content = if session.battle.founders {
-            format!("{content}\n{}", session.save_notice)
+            format!(
+                "{content}\nGold {} | Salvage {} | {}",
+                session.campaign.teams[0].gold,
+                session.campaign.teams[0].salvage,
+                session.save_notice
+            )
         } else {
             content
         };
@@ -1678,15 +1953,19 @@ fn terrain_mesh(arena: Arena) -> Mesh {
             let d = [a[0] + 0.5, a[1] + 0.5];
             let middle = [a[0] + 0.25, a[1] + 0.25];
             let color = if arena.cover(middle) > 0.0 {
-                Color::srgb(0.18, 0.4, 0.24)
+                Color::srgb(0.24, 0.34, 0.13)
             } else if arena.roughness(middle) > 0.0 {
-                Color::srgb(0.4, 0.28, 0.17)
+                Color::srgb(0.37, 0.29, 0.19)
             } else {
-                Color::srgb(0.17, 0.23, 0.24)
+                Color::srgb(0.31, 0.34, 0.21)
             };
+            let hash = ((x * 73 + z * 131).unsigned_abs() % 17) as f32 / 17.0;
+            let shade = 0.90 + hash * 0.15 + arena.ground_elevation(middle) * 0.025;
+            let linear = color.to_linear().to_f32_array();
+            let shaded = [linear[0] * shade, linear[1] * shade, linear[2] * shade, 1.0];
             for p in [a, c, b, b, c, d] {
                 positions.push([p[0], arena.ground_elevation(p), p[1]]);
-                colors.push(color.to_linear().to_f32_array());
+                colors.push(shaded);
             }
         }
     }
@@ -1825,5 +2104,35 @@ fn log_disagreements(mut session: ResMut<Session>) {
         if let Err(e) = log.flush() {
             error!("Disagreement log flush failed: {e}");
         }
+    }
+}
+
+fn scroll_inspector(
+    mut wheel: MessageReader<bevy::input::mouse::MouseWheel>,
+    window: Single<&Window>,
+    mut panels: Query<&mut ScrollPosition, With<InspectorPanel>>,
+) {
+    let over = window
+        .cursor_position()
+        .is_some_and(|p| p.x > window.width() - 365.0 && p.y < window.height() - 100.0);
+    for event in wheel.read() {
+        if over {
+            for mut scroll in &mut panels {
+                scroll.0.y = (scroll.0.y - event.y * 28.0).max(0.0);
+            }
+        }
+    }
+}
+
+fn limb_names(bits: u8) -> String {
+    let names: Vec<_> = ["L arm", "R arm", "L leg", "R leg"]
+        .into_iter()
+        .enumerate()
+        .filter_map(|(i, name)| (bits & (1 << i) != 0).then_some(name))
+        .collect();
+    if names.is_empty() {
+        "none".into()
+    } else {
+        names.join(", ")
     }
 }

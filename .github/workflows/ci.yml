@@ -28,6 +28,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m unittest analysis.test_analysis
+      - run: python tools/validate_character_assets.py
   pytorch-smoke:
     runs-on: ubuntu-latest
     steps:

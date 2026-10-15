@@ -84,6 +84,7 @@ pub enum CommandTitle {
     King,
     Queen,
     General,
+    Member,
 }
 impl CommandTitle {
     pub fn name(self) -> &'static str {
@@ -91,6 +92,7 @@ impl CommandTitle {
             Self::King => "KING",
             Self::Queen => "QUEEN",
             Self::General => "GENERAL",
+            Self::Member => "MEMBER",
         }
     }
     pub fn royal(self) -> bool {
@@ -102,6 +104,13 @@ pub enum FighterClass {
     Warrior,
     RockThrower,
     Paladin,
+    Guardian,
+    Ranger,
+    Scout,
+    Healer,
+    Berserker,
+    Hexer,
+    BannerBearer,
 }
 impl FighterClass {
     pub fn name(self) -> &'static str {
@@ -109,10 +118,46 @@ impl FighterClass {
             Self::Warrior => "WARRIOR",
             Self::RockThrower => "ROCK THROWER",
             Self::Paladin => "PALADIN",
+            Self::Guardian => "GUARDIAN",
+            Self::Ranger => "RANGER",
+            Self::Scout => "SCOUT",
+            Self::Healer => "HEALER",
+            Self::Berserker => "BERSERKER",
+            Self::Hexer => "HEXER",
+            Self::BannerBearer => "BANNER BEARER",
+        }
+    }
+    pub const ALL: [Self; 10] = [
+        Self::Warrior,
+        Self::Guardian,
+        Self::Ranger,
+        Self::Scout,
+        Self::Healer,
+        Self::Berserker,
+        Self::Hexer,
+        Self::BannerBearer,
+        Self::RockThrower,
+        Self::Paladin,
+    ];
+    pub fn next(self) -> Self {
+        Self::ALL[(Self::ALL.iter().position(|c| *c == self).unwrap() + 1) % Self::ALL.len()]
+    }
+    pub fn description(self) -> &'static str {
+        match self {
+            Self::Warrior => "Balanced frontline fighter; steady damage.",
+            Self::Guardian => "35% damage resistance; slow and durable.",
+            Self::Ranger => "Ranged attacks; faster shots than rock throwers.",
+            Self::Scout => "45% faster movement; fragile flanker.",
+            Self::Healer => "Heals a wounded nearby ally instead of attacking.",
+            Self::Berserker => "Damage rises as health falls; vulnerable to hits.",
+            Self::Hexer => "Ranged hex weakens nearby enemies' damage.",
+            Self::BannerBearer => "Nearby allies move faster and strike harder.",
+            Self::RockThrower => "Slow ranged projectile; needs protection.",
+            Self::Paladin => "Blesses nearby allies with courage and protection.",
         }
     }
     pub fn role(self) -> Role {
-        if self == Self::RockThrower {
+        if matches!(self, Self::RockThrower | Self::Ranger | Self::Hexer) {
             Role::RockThrower
         } else {
             Role::Fighter
@@ -121,6 +166,9 @@ impl FighterClass {
 }
 pub const PALADIN_AURA_RADIUS: f32 = 4.0;
 fn is_zero(v: &u32) -> bool {
+    *v == 0
+}
+fn is_zero_byte(v: &u8) -> bool {
     *v == 0
 }
 fn is_false(v: &bool) -> bool {
@@ -153,6 +201,10 @@ pub struct Unit {
     pub battle_count: u32,
     #[serde(skip_serializing_if = "is_false")]
     pub blessed: bool,
+    #[serde(skip_serializing_if = "is_zero_byte")]
+    pub lost_limbs: u8,
+    #[serde(skip_serializing_if = "is_zero_byte")]
+    pub prosthetics: u8,
     pub position: [f32; 2],
     pub health: f32,
     pub mind: Mind,
@@ -195,25 +247,52 @@ impl Unit {
             .unwrap_or(self.role.name())
     }
     pub fn incoming_multiplier(&self) -> f32 {
-        if self.blessed { 0.90 } else { 1.0 }
+        (if self.blessed { 0.90 } else { 1.0 })
+            * match self.class {
+                Some(FighterClass::Guardian) => 0.65,
+                Some(FighterClass::Berserker) => 1.15,
+                _ => 1.0,
+            }
     }
     pub fn max_health(&self) -> f32 {
-        if self.command_title.is_some_and(CommandTitle::royal) {
-            110.0 + (self.level() - 1) as f32 * 2.0
+        (if self.command_title.is_some_and(CommandTitle::royal) {
+            110.0
         } else {
-            100.0 + (self.level() - 1) as f32 * 2.0
-        }
+            100.0
+        }) + (self.level() - 1) as f32 * 2.0
+            + match self.class {
+                Some(FighterClass::Guardian) => 30.0,
+                Some(FighterClass::Scout) => -15.0,
+                _ => 0.0,
+            }
     }
     pub fn health_fraction(&self) -> f32 {
         self.health / self.max_health()
     }
+    pub fn movement_multiplier(&self) -> f32 {
+        (match self.class {
+            Some(FighterClass::Scout) => 1.45,
+            Some(FighterClass::Guardian) => 0.8,
+            _ => 1.0,
+        }) * 0.65_f32.powi(((self.lost_limbs & !self.prosthetics) & 12).count_ones() as i32)
+            * if self.prosthetics & 3 != 0 { 0.85 } else { 1.0 }
+    }
     pub fn damage_multiplier(&self) -> f32 {
-        (if self.command_title.is_some_and(CommandTitle::royal) {
+        (match self.class {
+            Some(FighterClass::Berserker) => {
+                1.15 + (1.0 - self.health_fraction()).clamp(0.0, 1.0) * 0.85
+            }
+            Some(FighterClass::Healer) => 0.65,
+            Some(FighterClass::Guardian) => 0.8,
+            _ => 1.0,
+        }) * (if self.command_title.is_some_and(CommandTitle::royal) {
             1.10
         } else {
             1.0
         }) * (1.0 + (self.level() - 1) as f32 * 0.01)
             * (if self.blessed { 1.05 } else { 1.0 })
+            * 0.80_f32.powi(((self.lost_limbs & !self.prosthetics) & 3).count_ones() as i32)
+            * if self.prosthetics & 3 != 0 { 3.0 } else { 1.0 }
     }
 }
 #[derive(Clone, Debug, Serialize)]
@@ -279,7 +358,7 @@ impl Battle {
     }
     pub fn team_size(&self) -> usize {
         if self.founders {
-            3
+            self.units.len() / 2
         } else {
             self.arena.team_size()
         }
@@ -294,7 +373,18 @@ impl Battle {
         }
     }
     pub fn with_setup(seed: u64, swapped: bool, arena: Arena, founders: bool) -> Self {
-        let team_size = if founders { 3 } else { arena.team_size() };
+        Self::with_roster(seed, swapped, arena, founders, 3)
+    }
+    /// Validated local league sizes; the Lab keeps its authored arena roster.
+    pub fn with_roster(
+        seed: u64,
+        swapped: bool,
+        arena: Arena,
+        founders: bool,
+        size: usize,
+    ) -> Self {
+        assert!((3..=4).contains(&size));
+        let team_size = if founders { size } else { arena.team_size() };
         let units = (0..2 * team_size)
             .map(|id| {
                 let team = id / team_size;
@@ -313,7 +403,10 @@ impl Battle {
                                 CommandTitle::King,
                                 CommandTitle::Queen,
                                 CommandTitle::General,
-                            ][id % team_size],
+                            ]
+                            .get(id % team_size)
+                            .copied()
+                            .unwrap_or(CommandTitle::Member),
                         )
                     } else {
                         None
@@ -324,7 +417,10 @@ impl Battle {
                                 FighterClass::Warrior,
                                 FighterClass::RockThrower,
                                 FighterClass::Paladin,
-                            ][id % team_size],
+                            ]
+                            .get(id % team_size)
+                            .copied()
+                            .unwrap_or(FighterClass::Warrior),
                         )
                     } else {
                         None
@@ -333,6 +429,8 @@ impl Battle {
                     experience: 0,
                     battle_count: 0,
                     blessed: false,
+                    lost_limbs: 0,
+                    prosthetics: 0,
                     role: if (founders && id % team_size == 1)
                         || (!founders && id % team_size >= arena.fighters())
                     {
@@ -456,6 +554,7 @@ impl Battle {
         perception::update(&mut self.units, self.arena, self.tick);
         let snapshot = self.units.clone();
         let mut damage = vec![0.0; self.units.len()];
+        let mut healing = vec![0.0_f32; self.units.len()];
         let arena = self.arena;
         let team_size = self.team_size();
         let mut landed = Vec::new();
@@ -505,10 +604,7 @@ impl Battle {
             // Enemy deployment zones are authored objectives, not live enemy positions.
             let mut objective =
                 arena.search_waypoint(unit.team, unit.id % team_size, unit.search_waypoint);
-            if arena == Arena::Citadel
-                && enemy.is_none()
-                && distance(unit.position, objective) < 1.8
-            {
+            if arena.large() && enemy.is_none() && distance(unit.position, objective) < 1.8 {
                 unit.search_waypoint += 1;
                 objective =
                     arena.search_waypoint(unit.team, unit.id % team_size, unit.search_waypoint);
@@ -544,7 +640,7 @@ impl Battle {
                 .sum::<f32>()
                 / 3.0)
                 .min(1.0);
-            let ridge = if arena == Arena::Citadel {
+            let ridge = if arena.large() {
                 arena.high_ground(unit.position)
             } else {
                 [
@@ -578,7 +674,7 @@ impl Battle {
                     if !arena.has_high_ground()
                         || arrived
                         || in_range
-                        || (arena == Arena::Citadel && enemy.is_none() && self.tick >= 180)
+                        || (arena.large() && enemy.is_none() && self.tick >= 180)
                     {
                         -1.0
                     } else {
@@ -681,8 +777,7 @@ impl Battle {
                     f32::from(unit.role == Role::RockThrower),
                     unit.position[0] / arena.half_size()[0],
                     unit.position[1] / arena.half_size()[1],
-                    arena.elevation(unit.position)
-                        / if arena == Arena::Citadel { 3.8 } else { 1.7 },
+                    arena.elevation(unit.position) / if arena.large() { 3.8 } else { 1.7 },
                     arena.cover(unit.position),
                     arena.roughness(unit.position),
                     (d / 20.0).min(1.0),
@@ -769,7 +864,7 @@ impl Battle {
                 }
                 unit.decision_reason = match unit.action {
                     0 => {
-                        if arena == Arena::Citadel && enemy.is_none() && unit.search_waypoint > 0 {
+                        if arena.large() && enemy.is_none() && unit.search_waypoint > 0 {
                             "Scout patrol after deployment search"
                         } else if enemy.is_some() {
                             "Advance on observed/reported contact"
@@ -823,6 +918,37 @@ impl Battle {
                     decision_features.clone(),
                 ));
             }
+            let banner = snapshot.iter().any(|a| {
+                a.team == unit.team
+                    && a.health > 0.0
+                    && a.class == Some(FighterClass::BannerBearer)
+                    && distance(unit.position, a.position) < 5.0
+                    && arena.clear_segment(unit.position, a.position)
+            });
+            let hexed = snapshot.iter().any(|a| {
+                a.team != unit.team
+                    && a.health > 0.0
+                    && a.class == Some(FighterClass::Hexer)
+                    && distance(unit.position, a.position) < 5.0
+                    && arena.clear_segment(unit.position, a.position)
+            });
+            let class_power = (if banner { 1.15 } else { 1.0 }) * (if hexed { 0.75 } else { 1.0 });
+            if unit.class == Some(FighterClass::Healer)
+                && unit.cooldown <= 0.0
+                && let Some(ally) = allies
+                    .iter()
+                    .filter(|a| {
+                        a.health_fraction() < 0.98
+                            && distance(unit.position, a.position) < 5.0
+                            && arena.clear_segment(unit.position, a.position)
+                    })
+                    .min_by(|a, b| a.health_fraction().total_cmp(&b.health_fraction()))
+            {
+                healing[ally.id] += 12.0;
+                unit.cooldown = 1.2;
+                unit.support_target = Some(ally.id);
+                unit.decision_reason = "Healer restores a wounded ally".into();
+            }
             if unit.action == 1
                 && enemy.as_ref().is_some_and(|e| e.visible)
                 && d < unit.role.range()
@@ -841,13 +967,18 @@ impl Battle {
                         to: enemy_position,
                         age: 0,
                         flight_ticks: (d / 10.0 / DT).ceil().max(1.0) as u32,
-                        damage: 7.0 * unit.damage_multiplier() * advantage,
+                        damage: 7.0 * unit.damage_multiplier() * class_power * advantage,
                     });
                     unit.rocks_thrown += 1;
-                    unit.cooldown = 1.6;
+                    unit.cooldown = if unit.class == Some(FighterClass::Ranger) {
+                        1.0
+                    } else {
+                        1.6
+                    };
                 } else {
                     let dealt = 10.0
                         * unit.damage_multiplier()
+                        * class_power
                         * snapshot[enemy.as_ref().unwrap().enemy].incoming_multiplier()
                         * advantage
                         * (1.0 - 0.3 * arena.cover(enemy_position));
@@ -887,7 +1018,8 @@ impl Battle {
                         let uphill =
                             (arena.elevation(waypoint) - arena.elevation(unit.position)).max(0.0);
                         let speed =
-                            2.2 / (1.0 + uphill * 0.35 + arena.roughness(unit.position) * 1.0);
+                            2.2 * unit.movement_multiplier() * if banner { 1.15 } else { 1.0 }
+                                / (1.0 + uphill * 0.35 + arena.roughness(unit.position) * 1.0);
                         let amount = (speed * DT).min(remaining);
                         let mut next = [
                             unit.position[0]
@@ -921,7 +1053,23 @@ impl Battle {
         }
         // Simultaneous damage avoids giving the first team update-order immunity.
         for unit in &mut self.units {
+            let before = unit.health;
             unit.health = (unit.health - damage[unit.id]).max(0.0);
+            if unit.health > 0.0 {
+                unit.health = (unit.health + healing[unit.id]).min(unit.max_health());
+            }
+            // Founders may survive a severe wound. Lab mechanics stay unchanged.
+            if self.founders && unit.health > 0.0 && damage[unit.id] > 0.0 {
+                let side = ((self.seed as usize + unit.id) % 2) as u8;
+                if before > unit.max_health() * 0.5 && unit.health <= unit.max_health() * 0.5 {
+                    unit.lost_limbs |= 1 << side;
+                    unit.prosthetics &= !(1 << side);
+                }
+                if before > unit.max_health() * 0.25 && unit.health <= unit.max_health() * 0.25 {
+                    unit.lost_limbs |= 1 << (side + 2);
+                    unit.prosthetics &= !(1 << (side + 2));
+                }
+            }
             if unit.health <= 0.0 {
                 unit.visible_enemies = 0;
                 for c in &mut unit.contacts {

@@ -1,0 +1,32 @@
+{
+  "source": "User supplied PNG art from Downloads; pixels preserved unchanged",
+  "hair": [
+    "hair-tousled-1.png",
+    "hair-tousled-2.png",
+    "hair-swept.png",
+    "hair-bob.png",
+    "hair-long.png",
+    "hair-twintails.png"
+  ],
+  "faces": {
+    "file": "faces.png",
+    "columns": 4,
+    "rows": 4
+  },
+  "eyes": {
+    "file": "eyes.png",
+    "columns": 3,
+    "rows": 5
+  },
+  "noses": {
+    "file": "noses.png",
+    "columns": 4,
+    "rows": 4
+  },
+  "mouths": {
+    "file": "mouths.png",
+    "columns": 4,
+    "rows": 6
+  },
+  "rendering": "Feature crops bake into projected skin textures; replacement eyes are composed once. Six real hair meshes in assets/characters/hair use hair PNGs as silhouette references. Portrait photographs the actual on-field model."
+}
