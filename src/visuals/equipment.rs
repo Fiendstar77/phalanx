@@ -1,8 +1,11 @@
 //! Body-fitted skinned garments and bone-mounted class silhouettes.
-//! Starter visuals follow existing class mechanics; no hidden equipment stats.
+//! Starter class silhouettes plus visible crafted weapon, armor and charm fittings.
 use super::*;
 use bevy::mesh::{Indices, VertexAttributeValues, skinning::SkinnedMesh};
-use phalanx::FighterClass as Class;
+use phalanx::{
+    FighterClass as Class,
+    equipment::{Equipment, Gear},
+};
 
 #[derive(Resource)]
 pub(super) struct Kit {
@@ -22,7 +25,14 @@ struct Item {
     class: Class,
 }
 #[derive(Component)]
+struct Crafted {
+    id: usize,
+    gear: Gear,
+    limb: u8,
+}
+#[derive(Component)]
 struct Garment {
+    equipment: Equipment,
     id: usize,
     layer: u8,
     indices: Vec<u32>,
@@ -315,6 +325,7 @@ pub(super) fn ready(
                 commands.entity(entity).with_children(|p| {
                     p.spawn((
                         Garment {
+                            equipment: Equipment::default(),
                             id: model.id,
                             layer,
                             indices: selected,
@@ -362,6 +373,83 @@ pub(super) fn ready(
                             Visibility::Hidden,
                         ))
                         .with_children(|p| weapon(p, &kit, class, left));
+                    });
+                }
+            }
+            if name.as_str() == "mixamorigRightHand" {
+                for gear in [Gear::TemperedWeapon, Gear::BalancedWeapon] {
+                    commands.entity(entity).with_children(|p| {
+                        p.spawn((
+                            Crafted {
+                                id: model.id,
+                                gear,
+                                limb: 2,
+                            },
+                            Transform::default(),
+                            Visibility::Hidden,
+                        ))
+                        .with_children(|p| {
+                            // A forged cuff identifies upgraded class weapons without replacing their silhouette.
+                            part(
+                                p,
+                                &kit.ring,
+                                if gear == Gear::TemperedWeapon {
+                                    &kit.gold
+                                } else {
+                                    &kit.steel
+                                },
+                                Vec3::new(0.0, 0.035, 0.0),
+                                Vec3::splat(if gear == Gear::TemperedWeapon {
+                                    0.07
+                                } else {
+                                    0.052
+                                }),
+                                Quat::IDENTITY,
+                            );
+                        });
+                    });
+                }
+            }
+            if name.as_str() == "mixamorigSpine2" {
+                for gear in [Gear::IronArmor, Gear::TrailArmor, Gear::VitalityCharm] {
+                    commands.entity(entity).with_children(|p| {
+                        p.spawn((
+                            Crafted {
+                                id: model.id,
+                                gear,
+                                limb: 0,
+                            },
+                            Transform::default(),
+                            Visibility::Hidden,
+                        ))
+                        .with_children(|p| match gear {
+                            Gear::IronArmor => block(
+                                p,
+                                &kit,
+                                &kit.steel,
+                                [0.0, -0.03, 0.115],
+                                [0.32, 0.30, 0.065],
+                            ),
+                            Gear::TrailArmor => {
+                                for x in [-0.12, 0.12] {
+                                    block(
+                                        p,
+                                        &kit,
+                                        &kit.leather,
+                                        [x, -0.03, 0.13],
+                                        [0.045, 0.35, 0.035],
+                                    );
+                                }
+                            }
+                            _ => part(
+                                p,
+                                &kit.sphere,
+                                &kit.magic,
+                                Vec3::new(0.0, 0.09, 0.17),
+                                Vec3::splat(0.05),
+                                Quat::IDENTITY,
+                            ),
+                        });
                     });
                 }
             }
@@ -421,11 +509,23 @@ pub(super) fn ready(
 }
 fn update(
     session: Res<Session>,
-    mut items: Query<(&Item, &mut Visibility)>,
+    mut items: Query<(&Item, &mut Visibility), Without<Crafted>>,
+    mut crafted: Query<(&Crafted, &mut Visibility), Without<Item>>,
     mut garments: Query<(&mut Garment, &Mesh3d)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    for (piece, mut visible) in &mut crafted {
+        *visible = if session.battle.units.get(piece.id).is_some_and(|u| {
+            u.health > 0.0
+                && u.equipment.has(piece.gear)
+                && (u.lost_limbs & !u.prosthetics & piece.limb == 0)
+        }) {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
     for (item, mut visible) in &mut items {
         *visible = if session.battle.units.get(item.id).is_some_and(|u| {
             u.health > 0.0
@@ -447,20 +547,31 @@ fn update(
         let class = unit.class.unwrap_or(Class::Warrior);
         let c = session.team_color(unit.team).to_srgba();
         let color = [c.red, c.green, c.blue];
-        if garment.class != Some(class) || garment.color != color {
+        if garment.class != Some(class)
+            || garment.color != color
+            || garment.equipment != unit.equipment
+        {
             if let Some(mut material) = materials.get_mut(&garment.material) {
-                let heavy = matches!(class, Class::Guardian | Class::Paladin | Class::Warrior);
-                let base = match class {
-                    Class::Warrior => [0.40, 0.48, 0.56],
-                    Class::Guardian => [0.20, 0.31, 0.48],
-                    Class::Ranger => [0.21, 0.36, 0.16],
-                    Class::Scout => [0.25, 0.20, 0.18],
-                    Class::Healer => [0.84, 0.78, 0.60],
-                    Class::Berserker => [0.56, 0.13, 0.10],
-                    Class::Hexer => [0.32, 0.13, 0.43],
-                    Class::BannerBearer => [0.65, 0.39, 0.12],
-                    Class::RockThrower => [0.43, 0.33, 0.22],
-                    Class::Paladin => [0.72, 0.62, 0.34],
+                let heavy = unit.equipment.has(Gear::IronArmor)
+                    || (!unit.equipment.has(Gear::TrailArmor)
+                        && matches!(class, Class::Guardian | Class::Paladin | Class::Warrior));
+                let base = if unit.equipment.has(Gear::IronArmor) {
+                    [0.48, 0.54, 0.60]
+                } else if unit.equipment.has(Gear::TrailArmor) {
+                    [0.26, 0.19, 0.10]
+                } else {
+                    match class {
+                        Class::Warrior => [0.40, 0.48, 0.56],
+                        Class::Guardian => [0.20, 0.31, 0.48],
+                        Class::Ranger => [0.21, 0.36, 0.16],
+                        Class::Scout => [0.25, 0.20, 0.18],
+                        Class::Healer => [0.84, 0.78, 0.60],
+                        Class::Berserker => [0.56, 0.13, 0.10],
+                        Class::Hexer => [0.32, 0.13, 0.43],
+                        Class::BannerBearer => [0.65, 0.39, 0.12],
+                        Class::RockThrower => [0.43, 0.33, 0.22],
+                        Class::Paladin => [0.72, 0.62, 0.34],
+                    }
                 };
                 let mix = if garment.layer == 0 { 0.18 } else { 0.05 };
                 let dark = if garment.layer == 0 { 1.0 } else { 0.45 };
@@ -480,6 +591,7 @@ fn update(
                     0.86
                 };
             }
+            garment.equipment = unit.equipment;
             garment.class = Some(class);
             garment.color = color;
         }

@@ -5,10 +5,12 @@ pub struct FrontEnd;
 struct MainMenu(bool);
 #[derive(Component)]
 struct MenuSummary;
+#[derive(Component)]
+struct MenuScroll;
 impl Plugin for FrontEnd {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup_menu.after(setup))
-            .add_systems(Update, (menu, quit).after(controls));
+            .add_systems(Update, (menu, quit, scroll_menu).after(controls));
     }
 }
 fn setup_menu(mut commands: Commands) {
@@ -17,13 +19,15 @@ fn setup_menu(mut commands: Commands) {
             align_items: AlignItems::Center, justify_content: JustifyContent::Center, ..default() },
         BackgroundColor(Color::srgba(0.018,0.026,0.035,0.98))))
         .with_children(|root| {
-            root.spawn(Node { width: px(630), max_height: percent(95), padding: UiRect::all(px(28)),
-                flex_direction: FlexDirection::Column, row_gap: px(12), ..default() })
+            root.spawn((MenuScroll, ScrollPosition::default(), Node { width: px(630), max_width: vw(94), max_height: vh(95), overflow: Overflow::scroll_y(), padding: UiRect::all(px(28)),
+                flex_direction: FlexDirection::Column, row_gap: px(12), ..default() }))
                 .with_children(|p| {
                     p.spawn((Text::new("PHALANX"),font(48.0),TextColor(Color::srgb(1.0,0.72,0.08))));
                     p.spawn((Text::new("Build their minds. Watch them fight. Bring them home."),font(16.0)));
                     p.spawn((MenuSummary,Text::new(""),font(15.0),TextColor(Color::srgb(0.65,0.82,0.84))));
                     button(p,"Enter arena / manage your fighters",Control::Continue);
+                    button(p,"Squad workshop",Control::Camp(camp::Page::Workshop));
+                    button(p,"Last battle report",Control::Camp(camp::Page::Report));
                     button(p,"Unlock fourth fighter / League 4 - 1000 gold",Control::Recruit);
                     button(p,"View League 3 -> 20 gold ladder",Control::Ladder);
                     button(p,"Change arena",Control::Arena);
@@ -64,7 +68,7 @@ fn menu(
     mut summaries: Query<&mut Text, With<MenuSummary>>,
 ) {
     for (page, mut panel) in &mut panels {
-        panel.display = if session.menu && session.ladder == page.0 {
+        panel.display = if session.menu && session.camp_page.is_none() && session.ladder == page.0 {
             Display::Flex
         } else {
             Display::None
@@ -102,5 +106,23 @@ fn quit(
             .any(|(i, c)| *i == Interaction::Pressed && matches!(c, Control::Quit))
     {
         exit.write(AppExit::Success);
+    }
+}
+
+fn scroll_menu(
+    session: Res<Session>,
+    mut wheel: MessageReader<bevy::input::mouse::MouseWheel>,
+    mut panels: Query<&mut ScrollPosition, With<MenuScroll>>,
+) {
+    for event in wheel.read() {
+        if session.menu && !session.ladder && session.camp_page.is_none() {
+            let delta = match event.unit {
+                bevy::input::mouse::MouseScrollUnit::Line => event.y * 32.0,
+                bevy::input::mouse::MouseScrollUnit::Pixel => event.y,
+            };
+            for mut position in &mut panels {
+                position.0.y = (position.0.y - delta).max(0.);
+            }
+        }
     }
 }

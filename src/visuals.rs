@@ -4,6 +4,7 @@ mod barks;
 mod body;
 mod equipment;
 mod face;
+mod health;
 use super::{Pawn, Session, setup};
 use bevy::{
     camera::{RenderTarget, visibility::RenderLayers},
@@ -18,6 +19,7 @@ impl Plugin for BattleVisuals {
     fn build(&self, app: &mut App) {
         barks::install(app);
         face::install(app);
+        health::install(app);
         equipment::install(app);
         app.add_systems(Update, portrait_camera.after(super::camera_motion));
         if std::env::args().any(|a| a == "--visual-witness") {
@@ -1122,7 +1124,17 @@ fn witness(
             commands
                 .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
                 .observe(bevy::render::view::screenshot::save_to_disk(
-                    if std::env::args().any(|a| a == "--face-witness") {
+                    if std::env::args().any(|a| a == "--camp-witness") {
+                        if std::env::args().any(|a| a == "--workshop-witness") {
+                            if std::env::args().any(|a| a == "--camp-scroll-witness") {
+                                "outputs/workshop-scrolled-witness.png"
+                            } else {
+                                "outputs/workshop-witness.png"
+                            }
+                        } else {
+                            "outputs/report-witness.png"
+                        }
+                    } else if std::env::args().any(|a| a == "--face-witness") {
                         "outputs/face-witness.png"
                     } else if session.ladder {
                         "outputs/ladder-witness.png"
@@ -1165,7 +1177,12 @@ fn witness(
                 "outputs/battle-witness.png",
             ));
     }
-    if witness.finished > 1.5
+    if witness.finished
+        > if std::env::args().any(|a| a == "--camp-witness") {
+            3.0
+        } else {
+            1.5
+        }
         || witness.seconds > 40.0
         || ((session.menu || std::env::args().any(|a| a == "--face-witness"))
             && witness.seconds > 3.0)

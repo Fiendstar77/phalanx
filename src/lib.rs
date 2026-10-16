@@ -221,6 +221,7 @@ pub struct Unit {
     pub enemy: Option<usize>,
     pub cooldown: f32,
     pub damage_dealt: f32,
+    pub healing_done: f32,
     pub distance_moved: f32,
     pub decision_counts: [u32; ACTION_COUNT],
     pub route: Route,
@@ -326,6 +327,14 @@ impl Unit {
             * if self.prosthetics & 3 != 0 { 3.0 } else { 1.0 }
     }
 }
+/// A successful restoration after simultaneous damage, including its actual capped amount.
+#[derive(Clone, Debug, Serialize)]
+pub struct HealEvent {
+    pub tick: u32,
+    pub healer: usize,
+    pub target: usize,
+    pub amount: f32,
+}
 #[derive(Clone, Debug, Serialize)]
 pub struct Battle {
     pub seed: u64,
@@ -338,6 +347,7 @@ pub struct Battle {
     pub swapped: bool,
     pub arena: Arena,
     pub rocks: Vec<Rock>,
+    pub heals: Vec<HealEvent>,
     pub schema_version: u32,
     pub controller: Controller,
     pub learned_team: Option<usize>,
@@ -490,6 +500,7 @@ impl Battle {
                     enemy: None,
                     cooldown: 0.0,
                     damage_dealt: 0.0,
+                    healing_done: 0.0,
                     distance_moved: 0.0,
                     decision_counts: [0; ACTION_COUNT],
                     route: Route::default(),
@@ -532,6 +543,7 @@ impl Battle {
             swapped,
             arena,
             rocks: Vec::new(),
+            heals: Vec::new(),
             schema_version: 2,
             controller: Controller::Utility,
             learned_team: None,
@@ -599,6 +611,8 @@ impl Battle {
         let snapshot = self.units.clone();
         let mut damage = vec![0.0; self.units.len()];
         let mut healing = vec![0.0_f32; self.units.len()];
+        let mut casts = Vec::new();
+        let mut healing_credit = vec![0.0; self.units.len()];
         let arena = self.arena;
         let team_size = self.team_size();
         let mut landed = Vec::new();
@@ -1118,6 +1132,7 @@ impl Battle {
                     .min_by(|a, b| a.health_fraction().total_cmp(&b.health_fraction()))
             {
                 healing[ally.id] += 12.0;
+                casts.push((unit.id, ally.id));
                 unit.cooldown = 1.2;
                 unit.support_target = Some(ally.id);
                 unit.decision_reason = "Healer restores a wounded ally".into();
@@ -1248,7 +1263,21 @@ impl Battle {
             let before = unit.health;
             unit.health = (unit.health - damage[unit.id]).max(0.0);
             if unit.health > 0.0 {
-                unit.health = (unit.health + healing[unit.id]).min(unit.max_health());
+                let restored = healing[unit.id].min((unit.max_health() - unit.health).max(0.0));
+                unit.health += restored;
+                if restored > 0.0 {
+                    for &(healer, target) in &casts {
+                        if target == unit.id {
+                            healing_credit[healer] += restored * 12.0 / healing[unit.id];
+                            self.heals.push(HealEvent {
+                                tick: self.tick,
+                                healer,
+                                target,
+                                amount: restored * 12.0 / healing[unit.id],
+                            });
+                        }
+                    }
+                }
             }
             // Founders may survive a severe wound. Lab mechanics stay unchanged.
             if self.founders && unit.health > 0.0 && damage[unit.id] > 0.0 {
@@ -1268,6 +1297,12 @@ impl Battle {
                     c.visible = false;
                 }
             }
+        }
+        for (unit, credit) in self.units.iter_mut().zip(healing_credit) {
+            unit.healing_done += credit;
+        }
+        if self.heals.len() > 64 {
+            self.heals.drain(..self.heals.len() - 64);
         }
         for team in 0..2 {
             let alive: Vec<_> = self

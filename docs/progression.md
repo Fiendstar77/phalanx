@@ -91,4 +91,33 @@ Select a Founders fighter and scroll the inspector to the recipe buttons. Craft 
 | Trail armor | 20 / 6 | +12% movement, +8% incoming damage |
 | Vitality charm | 35 / 12 | +20 maximum HP |
 
-One weapon, one armor, and one charm may be equipped together. Multipliers combine with class, level, wounds, and blessings. Recipes work across classes; class weapons retain their current appearance. Gear currently has no distinct meshes. The inspector reports the loadout and effective damage, movement, and incoming damage multipliers. Loadouts persist with the squad; older saves receive empty inventories. Lab battles retain their original stats. Recruitment starts with an empty inventory.
+One weapon, one armor, and one charm may be equipped together. Multipliers combine with class, level, wounds, and blessings. Recipes work across classes; class weapons retain their class silhouette. Crafted weapons add silver or gold fittings; iron armor adds a steel breastplate and metallic garment treatment; trail armor adds leather straps and a leather garment treatment; the vitality charm adds a green chest gem. The inspector reports the loadout and effective damage, movement, and incoming damage multipliers. Loadouts persist with the squad; older saves receive empty inventories. Lab battles retain their original stats. Recruitment starts with an empty inventory.
+
+
+## Health and healer feedback
+
+Living fighters have overhead HP bars with current/maximum HP. Bars turn amber below 60% and red below 30%; dead, offscreen, menu, and panel-covered bars are hidden. Nearby labels stack to avoid overlap.
+
+Retraining the Queen as a Healer preserves her title and royal HP. Any Healer restores up to 12 HP to a wounded living ally within five units and clear line of sight, with a 1.2-second cooldown. Successful restoration produces a brief green caster-to-target link, rising green crosses, and a `+HP` popup. Effects reflect actual restored HP after simultaneous damage and the maximum-HP cap, including when the target takes damage on the same tick. Fatal damage cannot be healed into a resurrection. Multiple healers share the actual restoration credit. The simulation retains the latest 64 restoration events for presentation.
+
+For a reproducible graphics check, run `phalanx --visual-witness --healing-witness --arena open --seed 42` from a disposable directory with an `assets` link to the game assets. This stages a wounded King and a Queen retrained through the inspector controls, crafts gear, and captures `outputs/healing-witness.png`. It is a staged QA battle, not a normal player's progression result.
+
+## Battle report and squad workshop
+
+Completed Founders battles open the battle report after rewards settle. It records the arena, seed, outcome, actual gold/salvage awarded to each team, and each fighter's survival, remaining HP, damage, healing, XP, and new missing limbs. Healing totals cover the whole battle, independently of the bounded presentation-event queue. The latest report is serialized with the campaign and remains available from **Battle report** or **Last battle report** after restarting.
+
+Open **Squad workshop** from the arena controls or main menu, or choose **Squad & equipment** from the report. Select a fighter from either squad to compare full-health preparation stats, inspect wounds, retrain, fit iron limbs, and craft or switch gear. Recipe cards show ownership, affordability, resulting stats, and deltas for the exact equip/remove action. Scroll to reach lower recipes. Lower incoming-damage multipliers mean greater protection.
+
+The campaign's serialized fighter records own inventories and equipped slots. Previews derive temporary copies using saved class, XP, wounds and equipment; they exclude temporary blessings and low-health rage bonuses. Confirmed preparation changes use the existing campaign operations and autosave path. Before the first tick they also update the staged battle unit. After a completed battle they affect only the next battle's freshly generated roster; the completed combat snapshot and saved report remain unchanged. Preparation actions are blocked while a battle is in progress.
+
+**Next battle** closes the camp screen and stages the same persistent squad at full HP, preserving missing limbs, prosthetics, gear, minds and psychological scars. It starts paused. Reopening a report never settles rewards again. This uses the existing recovery rule; no timed recovery, hospital, or reserve-roster system is introduced.
+
+Graphics checks use a disposable working directory with an `assets` link:
+
+```bash
+/path/to/phalanx --visual-witness --camp-witness --arena open --seed 42
+/path/to/phalanx --visual-witness --camp-witness --workshop-witness --arena open --seed 42
+/path/to/phalanx --visual-witness --camp-witness --workshop-witness --camp-scroll-witness --arena open --seed 42
+```
+
+These stage and complete a real seeded simulation with a Queen healer, then craft a balanced weapon using battle salvage. Captures are staged QA evidence, not player battle history. The scrolling check sends a mouse-wheel message through the normal screen handler.

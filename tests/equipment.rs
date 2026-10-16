@@ -69,3 +69,31 @@ fn legacy_saves_default_and_invalid_loadouts_are_rejected() {
     };
     assert!(restored.validate().is_err());
 }
+
+#[test]
+fn workshop_survives_disk_save_and_restart() {
+    let mut c = Campaign::new();
+    let (id, mut earned) = c
+        .begin_battle(42, Arena::OpenField, Controller::Utility)
+        .unwrap();
+    while !earned.finished {
+        earned.step();
+    }
+    c.settle(id, &earned).unwrap();
+    let purse = (c.teams[0].gold, c.teams[0].salvage);
+    assert!(purse.1 >= 6);
+    c.workshop(0, 1, Gear::BalancedWeapon).unwrap();
+    let path = std::env::temp_dir().join(format!("phalanx-equipment-{}.json", std::process::id()));
+    c.save(&path).unwrap();
+    let mut restored = Campaign::load(&path).unwrap();
+    std::fs::remove_file(&path).unwrap();
+    let (_, b) = restored
+        .begin_battle(42, Arena::OpenField, Controller::Utility)
+        .unwrap();
+    assert!(b.units[1].equipment.has(Gear::BalancedWeapon));
+    assert_eq!(b.units[1].health, b.units[1].max_health());
+    assert_eq!(
+        (restored.teams[0].gold, restored.teams[0].salvage),
+        (purse.0 - 20, purse.1 - 6)
+    );
+}

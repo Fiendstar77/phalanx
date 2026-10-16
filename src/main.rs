@@ -1,4 +1,5 @@
 mod audio;
+mod camp;
 mod front;
 mod presentation;
 mod visuals;
@@ -34,6 +35,7 @@ struct Session {
     battle: Battle,
     menu: bool,
     ladder: bool,
+    camp_page: Option<camp::Page>,
     running: bool,
     selected: usize,
     speed: f32,
@@ -136,6 +138,7 @@ impl Session {
             disagreement_log: None,
             campaign,
             active_battle_id,
+            camp_page: None,
             rewarded: false,
             save_notice: notice,
             autosave,
@@ -209,6 +212,9 @@ impl Session {
             match self.campaign.settle(id, &self.battle) {
                 Ok(()) => {
                     self.rewarded = true;
+                    self.menu = true;
+                    self.running = false;
+                    self.camp_page = Some(camp::Page::Report);
                     let size = self.battle.team_size();
                     for u in &mut self.battle.units {
                         u.mind = self.campaign.teams[u.team].fighters[u.id % size].mind;
@@ -299,6 +305,8 @@ struct PairRow(usize);
 #[derive(Component, Clone, Copy, Debug)]
 enum Control {
     Menu,
+    Camp(camp::Page),
+    SelectFighter(usize),
     Ladder,
     Recruit,
     Continue,
@@ -410,6 +418,48 @@ fn main() {
             session.battle.units[session.selected].class = Some(class);
             session.battle.units[session.selected].role = class.role();
         }
+        if args.iter().any(|a| a == "--healing-witness") {
+            session.autosave = false;
+            session.speed = 1.0;
+            session.selected = 1;
+            session.campaign.teams[0].gold = 200;
+            session.campaign.teams[0].salvage = 100;
+            apply(Control::Class(FighterClass::Healer), &mut session);
+            for gear in phalanx::equipment::Gear::ALL {
+                apply(Control::Workshop(gear), &mut session);
+            }
+            for unit in &mut session.battle.units {
+                unit.position = if unit.team == 0 {
+                    [-4.0 + unit.id as f32 * 1.1, 0.0]
+                } else {
+                    [12.0, 8.0 + (unit.id % 3) as f32]
+                };
+                unit.target = unit.position;
+            }
+            session.battle.units[0].health = 20.0;
+            session.remember_positions();
+        }
+        if args.iter().any(|a| a == "--camp-witness") {
+            session.autosave = false;
+            session.campaign = Campaign::new();
+            session
+                .campaign
+                .set_class(0, 1, FighterClass::Healer)
+                .unwrap();
+            session.restart_founders(42, Arena::OpenField, Controller::Utility);
+            while !session.battle.finished {
+                session.battle.step();
+            }
+            session.settle_finished();
+            session.selected = 1;
+            apply(
+                Control::Workshop(phalanx::equipment::Gear::BalancedWeapon),
+                &mut session,
+            );
+            if args.iter().any(|a| a == "--workshop-witness") {
+                apply(Control::Camp(camp::Page::Workshop), &mut session);
+            }
+        }
         if args.iter().any(|a| a == "--menu-witness") {
             session.menu = true;
             session.ladder = args.iter().any(|a| a == "--ladder-witness");
@@ -484,6 +534,7 @@ fn main() {
     )
     .insert_resource(ClearColor(Color::srgb(0.025, 0.035, 0.055)))
     .insert_resource(session)
+    .add_plugins(camp::Camp)
     .add_systems(Startup, setup)
     .add_systems(
         Update,
@@ -731,6 +782,7 @@ fn setup(
             position_type: PositionType::Absolute,
             top: px(22),
             left: px(26),
+            right: px(370),
             flex_direction: FlexDirection::Column,
             ..default()
         })
@@ -905,7 +957,7 @@ fn setup(
     commands.spawn(Node { position_type: PositionType::Absolute, left: px(20), bottom: px(18), flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
         p.spawn((Text::new("WASD move | RMB orbit | MMB pan | Wheel zoom | Shift faster | F follow | Home arena | Space pause/run"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
         p.spawn(Node { margin: UiRect::top(px(8)),flex_wrap:FlexWrap::Wrap,width:vw(95.0), ..default() }).with_children(|row| {
-            button(row,"Menu",Control::Menu);button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup); button(row,"Next battle",Control::NextBattle);button(row,"Save",Control::Save);button(row,"Load",Control::Load);
+            button(row,"Menu",Control::Menu);button(row,"Squad workshop",Control::Camp(camp::Page::Workshop));button(row,"Battle report",Control::Camp(camp::Page::Report));button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup); button(row,"Next battle",Control::NextBattle);button(row,"Save",Control::Save);button(row,"Load",Control::Load);
             for (i,name) in ["Amber","Teal","Violet","Coral","Azure","Lime","Pink","Ivory"].iter().enumerate() {button(row,name,Control::TeamColor(i));}
         });
     });
@@ -923,6 +975,22 @@ fn apply(control: Control, session: &mut Session) {
         let _ = session.campaign.capture_minds(&session.battle);
     }
     match control {
+        Control::Camp(page) => {
+            if session.battle.founders {
+                session.menu = true;
+                session.running = false;
+                session.ladder = false;
+                session.camp_page = Some(page);
+            } else {
+                session.save_notice =
+                    "Squad workshop and reports belong to Founders campaigns".into();
+            }
+        }
+        Control::SelectFighter(id) => {
+            if id < session.battle.units.len() {
+                session.selected = id;
+            }
+        }
         Control::Ladder => session.ladder = !session.ladder,
         Control::Recruit => {
             if !session.battle.founders || (session.battle.tick != 0 && !session.battle.finished) {
@@ -952,10 +1020,12 @@ fn apply(control: Control, session: &mut Session) {
             }
         }
         Control::Menu => {
+            session.camp_page = None;
             session.menu = true;
             session.running = false;
         }
         Control::Continue => {
+            session.camp_page = None;
             session.menu = false;
         }
         Control::Quit => {} // handled by the front-end AppExit writer
@@ -998,9 +1068,7 @@ fn apply(control: Control, session: &mut Session) {
                         if session.autosave {
                             session.save_campaign();
                         }
-                        session.save_notice = format!(
-                            "{message}. Owned gear toggles free; post-battle changes apply next battle."
-                        );
+                        session.save_notice = format!("{message}. Ready next battle.");
                     }
                     Err(e) => session.save_notice = e,
                 }
@@ -1101,6 +1169,8 @@ fn apply(control: Control, session: &mut Session) {
             if !session.battle.pressure_note.is_empty() {
                 session.save_notice = session.battle.pressure_note.clone();
             }
+            session.menu = false;
+            session.camp_page = None;
             session.running = false;
             session.accumulator = 0.0;
         }
@@ -1308,6 +1378,13 @@ fn controls(
                 || matches!(
                     control,
                     Control::Continue
+                        | Control::Camp(_)
+                        | Control::SelectFighter(_)
+                        | Control::Menu
+                        | Control::Workshop(_)
+                        | Control::Prosthetic
+                        | Control::Class(_)
+                        | Control::NextBattle
                         | Control::Ladder
                         | Control::Recruit
                         | Control::Quit
@@ -1324,7 +1401,11 @@ fn controls(
 }
 fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
     if keys.just_pressed(KeyCode::Escape) {
-        session.menu = !session.menu;
+        if session.camp_page.take().is_some() {
+            session.menu = true;
+        } else {
+            session.menu = !session.menu;
+        }
         session.running = false;
         return;
     }
@@ -2321,5 +2402,50 @@ fn update_workshop(
                 **text = label.clone();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod workshop_regressions {
+    use super::*;
+    #[test]
+    fn inspector_controls_retrain_queen_equip_and_reject_mid_battle_changes() {
+        // Lab initialization avoids touching the player's campaign save.
+        let mut session = Session::new(Battle::new(42, false));
+        session.autosave = false;
+        session.campaign = Campaign::new();
+        let (_, battle) = session
+            .campaign
+            .begin_battle(42, Arena::OpenField, Controller::Utility)
+            .unwrap();
+        session.battle = battle;
+        session.selected = 1;
+        session.campaign.teams[0].salvage = 100;
+        apply(Control::Class(FighterClass::Healer), &mut session);
+        assert_eq!(session.battle.units[1].class, Some(FighterClass::Healer));
+        assert_eq!(
+            session.battle.units[1].command_title,
+            Some(CommandTitle::Queen)
+        );
+        let gear = phalanx::equipment::Gear::VitalityCharm;
+        apply(Control::Workshop(gear), &mut session);
+        assert_eq!(session.battle.units[1].health, 130.0);
+        assert!(session.battle.units[1].equipment.has(gear));
+        apply(Control::Workshop(gear), &mut session);
+        assert_eq!(session.battle.units[1].health, 110.0);
+        let gold = session.campaign.teams[0].gold;
+        session.battle.tick = 1;
+        apply(Control::Workshop(gear), &mut session);
+        assert!(!session.battle.units[1].equipment.has(gear));
+        assert_eq!(session.campaign.teams[0].gold, gold);
+        session.battle.finished = true;
+        apply(Control::Workshop(gear), &mut session);
+        assert!(session.campaign.teams[0].fighters[1].equipment.has(gear));
+        assert!(!session.battle.units[1].equipment.has(gear));
+        let (_, next) = session
+            .campaign
+            .begin_battle(43, Arena::OpenField, Controller::Utility)
+            .unwrap();
+        assert_eq!(next.units[1].health, 130.0);
     }
 }

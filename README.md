@@ -164,3 +164,8 @@ Guillaume Heinerth · [GitHub](https://github.com/Fiendstar77)
 New content: [Gauntlet, Quarry and Mire](docs/new-arenas.md), [class equipment and procedural audio](docs/visual-combat.md), and the [character art targets](docs/art-direction/README.md).
 
 **Equipment workshop:** Founders fighters can now craft two weapon variants, two armor variants, and a vitality charm using gold and salvage. Gear changes combat stats, persists across battles, and can be freely re-equipped after crafting. Select a fighter and use the inspector's Craft/Equip/Unequip buttons before or after battle. [Recipes and tradeoffs](docs/progression.md#equipment-workshop).
+
+
+Living fighters now show overhead HP bars. Healers—including a Queen retrained as a Healer—show green healing links, rising crosses, and actual restored HP. Crafted gear adds visible weapon fittings, armor treatments, and a vitality gem.
+
+**Battle report and squad workshop:** finished Founders battles now show damage, healing, XP, wounds and earned resources. Compare fighters, preview equipment changes, craft and retrain in a dedicated workshop, then stage the next battle. Loadouts and the latest report use the existing campaign save. [Data flow and controls](docs/progression.md#battle-report-and-squad-workshop).

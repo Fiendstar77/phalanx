@@ -139,7 +139,53 @@ pub struct Phalanx {
     pub gold: u32,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FighterResult {
+    pub name: String,
+    pub class: FighterClass,
+    pub health: f32,
+    pub max_health: f32,
+    pub damage: f32,
+    pub healing: f32,
+    pub xp: u32,
+    pub new_wounds: u8,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BattleReport {
+    pub arena: Arena,
+    pub battle_id: u64,
+    pub seed: u64,
+    pub winner: Option<usize>,
+    pub gold: [u32; 2],
+    pub salvage: [u32; 2],
+    pub fighters: [Vec<FighterResult>; 2],
+}
+impl BattleReport {
+    fn valid(&self) -> bool {
+        self.fighters[0].len() == self.fighters[1].len()
+            && self.winner.is_none_or(|w| w < 2)
+            && self.gold.iter().all(|g| *g <= 1000)
+            && self.salvage.iter().all(|s| *s <= 10)
+            && self.fighters.iter().all(|team| {
+                (3..=4).contains(&team.len())
+                    && team.iter().all(|f| {
+                        !f.name.is_empty()
+                            && f.name.chars().count() <= 64
+                            && !f.name.chars().any(char::is_control)
+                            && [f.health, f.max_health, f.damage, f.healing]
+                                .iter()
+                                .all(|v| v.is_finite() && *v >= 0.0)
+                            && f.max_health > 0.0
+                            && f.health <= f.max_health
+                            && f.xp <= 55
+                            && f.new_wounds <= 15
+                    })
+            })
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Campaign {
+    #[serde(default)]
+    pub last_report: Option<BattleReport>,
     pub schema_version: u32,
     pub teams: [Phalanx; 2],
     pub next_battle_id: u64,
@@ -160,6 +206,7 @@ impl Campaign {
             .unwrap_or_default()
             .as_nanos();
         Self {
+            last_report: None,
             schema_version: 1,
             next_battle_id: 0,
             last_settled_id: None,
@@ -209,6 +256,13 @@ impl Campaign {
         }
     }
     pub fn validate(&self) -> Result<(), String> {
+        if self.last_report.as_ref().is_some_and(|r| {
+            !r.valid()
+                || r.battle_id >= self.next_battle_id
+                || Some(r.battle_id) != self.last_settled_id
+        }) {
+            return Err("invalid battle report".into());
+        }
         if self.schema_version != 1
             || self.next_battle_id > 1_000_000
             || self
@@ -562,6 +616,36 @@ impl Campaign {
                 f.history.remove(0);
             }
         }
+        updated.last_report = Some(BattleReport {
+            arena: b.arena,
+            battle_id: id,
+            seed: b.seed,
+            winner,
+            gold: std::array::from_fn(|team| updated.teams[team].gold - self.teams[team].gold),
+            salvage: std::array::from_fn(|team| {
+                updated.teams[team].salvage - self.teams[team].salvage
+            }),
+            fighters: std::array::from_fn(|team| {
+                b.units
+                    .iter()
+                    .filter(|u| u.team == team)
+                    .map(|u| {
+                        let slot = u.id % b.team_size();
+                        let f = &updated.teams[team].fighters[slot];
+                        FighterResult {
+                            name: f.name.clone(),
+                            class: f.class,
+                            health: u.health,
+                            max_health: u.max_health(),
+                            damage: u.damage_dealt,
+                            healing: u.healing_done,
+                            xp: f.history.last().unwrap().experience_gained,
+                            new_wounds: u.lost_limbs & !self.teams[team].fighters[slot].lost_limbs,
+                        }
+                    })
+                    .collect()
+            }),
+        });
         updated.last_settled_id = Some(id);
         updated.validate()?;
         *self = updated;
