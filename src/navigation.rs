@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::{
     cmp::Ordering,
     collections::{BinaryHeap, HashMap},
-    sync::{Mutex, OnceLock},
+    sync::{Arc, Mutex, OnceLock},
 };
 fn point(arena: Arena, id: usize) -> [f32; 2] {
     let size = arena.half_size();
@@ -46,36 +46,45 @@ fn build_graph(arena: Arena) -> Vec<Vec<usize>> {
         })
         .collect()
 }
-fn pressure_graph(field: crate::pressure::PressureField) -> &'static Vec<Vec<usize>> {
-    type PressureGraphs = HashMap<crate::pressure::PressureField, &'static Vec<Vec<usize>>>;
-    static CACHE: OnceLock<Mutex<PressureGraphs>> = OnceLock::new();
+fn pressure_graph(field: crate::pressure::PressureField) -> Arc<Vec<Vec<usize>>> {
+    static CACHE: OnceLock<Mutex<HashMap<crate::pressure::PressureField, Arc<Vec<Vec<usize>>>>>> =
+        OnceLock::new();
+    let key = crate::pressure::PressureField {
+        seed: 0,
+        cover_extra: 0,
+        wide: false,
+        ..field
+    };
     let mut cache = CACHE
         .get_or_init(|| Mutex::new(HashMap::new()))
         .lock()
-        .unwrap_or_else(|poison| poison.into_inner());
-    if let Some(graph) = cache.get(&field) {
-        return graph;
+        .unwrap_or_else(|e| e.into_inner());
+    if let Some(graph) = cache.get(&key) {
+        return graph.clone();
     }
-    let graph: &'static Vec<Vec<usize>> = Box::leak(Box::new(build_graph(Arena::Pressure(field))));
-    cache.insert(field, graph);
+    let graph = Arc::new(build_graph(Arena::Pressure(key)));
+    if cache.len() >= 32 {
+        cache.clear();
+    }
+    cache.insert(key, graph.clone());
     graph
 }
 /// Static wall-clearance graph. Authored arenas are cached once.
-/// Each distinct pressure field keeps its own graph for the process lifetime.
-fn neighbors(arena: Arena) -> &'static Vec<Vec<usize>> {
+/// Pressure fields share a bounded cache keyed by physical layout.
+fn neighbors(arena: Arena) -> Arc<Vec<Vec<usize>>> {
     if let Arena::Pressure(field) = arena {
         return pressure_graph(field);
     }
-    static RIDGE: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
-    static CHOKE: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
-    static OPEN: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
-    static CITADEL: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
-    static HIGHLANDS: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
-    static RUINS: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
-    static GRAND: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
-    static GAUNTLET: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
-    static QUARRY: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
-    static MIRE: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
+    static RIDGE: OnceLock<Arc<Vec<Vec<usize>>>> = OnceLock::new();
+    static CHOKE: OnceLock<Arc<Vec<Vec<usize>>>> = OnceLock::new();
+    static OPEN: OnceLock<Arc<Vec<Vec<usize>>>> = OnceLock::new();
+    static CITADEL: OnceLock<Arc<Vec<Vec<usize>>>> = OnceLock::new();
+    static HIGHLANDS: OnceLock<Arc<Vec<Vec<usize>>>> = OnceLock::new();
+    static RUINS: OnceLock<Arc<Vec<Vec<usize>>>> = OnceLock::new();
+    static GRAND: OnceLock<Arc<Vec<Vec<usize>>>> = OnceLock::new();
+    static GAUNTLET: OnceLock<Arc<Vec<Vec<usize>>>> = OnceLock::new();
+    static QUARRY: OnceLock<Arc<Vec<Vec<usize>>>> = OnceLock::new();
+    static MIRE: OnceLock<Arc<Vec<Vec<usize>>>> = OnceLock::new();
     let cache = match arena {
         Arena::Ridge => &RIDGE,
         Arena::Choke => &CHOKE,
@@ -89,7 +98,7 @@ fn neighbors(arena: Arena) -> &'static Vec<Vec<usize>> {
         Arena::Mire => &MIRE,
         Arena::Pressure(_) => unreachable!("pressure graphs are cached by field"),
     };
-    cache.get_or_init(|| build_graph(arena))
+    cache.get_or_init(|| Arc::new(build_graph(arena))).clone()
 }
 fn nearest(arena: Arena, p: [f32; 2]) -> Option<usize> {
     let size = arena.half_size();
@@ -247,6 +256,7 @@ pub fn plan_known(
         .collect();
     costs[s] = 0.0;
     heap.push(Entry { cost: 0.0, id: s });
+    let graph = neighbors(arena);
     while let Some(Entry { cost, id }) = heap.pop() {
         if cost > costs[id] {
             continue;
@@ -254,7 +264,7 @@ pub fn plan_known(
         if id == g {
             break;
         }
-        for &next in &neighbors(arena)[id] {
+        for &next in &graph[id] {
             let candidate = cost
                 + edge(
                     arena,

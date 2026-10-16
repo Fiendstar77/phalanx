@@ -28,7 +28,7 @@ The supplied male/female bases now have derived game-ready rigs with seven basic
 
 ## Local game loop
 
-Start in the main menu, enter the arena, select a fighter, customize its class/mind, then watch autonomous combat. Eight launch classes plus Rock Thrower and Paladin have real mechanics; the General remains a Paladin. Authored event barks, including scar lines, and socketed 3D faces and animated expressions reflect combat state. Earn gold, retrain for 10 gold, or fit an iron limb for 15 gold + 5 salvage. Save 1,000 gold to recruit the fourth fighter and enter a matched local 4v4 league. Each Founders battle generates a mirrored pressure field from both squads. Three fighters fight on a 36×26 field, four on a 48×34 field. [How the field is chosen](docs/pressure.md).
+Start in the main menu, enter the arena, select a fighter, customize its class/mind, then watch autonomous combat. Eight launch classes plus Rock Thrower and Paladin have real mechanics; all titles can train any discipline. Authored event barks, including scar lines, and socketed 3D faces and animated expressions reflect combat state. Earn gold, retrain for 10 gold, or fit an iron limb for 15 gold + 5 salvage. Save 1,000 gold to recruit the fourth fighter and enter a matched local 4v4 league. Each Founders battle generates a mirrored pressure field from both squads. Three fighters fight on a 36×26 field, four on a 48×34 field. [How the field is chosen](docs/pressure.md).
 
 The menu includes the full **3 → 20 gold ladder**, ending at 650,000 gold for slot 20. **Playable leagues currently stop at 4**; later prices are tuning targets. [Economy and complete ladder](docs/economy.md) · [Class mechanics](docs/classes.md). No networking, automatic online discovery or LLM runtime is implemented in this slice.
 
@@ -169,3 +169,11 @@ New content: [Gauntlet, Quarry and Mire](docs/new-arenas.md), [class equipment a
 Living fighters now show overhead HP bars. Healers—including a Queen retrained as a Healer—show green healing links, rising crosses, and actual restored HP. Crafted gear adds visible weapon fittings, armor treatments, and a vitality gem.
 
 **Battle report and squad workshop:** finished Founders battles now show damage, healing, XP, wounds and earned resources. Compare fighters, preview equipment changes, craft and retrain in a dedicated workshop, then stage the next battle. Loadouts and the latest report use the existing campaign save. [Data flow and controls](docs/progression.md#battle-report-and-squad-workshop).
+
+
+**Titles and permanent mastery:** King, Queen, General, Captain, Champion and Member are reassignable independently of class. Battles train the active discipline; 100 practice retains its supported abilities after retraining. Healer mastery can survive a switch to Rock Thrower, and mastered Banner Bearer training can project its aura through an equipped war banner. [Rules, title bonuses and current limits](docs/classes.md#titles-and-permanent-mastery).
+
+
+**Every phalanx has its standard:** a designated fighter carries a tall back-mounted pole and rippling cloth flag in the squad's colors and emblem. Choose the bearer, primary/accent colors, and emblem in the workshop. [Heraldry rules and controls](docs/progression.md#mandatory-squad-standards-and-heraldry).
+
+**Solid bodies, blood and rivals:** swept collision stops living fighters passing through one another, including between rendered ticks. Damaging contacts produce directional droplets and persistent ground stains. Campaign arenas now use seeded tactical layouts with destructible barricades; five persistent rivals can be selected in the camp. [Behavior and current limits](docs/progression.md#physical-contacts-generated-arenas-and-rivals).

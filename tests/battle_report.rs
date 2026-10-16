@@ -55,6 +55,7 @@ fn healing_totals_outlive_the_bounded_effect_queue() {
         }
         b.units[0].health = 40.0;
         b.units[1].cooldown = 0.0;
+        b.units[1].heal_cooldown = 0.0;
         b.step();
     }
     assert_eq!(b.heals.len(), 64);

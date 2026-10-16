@@ -139,6 +139,7 @@ fn every_lesson_is_symmetric_and_has_a_route_for_both_sides() {
                     cover_extra,
                     wide,
                     reach,
+                    ..Default::default()
                 })
             })
         })
@@ -182,6 +183,7 @@ fn every_lesson_is_symmetric_and_has_a_route_for_both_sides() {
         cover_extra: 0,
         wide: false,
         reach: 0,
+        ..Default::default()
     });
     assert!(split.blocked([0.0, 0.0]));
     assert!(!split.blocked([0.0, 4.5]));
@@ -194,6 +196,7 @@ fn every_lesson_is_symmetric_and_has_a_route_for_both_sides() {
         cover_extra: 0,
         wide: false,
         reach: 0,
+        ..Default::default()
     });
     assert!(hill.elevation([0.0, 0.0]) > hill.elevation([8.0, 0.0]));
     assert!(hill.has_high_ground());
@@ -202,6 +205,7 @@ fn every_lesson_is_symmetric_and_has_a_route_for_both_sides() {
         cover_extra: 0,
         wide: true,
         reach: 0,
+        ..Default::default()
     });
     assert!(crossing.roughness([0.0, 2.0]) > 0.0);
     assert_eq!(crossing.roughness([9.0, 0.0]), 0.0);
@@ -212,6 +216,7 @@ fn every_lesson_is_symmetric_and_has_a_route_for_both_sides() {
         cover_extra: 0,
         wide: false,
         reach: 1,
+        ..Default::default()
     });
     assert_eq!(skirmish.half_size(), [18.0, 13.0]);
     assert!(skirmish.blocked([0.0, 0.0]));
@@ -223,6 +228,7 @@ fn every_lesson_is_symmetric_and_has_a_route_for_both_sides() {
         cover_extra: 0,
         wide: true,
         reach: 2,
+        ..Default::default()
     });
     assert_eq!(company.half_size(), [24.0, 17.0]);
     assert_eq!(company.walls().len(), 3);
@@ -235,6 +241,7 @@ fn every_lesson_is_symmetric_and_has_a_route_for_both_sides() {
         cover_extra: 0,
         wide: false,
         reach: 1,
+        ..Default::default()
     });
     assert!(hill.elevation([0.0, 0.0]) > hill.elevation([16.0, 0.0]));
     let crossing = Arena::Pressure(phalanx::pressure::PressureField {
@@ -242,6 +249,7 @@ fn every_lesson_is_symmetric_and_has_a_route_for_both_sides() {
         cover_extra: 0,
         wide: false,
         reach: 1,
+        ..Default::default()
     });
     assert!(crossing.roughness([0.0, 0.0]) > 0.0);
     assert_eq!(crossing.roughness([16.0, 0.0]), 0.0);

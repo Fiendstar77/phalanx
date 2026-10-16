@@ -1,10 +1,13 @@
 //! Presentation only: character clips, bounded combat particles, arena dressing.
 //! Damage, pathfinding, terrain height and controller decisions remain in Battle.
 mod barks;
+mod blood;
+use blood::{Fx, effects};
 mod body;
 mod equipment;
 mod face;
 mod health;
+mod standards;
 use super::{Pawn, Session, setup};
 use bevy::{
     camera::{RenderTarget, visibility::RenderLayers},
@@ -18,8 +21,10 @@ pub struct BattleVisuals;
 impl Plugin for BattleVisuals {
     fn build(&self, app: &mut App) {
         barks::install(app);
+        blood::install(app);
         face::install(app);
         health::install(app);
+        standards::install(app);
         equipment::install(app);
         app.add_systems(Update, portrait_camera.after(super::camera_motion));
         if std::env::args().any(|a| a == "--visual-witness") {
@@ -174,7 +179,8 @@ fn load_visuals(
                 .observe(ready)
                 .observe(body::ready)
                 .observe(face::ready)
-                .observe(equipment::ready);
+                .observe(equipment::ready)
+                .observe(standards::ready);
             });
         }
     }
@@ -183,36 +189,6 @@ fn load_visuals(
         brightness: 550.0,
         ..default()
     });
-    let blood = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.29, 0.008, 0.018),
-        perceptual_roughness: 0.24,
-        ..default()
-    });
-    let flesh = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.64, 0.10, 0.16),
-        perceptual_roughness: 0.32,
-        ..default()
-    });
-    let sphere = meshes.add(Sphere::new(1.0).mesh().uv(12, 8));
-    let gut = meshes.add(Torus::new(0.05, 0.09));
-    for i in 0..1536 {
-        commands.spawn((
-            Particle(i),
-            Mesh3d(if i % 4 == 0 {
-                gut.clone()
-            } else {
-                sphere.clone()
-            }),
-            MeshMaterial3d(if i % 4 == 0 {
-                flesh.clone()
-            } else {
-                blood.clone()
-            }),
-            Transform::default(),
-            Visibility::Hidden,
-        ));
-    }
-    commands.insert_resource(Fx::default());
     let rock = meshes.add(Sphere::new(1.0).mesh().ico(1).unwrap());
     let trunk = meshes.add(Cylinder::new(0.10, 0.7));
     let stone = materials.add(StandardMaterial {
@@ -500,249 +476,6 @@ fn advance_clip(
     }
 }
 
-#[derive(Component)]
-struct Particle(usize);
-#[derive(Clone, Default)]
-struct Fleck {
-    p: Vec3,
-    v: Vec3,
-    scale: Vec3,
-    life: f32,
-    age: f32,
-    pool: bool,
-}
-#[derive(Resource)]
-struct Fx {
-    particles: Vec<Fleck>,
-    cursor: usize,
-    health: [f32; 20],
-    bleeding: [f32; 20],
-    pulse: f32,
-    tick: u32,
-    seed: u64,
-    arena: Arena,
-    initialized: bool,
-}
-impl Default for Fx {
-    fn default() -> Self {
-        Self {
-            particles: vec![Fleck::default(); 1536],
-            cursor: 0,
-            health: [0.0; 20],
-            bleeding: [0.0; 20],
-            pulse: 0.0,
-            tick: 0,
-            seed: 0,
-            arena: Arena::Ridge,
-            initialized: false,
-        }
-    }
-}
-impl Fx {
-    fn emit(&mut self, p: Vec3, count: usize, death: bool, id: usize) {
-        for j in 0..count {
-            let index = self.cursor % 1536;
-            self.cursor += 1;
-            let a = (j * 137 + id * 31) as f32 * 0.17;
-            let speed = if death {
-                3.6 + (j % 7) as f32 * 0.55
-            } else {
-                1.15 + (j % 5) as f32 * 0.4
-            };
-            let guts = death && index.is_multiple_of(4);
-            self.particles[index] = Fleck {
-                p,
-                v: Vec3::new(
-                    a.cos() * speed,
-                    if death {
-                        5.4 + (j % 5) as f32 * 0.9
-                    } else {
-                        2.6 + (j % 3) as f32 * 0.45
-                    },
-                    a.sin() * speed,
-                ),
-                scale: if guts {
-                    Vec3::new(1.8, 0.85, 1.2)
-                } else if death && j < 8 {
-                    Vec3::new(0.16, 0.09, 0.1)
-                } else {
-                    Vec3::splat(0.034 + (j % 3) as f32 * 0.016)
-                },
-                life: if death { 180.0 } else { 90.0 },
-                age: 0.0,
-                pool: false,
-            };
-        }
-        if death {
-            // Flattened wet pool and several lobes suggest spilled organs; cosmetic only.
-            for j in 0..8 {
-                let index = self.cursor % 1536;
-                self.cursor += 1;
-                self.particles[index] = Fleck {
-                    p: p + Vec3::new(j as f32 * 0.11 - 0.16, -0.48, j as f32 * 0.06),
-                    v: Vec3::ZERO,
-                    scale: if index.is_multiple_of(4) {
-                        Vec3::new(1.7, 0.5, 1.0)
-                    } else {
-                        Vec3::new(0.65, 0.018, 0.47)
-                    },
-                    life: 240.0,
-                    age: 0.0,
-                    pool: true,
-                };
-            }
-        }
-    }
-}
-fn effects(
-    session: Res<Session>,
-    time: Res<Time>,
-    mut fx: ResMut<Fx>,
-    mut particles: Query<(&Particle, &mut Transform, &mut Visibility)>,
-) {
-    let reset = !fx.initialized
-        || fx.seed != session.battle.seed
-        || fx.arena != session.battle.arena
-        || session.battle.tick < fx.tick;
-    if reset {
-        for p in &mut fx.particles {
-            p.life = 0.0;
-        }
-        for u in &session.battle.units {
-            fx.health[u.id] = u.health;
-        }
-        fx.initialized = true;
-        fx.bleeding = [0.0; 20];
-        fx.pulse = 0.0;
-    } else {
-        for u in &session.battle.units {
-            let old = fx.health[u.id];
-            if u.health < old {
-                fx.bleeding[u.id] = if u.health <= 0.0 { 2.6 } else { 0.7 };
-                let p = session.presented(u.id);
-                let pos = Vec3::new(p[0], session.battle.arena.elevation(p) + 0.52, p[1]);
-                fx.emit(
-                    pos,
-                    if u.health <= 0.0 { 180 } else { 32 },
-                    u.health <= 0.0,
-                    u.id,
-                );
-            }
-            fx.health[u.id] = u.health;
-        }
-    }
-    fx.seed = session.battle.seed;
-    fx.tick = session.battle.tick;
-    fx.arena = session.battle.arena;
-    let dt = if session.running {
-        time.delta_secs().min(0.1) * session.speed
-    } else if session.battle.finished {
-        time.delta_secs().min(0.1)
-    } else {
-        0.0
-    };
-    fx.pulse += dt;
-    if fx.pulse >= 0.045 {
-        fx.pulse = 0.0;
-        for u in &session.battle.units {
-            if fx.bleeding[u.id] > 0.0 {
-                fx.bleeding[u.id] = (fx.bleeding[u.id] - dt.max(0.045)).max(0.0);
-                let p = session.presented(u.id);
-                fx.emit(
-                    Vec3::new(p[0], session.battle.arena.elevation(p) + 0.48, p[1]),
-                    7,
-                    false,
-                    u.id,
-                );
-            }
-        }
-    }
-    for p in &mut fx.particles {
-        if p.life <= 0.0 {
-            continue;
-        }
-        p.age += dt;
-        p.life -= dt;
-        if !p.pool {
-            // Small fixed-size presentation steps prevent fast playback tunnelling.
-            let steps = (dt / 0.016).ceil().max(1.0) as usize;
-            let step = dt / steps as f32;
-            for _ in 0..steps {
-                p.v.y -= 9.81 * step;
-                p.v *= (-0.18 * step).exp();
-                let old = p.p;
-                let velocity = p.v;
-                p.p += velocity * step;
-                let arena = session.battle.arena;
-                let size = arena.half_size();
-                if p.p.x.abs() > size[0] - 0.1 {
-                    p.p.x = p.p.x.clamp(-size[0] + 0.1, size[0] - 0.1);
-                    p.v.x *= -0.25;
-                }
-                if p.p.z.abs() > size[1] - 0.1 {
-                    p.p.z = p.p.z.clamp(-size[1] + 0.1, size[1] - 0.1);
-                    p.v.z *= -0.25;
-                }
-                if arena.blocked([p.p.x, p.p.z]) && p.p.y < arena.elevation([p.p.x, p.p.z]) + 2.6 {
-                    if arena.blocked([p.p.x, old.z]) {
-                        p.p.x = old.x;
-                        p.v.x *= -0.25;
-                    }
-                    if arena.blocked([old.x, p.p.z]) {
-                        p.p.z = old.z;
-                        p.v.z *= -0.25;
-                    }
-                }
-                let ground = arena.elevation([p.p.x, p.p.z]) + 0.025;
-                if p.p.y <= ground {
-                    p.p.y = ground;
-                    if p.scale.y > 0.1 && p.v.y.abs() > 0.9 {
-                        p.v.y = p.v.y.abs() * 0.28;
-                        p.v.x *= 0.6;
-                        p.v.z *= 0.6;
-                    } else {
-                        p.v = Vec3::ZERO;
-                        p.pool = true;
-                        if p.scale.x < 0.1 {
-                            p.scale = Vec3::new(0.10, 0.009, 0.075);
-                        }
-                        break;
-                    }
-                }
-            }
-        } else {
-            p.p.y = session.battle.arena.elevation([p.p.x, p.p.z]) + 0.025;
-            if p.scale.y < 0.03 {
-                let target = if p.scale.x > 0.2 { 1.15 } else { 0.18 };
-                p.scale.x = (p.scale.x + dt * 0.055).min(target);
-                p.scale.z = (p.scale.z + dt * 0.035).min(target * 0.8);
-            }
-        }
-    }
-    for (index, mut transform, mut visibility) in &mut particles {
-        let p = &fx.particles[index.0];
-        *visibility = if p.life > 0.0 {
-            Visibility::Inherited
-        } else {
-            Visibility::Hidden
-        };
-        if p.life > 0.0 {
-            transform.translation = p.p;
-            transform.scale = p.scale;
-            transform.rotation = if p.pool {
-                let arena = session.battle.arena;
-                let dx =
-                    arena.elevation([p.p.x + 0.05, p.p.z]) - arena.elevation([p.p.x - 0.05, p.p.z]);
-                let dz =
-                    arena.elevation([p.p.x, p.p.z + 0.05]) - arena.elevation([p.p.x, p.p.z - 0.05]);
-                Quat::from_rotation_arc(Vec3::Y, Vec3::new(-dx, 0.1, -dz).normalize())
-                    * Quat::from_rotation_y(index.0 as f32 * 2.4)
-            } else {
-                Quat::from_euler(EulerRot::XYZ, p.age * 3., p.age * 2., index.0 as f32)
-            };
-        }
-    }
-}
 #[derive(Component)]
 struct Dressing(usize);
 fn scenery(
@@ -1091,6 +824,7 @@ struct Witness {
     wounded: bool,
     captured: bool,
     battle_captured: bool,
+    refinement_captured: bool,
 }
 #[allow(clippy::too_many_arguments)]
 fn witness(
@@ -1120,11 +854,21 @@ fn witness(
     }
     if witness.seconds > 1.6 && !witness.captured && !actors.is_empty() {
         witness.captured = true;
-        if session.menu || std::env::args().any(|a| a == "--face-witness") {
+        if session.menu
+            || std::env::args().any(|a| a == "--face-witness" || a == "--standard-witness")
+        {
             commands
                 .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
                 .observe(bevy::render::view::screenshot::save_to_disk(
-                    if std::env::args().any(|a| a == "--camp-witness") {
+                    if std::env::args().any(|a| a == "--standard-witness") {
+                        if std::env::args().any(|a| a == "--standard-back-witness") {
+                            "outputs/standard-back-witness.png"
+                        } else {
+                            "outputs/standard-witness.png"
+                        }
+                    } else if std::env::args().any(|a| a == "--rival-witness") {
+                        "outputs/rivals-witness.png"
+                    } else if std::env::args().any(|a| a == "--camp-witness") {
                         if std::env::args().any(|a| a == "--workshop-witness") {
                             if std::env::args().any(|a| a == "--camp-scroll-witness") {
                                 "outputs/workshop-scrolled-witness.png"
@@ -1169,6 +913,27 @@ fn witness(
     if session.battle.finished {
         witness.finished += time.delta_secs();
     }
+
+    if std::env::args().any(|a| a == "--refinement-witness")
+        && !witness.refinement_captured
+        && session.battle.tick > 200
+        && session
+            .battle
+            .units
+            .iter()
+            .map(|u| u.damage_dealt)
+            .sum::<f32>()
+            > 80.0
+        && !session.battle.damage_events.is_empty()
+        && !session.menu
+    {
+        witness.refinement_captured = true;
+        commands
+            .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
+            .observe(bevy::render::view::screenshot::save_to_disk(
+                "outputs/refinement-witness.png",
+            ));
+    }
     if witness.finished > 0.5 && !witness.battle_captured {
         witness.battle_captured = true;
         commands
@@ -1184,12 +949,13 @@ fn witness(
             1.5
         }
         || witness.seconds > 40.0
-        || ((session.menu || std::env::args().any(|a| a == "--face-witness"))
+        || (((session.menu && !session.battle.finished)
+            || std::env::args().any(|a| a == "--face-witness" || a == "--standard-witness"))
             && witness.seconds > 3.0)
     {
         println!(
             "VISUAL_WITNESS {}",
-            serde_json::json!({"clip_names":CLIP_NAMES,"clips":witness.seen,"blood":witness.blood,"actors":actors.iter().count(),"finished":session.battle.finished,"seconds":witness.seconds,"particle_capacity":fx.particles.len(),"detached_limbs":witness.gibs,"surviving_wounded":witness.wounded,"face_expressions":face_audit.seen,"eye_rotation":face_audit.eye_rotation,"face_morph_meshes":face_audit.meshes,"repeated_gestures":actors.iter().map(|a|a.replays).sum::<u32>(),"skeleton_motion":witness.skeleton_motion,"male_female_motion":witness.model_motion,"sound_effects":audio_audit.emitted})
+            serde_json::json!({"clip_names":CLIP_NAMES,"clips":witness.seen,"blood":witness.blood,"actors":actors.iter().count(),"finished":session.battle.finished,"seconds":witness.seconds,"particle_capacity":fx.particles.len(),"stained_pixels":fx.stained_pixels(),"detached_limbs":witness.gibs,"surviving_wounded":witness.wounded,"face_expressions":face_audit.seen,"eye_rotation":face_audit.eye_rotation,"face_morph_meshes":face_audit.meshes,"repeated_gestures":actors.iter().map(|a|a.replays).sum::<u32>(),"skeleton_motion":witness.skeleton_motion,"male_female_motion":witness.model_motion,"sound_effects":audio_audit.emitted})
         );
         exit.write(AppExit::Success);
     }

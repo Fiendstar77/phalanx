@@ -47,11 +47,30 @@ impl Lesson {
 /// 1 is the 3-fighter skirmish, 2 is the 4-fighter company. Older saves omit it and stay at 0.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PressureField {
+    #[serde(default)]
+    pub layout: u8,
+    #[serde(default)]
+    pub seed: u64,
+    #[serde(default)]
+    pub destroyed: u8,
     pub lesson: Lesson,
     pub cover_extra: u8,
     pub wide: bool,
     #[serde(default)]
     pub reach: u8,
+}
+impl Default for PressureField {
+    fn default() -> Self {
+        Self {
+            lesson: Lesson::Split,
+            cover_extra: 0,
+            wide: false,
+            reach: 0,
+            layout: 0,
+            seed: 0,
+            destroyed: 0,
+        }
+    }
 }
 const SPLIT_SMALL: [([f32; 2], [f32; 2]); 1] = [([0.0, 0.0], [2.2, 4.0])];
 const SPLIT_SKIRMISH: [([f32; 2], [f32; 2]); 1] = [([0.0, 0.0], [2.2, 9.0])];
@@ -101,6 +120,9 @@ impl PressureField {
         }
     }
     pub fn walls(self) -> &'static [([f32; 2], [f32; 2])] {
+        if self.layout > 0 {
+            return crate::procedural::walls(self);
+        }
         if self.lesson != Lesson::Split {
             return &[];
         }
@@ -140,16 +162,20 @@ impl PressureField {
     }
     pub fn blocked(self, p: [f32; 2]) -> bool {
         let half = self.half();
-        p[0].abs() > half[0] - 0.3
-            || p[1].abs() > half[1] - 0.3
+        p[0].abs() > half[0] - crate::collision::BODY_RADIUS
+            || p[1].abs() > half[1] - crate::collision::BODY_RADIUS
             || self.walls().iter().any(|(center, extent)| {
-                (p[0] - center[0]).abs() < extent[0] * 0.5 + 0.3
-                    && (p[1] - center[1]).abs() < extent[1] * 0.5 + 0.3
+                (p[0] - center[0]).abs() < extent[0] * 0.5 + crate::collision::BODY_RADIUS
+                    && (p[1] - center[1]).abs() < extent[1] * 0.5 + crate::collision::BODY_RADIUS
             })
     }
     pub fn elevation(self, p: [f32; 2]) -> f32 {
         if self.lesson != Lesson::Ridge {
-            return 0.0;
+            return if self.layout > 0 {
+                1.5 * (1.0 - p[0].abs() / 3.5).max(0.0) * (1.0 - p[1].abs() / 4.0).max(0.0)
+            } else {
+                0.0
+            };
         }
         let (rx, rz, height) = match self.reach {
             0 => (4.0, 6.0, 1.7),
@@ -175,7 +201,15 @@ impl PressureField {
                 p[0].abs() >= 8.0 && p[0].abs() <= 14.0 && p[1].abs() <= 3.0,
             ),
         };
-        f32::from(flank || (self.cover_level() >= 2 && pocket))
+        f32::from(
+            flank
+                || (self.cover_level() >= 2 && pocket)
+                || (self.layout > 0
+                    && self
+                        .cover_anchors()
+                        .iter()
+                        .any(|a| crate::distance(*a, p) < 1.2 + (self.layout % 3) as f32 * 0.25)),
+        )
     }
     pub fn roughness(self, p: [f32; 2]) -> f32 {
         let band = match self.reach {
@@ -183,7 +217,12 @@ impl PressureField {
             1 => 6.0,
             _ => 8.0,
         };
-        f32::from(self.lesson == Lesson::Approach && p[0].abs() < band)
+        f32::from(
+            (self.lesson == Lesson::Approach && p[0].abs() < band)
+                || (self.layout > 0
+                    && (p[1].abs() - 3.0 - (self.layout % 3) as f32).abs() < 0.8
+                    && p[0].abs() < 9.0),
+        )
     }
 }
 #[derive(Clone, Copy, Debug)]
@@ -326,12 +365,16 @@ pub fn generate(teams: &[Phalanx; 2], seed: u64) -> Arena {
     }
     let lesson = band[(seed as usize) % band.len()];
     let count = teams[0].fighters.len();
-    Arena::Pressure(PressureField {
-        lesson,
-        cover_extra: (seed % 2) as u8,
-        wide: count >= 4,
-        reach: if count >= 4 { 2 } else { 1 },
-    })
+    Arena::Pressure(crate::procedural::decorate(
+        PressureField {
+            lesson,
+            cover_extra: (seed % 2) as u8,
+            wide: count >= 4,
+            reach: if count >= 4 { 2 } else { 1 },
+            ..Default::default()
+        },
+        seed,
+    ))
 }
 /// Test helper for a history entry that records only which lesson was just fought.
 pub fn fought(lesson: Lesson) -> History {
@@ -343,6 +386,7 @@ pub fn fought(lesson: Lesson) -> History {
             cover_extra: 0,
             wide: false,
             reach: 0,
+            ..Default::default()
         }),
         won: false,
         survived: true,

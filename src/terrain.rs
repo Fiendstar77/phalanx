@@ -1,5 +1,5 @@
 //! Authored arena rules shared by movement, route planning, combat and rendering.
-use crate::distance;
+use crate::{collision::BODY_RADIUS, distance};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -105,7 +105,7 @@ impl Arena {
         matches!(
             self,
             Self::Ridge | Self::Citadel | Self::Highlands | Self::GrandArena | Self::Quarry
-        ) || matches!(self, Self::Pressure(field) if field.lesson == crate::pressure::Lesson::Ridge)
+        ) || matches!(self, Self::Pressure(field) if field.lesson == crate::pressure::Lesson::Ridge || field.layout > 0)
     }
     pub fn spawn(self, team: usize, slot: usize) -> [f32; 2] {
         if let Self::Pressure(field) = self {
@@ -331,23 +331,47 @@ impl Arena {
         }
         if self.large() {
             let size = self.half_size();
-            return p[0].abs() > size[0] - 0.3
-                || p[1].abs() > size[1] - 0.3
+            return p[0].abs() > size[0] - BODY_RADIUS
+                || p[1].abs() > size[1] - BODY_RADIUS
                 || self.walls().iter().any(|(c, s)| {
-                    (p[0] - c[0]).abs() < s[0] * 0.5 + 0.3 && (p[1] - c[1]).abs() < s[1] * 0.5 + 0.3
+                    (p[0] - c[0]).abs() < s[0] * 0.5 + BODY_RADIUS
+                        && (p[1] - c[1]).abs() < s[1] * 0.5 + BODY_RADIUS
                 });
         }
-        p[0].abs() > 10.7
-            || p[1].abs() > 7.7
-            || (self == Self::Choke && p[0].abs() < 1.3 && p[1].abs() > 1.7)
+        p[0].abs() > 11.0 - BODY_RADIUS
+            || p[1].abs() > 8.0 - BODY_RADIUS
+            || (self == Self::Choke
+                && p[0].abs() < 1.0 + BODY_RADIUS
+                && p[1].abs() > 2.0 - BODY_RADIUS)
     }
-    /// Clearance test includes a 0.3-unit allowance around the choke walls.
+    /// Clearance test includes a body-radius allowance around the choke walls.
     pub fn clear_segment(self, a: [f32; 2], b: [f32; 2]) -> bool {
-        let steps = (distance(a, b) / 0.15).ceil().max(1.0) as usize;
-        (0..=steps).all(|i| {
-            let t = i as f32 / steps as f32;
-            !self.blocked([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t])
-        })
+        if self.blocked(a) || self.blocked(b) {
+            return false;
+        }
+        for (center, size) in self.walls() {
+            let mut enter = 0.0_f32;
+            let mut leave = 1.0_f32;
+            for axis in 0..2 {
+                let half = size[axis] * 0.5 + BODY_RADIUS;
+                let delta = b[axis] - a[axis];
+                if delta.abs() < 1e-8 {
+                    if (a[axis] - center[axis]).abs() >= half {
+                        enter = 2.0;
+                        break;
+                    }
+                } else {
+                    let t0 = (center[axis] - half - a[axis]) / delta;
+                    let t1 = (center[axis] + half - a[axis]) / delta;
+                    enter = enter.max(t0.min(t1));
+                    leave = leave.min(t0.max(t1));
+                }
+            }
+            if enter < leave - 1e-6 && leave > 0.0 && enter < 1.0 {
+                return false;
+            }
+        }
+        true
     }
     /// Walking cannot jump a raised deck's sides; it must use its ramp entrances.
     pub fn walk_segment(self, a: [f32; 2], b: [f32; 2]) -> bool {

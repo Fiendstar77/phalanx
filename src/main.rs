@@ -256,6 +256,13 @@ impl Session {
         if !self.running {
             return current;
         }
+        if let Some(p) = self
+            .battle
+            .motion
+            .position(id, (self.accumulator / DT).clamp(0.0, 1.0))
+        {
+            return p;
+        }
         let old = self.previous_positions[id];
         let alpha = (self.accumulator / DT).clamp(0.0, 1.0);
         [
@@ -309,9 +316,15 @@ enum Control {
     SelectFighter(usize),
     Ladder,
     Recruit,
+    ChooseRival(usize),
     Continue,
     Quit,
     Class(FighterClass),
+    Title(CommandTitle),
+    FlagEmblem,
+    FlagAccent,
+    FlagPrimary,
+    StandardBearer,
     Run,
     Pause,
     Step,
@@ -392,6 +405,15 @@ fn main() {
         session.menu = false;
         session.running = true;
         session.speed = 4.0;
+        if args.iter().any(|a| a == "--refinement-witness") {
+            let field = phalanx::pressure::generate(&session.campaign.teams, seed);
+            session.restart_founders(seed, field, Controller::Utility);
+            session.menu = false;
+            session.running = true;
+            session.speed = 2.0;
+            session.zoom = 25.0;
+        }
+
         if args.iter().any(|a| a == "--face-witness") {
             session.running = false;
             if std::env::var_os("PHALANX_WITNESS_CLOSE").is_some() {
@@ -425,6 +447,17 @@ fn main() {
             session.campaign.teams[0].gold = 200;
             session.campaign.teams[0].salvage = 100;
             apply(Control::Class(FighterClass::Healer), &mut session);
+            if args.iter().any(|a| a == "--hybrid-witness") {
+                session.campaign.teams[0].fighters[1]
+                    .mastery
+                    .train(FighterClass::Healer, 100);
+                session.campaign.teams[0].fighters[1]
+                    .mastery
+                    .train(FighterClass::BannerBearer, 100);
+                session.battle.units[1].mastery = session.campaign.teams[0].fighters[1].mastery;
+                apply(Control::Class(FighterClass::RockThrower), &mut session);
+                apply(Control::Title(CommandTitle::Captain), &mut session);
+            }
             for gear in phalanx::equipment::Gear::ALL {
                 apply(Control::Workshop(gear), &mut session);
             }
@@ -435,6 +468,16 @@ fn main() {
                     [12.0, 8.0 + (unit.id % 3) as f32]
                 };
                 unit.target = unit.position;
+            }
+            if args.iter().any(|a| a == "--hybrid-witness") {
+                for unit in session.battle.units.iter_mut().filter(|u| u.team == 1) {
+                    unit.position = [2.0 + (unit.id % 3) as f32 * 0.8, 0.0];
+                    unit.target = unit.position;
+                    unit.class = Some(FighterClass::Guardian);
+                    unit.role = Role::Fighter;
+                    unit.health = unit.max_health();
+                    unit.cooldown = 100.0;
+                }
             }
             session.battle.units[0].health = 20.0;
             session.remember_positions();
@@ -456,9 +499,29 @@ fn main() {
                 Control::Workshop(phalanx::equipment::Gear::BalancedWeapon),
                 &mut session,
             );
+            if args.iter().any(|a| a == "--rival-witness") {
+                apply(Control::Camp(camp::Page::Rivals), &mut session);
+            }
             if args.iter().any(|a| a == "--workshop-witness") {
                 apply(Control::Camp(camp::Page::Workshop), &mut session);
             }
+        }
+        if args.iter().any(|a| a == "--standard-witness") {
+            session.autosave = false;
+            session.running = false;
+            session.selected = 2;
+            session.camera_follow = true;
+            session.zoom = 5.3;
+            session.orbit = if args.iter().any(|a| a == "--standard-back-witness") {
+                4.2
+            } else {
+                1.1
+            };
+            session.pitch = 0.22;
+            session.battle.units[2].target = [
+                session.battle.units[2].position[0] + 1.0,
+                session.battle.units[2].position[1],
+            ];
         }
         if args.iter().any(|a| a == "--menu-witness") {
             session.menu = true;
@@ -991,6 +1054,29 @@ fn apply(control: Control, session: &mut Session) {
                 session.selected = id;
             }
         }
+        Control::ChooseRival(index) => {
+            if !session.battle.founders || (session.battle.tick > 0 && !session.battle.finished) {
+                session.save_notice = "Finish the battle before choosing a rival".into();
+                return;
+            }
+            match session.campaign.select_rival(index) {
+                Ok(()) => {
+                    let seed = session.battle.seed.wrapping_add(1);
+                    let arena = phalanx::pressure::generate(&session.campaign.teams, seed);
+                    session.restart_founders(seed, arena, controller);
+                    session.running = false;
+                    session.accumulator = 0.0;
+                    if session.autosave {
+                        session.save_campaign();
+                    }
+                    session.save_notice = format!(
+                        "Opponent: {}. Their fighters and history persist between matches.",
+                        session.campaign.teams[1].name
+                    );
+                }
+                Err(e) => session.save_notice = e,
+            }
+        }
         Control::Ladder => session.ladder = !session.ladder,
         Control::Recruit => {
             if !session.battle.founders || (session.battle.tick != 0 && !session.battle.finished) {
@@ -1029,6 +1115,84 @@ fn apply(control: Control, session: &mut Session) {
             session.menu = false;
         }
         Control::Quit => {} // handled by the front-end AppExit writer
+        Control::FlagEmblem
+        | Control::FlagAccent
+        | Control::FlagPrimary
+        | Control::StandardBearer => {
+            if !session.battle.founders || (session.battle.tick > 0 && !session.battle.finished) {
+                session.save_notice =
+                    "Prepare your standard before or after a Founders battle".into();
+                return;
+            }
+            let u = &session.battle.units[session.selected];
+            let (team, slot, size) = (
+                u.team,
+                u.id % session.battle.team_size(),
+                session.battle.team_size(),
+            );
+            let squad = &mut session.campaign.teams[team];
+            match control {
+                Control::FlagEmblem => squad.heraldry.emblem = squad.heraldry.emblem.next(),
+                Control::FlagPrimary => {
+                    let index = PALETTE
+                        .iter()
+                        .position(|c| *c == squad.color)
+                        .map(|i| (i + 1) % PALETTE.len())
+                        .unwrap_or(0);
+                    squad.color = PALETTE[index];
+                }
+                Control::FlagAccent => {
+                    let index = PALETTE
+                        .iter()
+                        .position(|c| *c == squad.heraldry.accent)
+                        .map(|i| (i + 1) % PALETTE.len())
+                        .unwrap_or(0);
+                    squad.heraldry.accent = PALETTE[index];
+                }
+                _ => squad.standard_bearer = slot,
+            }
+            if session.battle.tick == 0 {
+                let bearer = squad.standard_bearer;
+                for u in session.battle.units.iter_mut().filter(|u| u.team == team) {
+                    u.carries_standard = u.id % size == bearer;
+                }
+            }
+            if session.autosave {
+                session.save_campaign();
+            }
+            session.save_notice =
+                "Standard updated: every squad has a flag; learned rally skills remain separate."
+                    .into();
+        }
+        Control::Title(title) => {
+            if !session.battle.founders || (session.battle.tick != 0 && !session.battle.finished) {
+                session.save_notice = "Assign titles before or after a Founders battle".into();
+                return;
+            }
+            let u = &session.battle.units[session.selected];
+            let (team, slot) = (u.team, u.id % session.battle.team_size());
+            match session.campaign.assign_title(team, slot, title) {
+                Ok(()) => {
+                    if session.battle.tick == 0 {
+                        let size = session.battle.team_size();
+                        for u in session.battle.units.iter_mut().filter(|u| u.team == team) {
+                            u.command_title =
+                                Some(session.campaign.teams[team].fighters[u.id % size].title);
+                            u.health = u.max_health();
+                        }
+                    }
+                    if session.autosave {
+                        session.save_campaign();
+                    }
+                    session.save_notice = format!(
+                        "Assigned {}: {}. Occupied titles swap holders; discipline and mastery stay with each fighter.",
+                        title.name(),
+                        title.description()
+                    );
+                }
+                Err(e) => session.save_notice = e,
+            }
+        }
         Control::Class(class) => {
             if !session.battle.founders || (session.battle.tick != 0 && !session.battle.finished) {
                 session.save_notice = "Retrain before or after a Founders battle".into();
@@ -1041,7 +1205,7 @@ fn apply(control: Control, session: &mut Session) {
                     if session.battle.tick == 0 {
                         let u = &mut session.battle.units[session.selected];
                         u.class = Some(class);
-                        u.role = class.role();
+                        u.role = u.trained_role();
                         u.health = u.max_health();
                     }
                     if session.autosave {
@@ -1333,6 +1497,7 @@ fn apply(control: Control, session: &mut Session) {
             | Control::Setup
             | Control::NextBattle
             | Control::Load
+            | Control::ChooseRival(_)
     ) {
         if matches!(control, Control::Arena) {
             session.paths = if session.battle.arena.large() { 1 } else { 0 };
@@ -1384,9 +1549,15 @@ fn controls(
                         | Control::Workshop(_)
                         | Control::Prosthetic
                         | Control::Class(_)
+                        | Control::Title(_)
+                        | Control::FlagEmblem
+                        | Control::FlagAccent
+                        | Control::FlagPrimary
+                        | Control::StandardBearer
                         | Control::NextBattle
                         | Control::Ladder
                         | Control::Recruit
+                        | Control::ChooseRival(_)
                         | Control::Quit
                         | Control::Arena
                         | Control::Save
@@ -1763,7 +1934,7 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
         }
     }
     for unit in &session.battle.units {
-        if unit.health > 0.0 && unit.class == Some(FighterClass::Paladin) {
+        if unit.health > 0.0 && unit.has_skill(FighterClass::Paladin) {
             let p = session.presented(unit.id);
             gizmos.circle(
                 Isometry3d::new(
@@ -1987,7 +2158,7 @@ Damage x{:.2} / Movement x{:.2} / Incoming x{:.2}\nGear: {}\nWorkshop: craft onc
                 progress,
                 if !session.battle.founders {
                     ""
-                } else if u.class == Some(FighterClass::Paladin) {
+                } else if u.has_skill(FighterClass::Paladin) {
                     if u.health > 0.0 {
                         "AURA SOURCE"
                     } else {
@@ -2447,5 +2618,24 @@ mod workshop_regressions {
             .begin_battle(43, Arena::OpenField, Controller::Utility)
             .unwrap();
         assert_eq!(next.units[1].health, 130.0);
+    }
+    #[test]
+    fn rival_selection_control_preserves_squads_and_rejects_mid_battle_swaps() {
+        let mut session = Session::new(Battle::new(42, false));
+        session.autosave = false;
+        session.campaign = Campaign::new();
+        let (_, battle) = session
+            .campaign
+            .begin_battle(42, Arena::OpenField, Controller::Utility)
+            .unwrap();
+        session.battle = battle;
+        let challenger = session.campaign.rivals[0].name.clone();
+        apply(Control::ChooseRival(0), &mut session);
+        assert_eq!(session.campaign.teams[1].name, challenger);
+        assert_eq!(session.battle.tick, 0);
+        assert!(!session.running);
+        session.battle.step();
+        apply(Control::ChooseRival(1), &mut session);
+        assert_eq!(session.campaign.teams[1].name, challenger);
     }
 }

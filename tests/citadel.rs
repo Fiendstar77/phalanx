@@ -59,18 +59,27 @@ fn twenty_agent_battles_respect_walls_and_finish_in_both_controller_modes() {
 #[test]
 fn live_pair_filter_excludes_dead_and_superseded_decisions() {
     let mut b = Battle::with_arena(42, false, Arena::Choke);
-    for _ in 0..116 {
+    let mut witness = None;
+    for _ in 0..400 {
         b.step();
+        witness = b.units.iter().find_map(|u| {
+            u.comparison
+                .as_ref()
+                .filter(|c| c.disagreed && u.health > 0.0)
+                .and_then(|c| c.learned.map(|learned| (u.id, c.utility, learned)))
+        });
+        if witness.is_some() {
+            break;
+        }
     }
-    assert!(b.disagreement_units(4, 0).contains(&7));
-    assert!(b.disagreement_units(0, 0).is_empty());
+    let (id, utility, learned) = witness.expect("actual disagreement witness");
+    assert!(b.disagreement_units(utility, learned).contains(&id));
+    assert!(b.disagreement_units(utility, utility).is_empty());
     let mut dead = b.clone();
-    dead.units[7].health = 0.0;
-    assert!(!dead.disagreement_units(4, 0).contains(&7));
-    for _ in 0..5 {
-        b.step();
-    }
-    assert!(!b.disagreement_units(4, 0).contains(&7));
+    dead.units[id].health = 0.0;
+    assert!(!dead.disagreement_units(utility, learned).contains(&id));
+    b.units[id].comparison = None;
+    assert!(!b.disagreement_units(utility, learned).contains(&id));
 }
 
 #[test]

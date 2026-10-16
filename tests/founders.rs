@@ -45,7 +45,7 @@ fn royal_bonus_is_applied_to_actual_melee_and_delayed_rock_damage() {
     b.units[5].position = [1.0, 0.0];
     b.units[5].cooldown = 100.0;
     b.step();
-    assert!((b.units[5].health - 89.0).abs() < 1e-5);
+    assert!((b.units[5].health - (100.0 - 11.0 * 0.90)).abs() < 1e-5);
     let mut b = Battle::with_founders(42, false, Arena::OpenField);
     for u in &mut b.units {
         u.health = 0.0;

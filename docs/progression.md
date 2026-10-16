@@ -1,6 +1,6 @@
 # Persistent squads and the Paladin
 
-Founders now runs a local progression loop on the same simulation as PHALANX Lab. Each squad keeps its King, Queen, and General across battles. The two local squads are named **Sunward** and **Moonward** by default; their heraldry is a saved preference rather than their identity.
+Founders now runs a local progression loop on the same simulation as PHALANX Lab. Each squad keeps its fighters across battles; their titles can be reassigned independently of class. The two local squads are named **Sunward** and **Moonward** by default; their heraldry is a saved preference rather than their identity.
 
 ![Paladin aura, saved progress, and chosen heraldry](images/paladin-progression.png)
 
@@ -15,9 +15,9 @@ Founders now runs a local progression loop on the same simulation as PHALANX Lab
 
 The current save is `outputs/phalanx-save.json`. Writes use a temporary file and preserve the previous file as `phalanx-save.json.bak`. Invalid saves are left untouched at startup; automatic writes are disabled until an explicit Save. Both files are local and ignored by Git. Version-1 save validation checks schema, fighter IDs, titles/classes, colors, trait bounds, progression, and history. This is local persistence, not an online anti-cheat system.
 
-## General: Paladin
+## Starting General and Paladin discipline
 
-The General is a **Paladin** with melee combat and a support aura. At the beginning of each simulation tick, living allies within **4 horizontal units** and a clear segment through the arena receive:
+The starting General trains as a **Paladin**. Any fighter may train this discipline, and a General may train any other discipline. The Paladin discipline provides melee combat and a support aura. At the beginning of each simulation tick, living allies within **4 horizontal units** and a clear segment through the arena receive:
 
 | Effect | Rule |
 | --- | --- |
@@ -98,7 +98,7 @@ One weapon, one armor, and one charm may be equipped together. Multipliers combi
 
 Living fighters have overhead HP bars with current/maximum HP. Bars turn amber below 60% and red below 30%; dead, offscreen, menu, and panel-covered bars are hidden. Nearby labels stack to avoid overlap.
 
-Retraining the Queen as a Healer preserves her title and royal HP. Any Healer restores up to 12 HP to a wounded living ally within five units and clear line of sight, with a 1.2-second cooldown. Successful restoration produces a brief green caster-to-target link, rising green crosses, and a `+HP` popup. Effects reflect actual restored HP after simultaneous damage and the maximum-HP cap, including when the target takes damage on the same tick. Fatal damage cannot be healed into a resurrection. Multiple healers share the actual restoration credit. The simulation retains the latest 64 restoration events for presentation.
+Retraining the Queen as a Healer preserves her title and royal HP. An unmastered Healer restores up to 12 HP to a wounded living ally within five units and clear line of sight, with a 1.2-second cooldown. Successful restoration produces a brief green caster-to-target link, rising green crosses, and a `+HP` popup. Effects reflect actual restored HP after simultaneous damage and the maximum-HP cap, including when the target takes damage on the same tick. Fatal damage cannot be healed into a resurrection. Multiple healers share the actual restoration credit. The simulation retains the latest 64 restoration events for presentation.
 
 For a reproducible graphics check, run `phalanx --visual-witness --healing-witness --arena open --seed 42` from a disposable directory with an `assets` link to the game assets. This stages a wounded King and a Queen retrained through the inspector controls, crafts gear, and captures `outputs/healing-witness.png`. It is a staged QA battle, not a normal player's progression result.
 
@@ -121,3 +121,37 @@ Graphics checks use a disposable working directory with an `assets` link:
 ```
 
 These stage and complete a real seeded simulation with a Queen healer, then craft a balanced weapon using battle salvage. Captures are staged QA evidence, not player battle history. The scrolling check sends a mouse-wheel message through the normal screen handler.
+
+
+## Independent titles and retained abilities
+
+Titles, active discipline, permanent mastery, equipment and identity are separate serialized fighter properties. Workshop title buttons assign an office for free. Assigning an occupied title swaps the two holders' titles; assigning Member vacates the selected fighter's office. Each squad can have one of each named office and any number of Members. Offices are optional, and title assignment does not change class, fighter ID, body choice, name, gear or practice. Existing title-based body defaults are frozen before reassignment so a new title cannot change an existing fighter's appearance.
+
+Title bonuses: King/Queen +10 maximum HP and +10% damage; General -10% incoming damage; Captain +10% movement; Champion +10% damage; Member no bonus. These follow the current holder. The General's title protection is distinct from Paladin's blessing. Preparation changes update the staged roster before battle; post-battle changes apply next battle and preserve the completed report's original titles.
+
+Completed-battle XP also trains that fighter's active discipline, once per settlement. Practice is independent for all ten disciplines; 100 retains the supported skill after retraining, with ranks at 100/300/600. Retraining retains accumulated practice, so partial training can be resumed later. Older saves start at zero practice; historical class use cannot be reliably reconstructed. A new recruit starts at zero practice rather than inheriting the template fighter's skills.
+
+See [the mastery effects and limits](classes.md#titles-and-permanent-mastery). The latest battle report records the titles held during combat; legacy reports without that field show “title not recorded.”
+
+
+## Mandatory squad standards and heraldry
+
+Every squad has a persistent flag design and one designated standard-bearer. New squads start with a Sun or Crescent emblem; older saves receive a valid default design. The third fighter is the default bearer, independently of that fighter's current class or title. Every squad must retain a designated bearer; choosing another fighter transfers that duty rather than removing the flag.
+
+In **Squad workshop**, select a fighter from the desired squad. **Next emblem** cycles Sun, Crescent, Diamond, Cross and Chevrons. **Primary color** cycles the shared squad palette; **Accent color** changes the flag border and insignia. **Make selected standard-bearer** assigns the duty to that fighter. These settings serialize with the squad. Before battle, reassignment updates the staged carrier; post-battle reassignment applies next battle. Changes are blocked during active combat.
+
+The physical standard uses a long thin wooden pole, metal brackets and a leather armor socket on the back. A top crossbar carries a tall, double-sided cloth panel with the squad's colors and emblem. The panel ripples with authored wind deformation and stronger movement flutter, while the pole remains attached to the animated torso. Both hands stay free. The flag stays attached to the fallen body; it does not project an aura from a downed bearer. Cloth and pole do not have independent collision simulation.
+
+The designated bearer, active Banner Bearers, and fighters with an equipped War Banner display the same squad standard. Extra standards do not stack rally bonuses. A retained Banner Bearer skill can use either the designated standard or an equipped war banner; carrying a flag never grants an unlearned rally skill. Flag assets are derived from saved heraldry, not serialized meshes or textures.
+
+Close-up graphics checks: `--visual-witness --standard-witness --arena open --seed 42`, adding `--standard-back-witness` for the rear armor mount. Run checks from a disposable working directory with an `assets` link so QA cannot modify the player's save.
+
+## Physical contacts, generated arenas and rivals
+
+Living fighters on both teams occupy 0.45-radius discs. A deterministic spatial hash selects swept collision candidates; continuous contact resolution stops tunneling, preserves stationary defenders and slides moving crowds around one another. The renderer follows the resolved movement trace. Bodies on the ground do not block standing fighters. Contact records contain the surface point, relative velocity and closing speed. Opposing charging contacts above 3.2 speed can deal capped impact damage; Guardians return recoil damage. Normal crowd contacts do not produce blood.
+
+Damage events drive directional airborne droplets, with heavier blunt drops and wider severance sprays. Droplets stamp a persistent terrain-following stain canvas. Moving fighters with unprosthetized limb wounds leave small drips. The canvas resets for a new battle; its memory and droplet pool are bounded. This uses the existing limb-wound state, rather than a separate bleeding simulation.
+
+Generated campaign fields store their seed and layout in the battle snapshot. Eight mirrored layouts combine four destructible barricades, a central elevation, rough approaches, cover and two flanks. Navigation checks connect deployment zones to the objective and both flanks. Fighters can break nearby obstructing barricades; destruction opens navigation immediately. Reports retain the initial arena for replay. Identical seed, squads and build reproduce the simulation; these are constrained authored layouts with seeded variations, rather than an unconstrained world generator.
+
+The **Rival phalanxes** tab selects Obsidian Coven, Iron Sentinel, Bloodhound Syndicate, Vanguard of the Sun or Null Collective. Moonward remains available when swapped into the reserve list. All rosters, offices, standards, equipment, practice, wounds and resources persist. Only the rival actually fought earns progress. Rivals spend earned currencies on gear, prosthetics and cross-training; Null uses observed player composition and the last match's healing to choose counters. This is deterministic adaptation, not a trained online model. Guns, life leech and new stun abilities remain future class content.

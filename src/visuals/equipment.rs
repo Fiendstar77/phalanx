@@ -116,6 +116,9 @@ fn block(
     );
 }
 fn weapon(p: &mut ChildSpawnerCommands, kit: &Kit, class: Class, left: bool) {
+    if class == Class::BannerBearer {
+        return;
+    }
     if left && class != Class::Scout {
         part(
             p,

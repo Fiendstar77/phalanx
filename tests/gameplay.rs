@@ -9,8 +9,9 @@ fn retraining_is_transactional_and_preserves_the_veteran() {
     c.set_class(0, 0, FighterClass::Healer).unwrap();
     assert_eq!(c.teams[0].gold, 90);
     assert_eq!(c.teams[0].fighters[0].fighter_id, identity);
+    c.set_class(0, 2, FighterClass::Healer).unwrap();
+    assert_eq!(c.teams[0].fighters[2].title, CommandTitle::General);
     let before = serde_json::to_string(&c).unwrap();
-    assert!(c.set_class(0, 2, FighterClass::Healer).is_err());
     assert!(c.set_class(0, 0, FighterClass::Healer).is_err());
     assert_eq!(before, serde_json::to_string(&c).unwrap());
     c.teams[0].gold = 0;
@@ -60,7 +61,7 @@ fn healer_restores_living_ally_but_cannot_resurrect() {
     assert!(b.units[0].cooldown > DT);
 }
 #[test]
-fn classes_have_real_tradeoffs_and_general_stays_paladin() {
+fn classes_have_real_tradeoffs_and_default_general_starts_paladin() {
     let mut c = Campaign::new();
     for class in FighterClass::ALL {
         c.teams[0].fighters[0].class = class;

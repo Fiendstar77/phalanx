@@ -139,7 +139,14 @@ fn update(
             gizmos.line(p - Vec3::X * 0.06, p + Vec3::X * 0.06, green);
         }
     }
-    if std::env::args().any(|a| a == "--healing-witness") && time.elapsed_secs() > 3.0 {
+    if std::env::args().any(|a| a == "--healing-witness")
+        && time.elapsed_secs()
+            > if std::env::args().any(|a| a == "--hybrid-witness") {
+                1.5
+            } else {
+                3.0
+            }
+    {
         if !feedback.captured
             && feedback
                 .pulses
@@ -150,11 +157,15 @@ fn update(
             commands
                 .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
                 .observe(bevy::render::view::screenshot::save_to_disk(
-                    "outputs/healing-witness.png",
+                    if std::env::args().any(|a| a == "--hybrid-witness") {
+                        "outputs/hybrid-witness.png"
+                    } else {
+                        "outputs/healing-witness.png"
+                    },
                 ));
             println!(
                 "HEALING_WITNESS {}",
-                serde_json::json!({"queen_class":battle.units[1].class_name(), "heals":battle.heals,"equipment":battle.units[1].equipment})
+                serde_json::json!({"fighter_class":battle.units[session.selected].class_name(), "title":battle.units[session.selected].command_title, "mastery":battle.units[session.selected].mastery, "shots":battle.units[session.selected].rocks_thrown, "heals":battle.heals,"equipment":battle.units[session.selected].equipment})
             );
         }
         if time.elapsed_secs() > 7.0 {
@@ -170,17 +181,18 @@ fn update(
         if session.menu || unit.health <= 0.0 {
             continue;
         }
-        let Ok(screen) = camera
-            .0
-            .world_to_viewport(camera.1, at(bar.0) + Vec3::Y * 0.55)
-        else {
+        let Ok(screen) = camera.0.world_to_viewport(
+            camera.1,
+            at(bar.0) + Vec3::Y * if unit.displays_standard() { 1.6 } else { 0.55 },
+        ) else {
             continue;
         };
         let size = camera
             .0
             .logical_viewport_size()
             .unwrap_or(Vec2::new(1440.0, 900.0));
-        if screen.x < 35.0
+        if (screen.x < 620.0 && screen.y < 285.0)
+            || screen.x < 35.0
             || screen.x > size.x - 390.0
             || screen.y < 135.0
             || screen.y > size.y - 120.0

@@ -5,6 +5,7 @@ use phalanx::equipment::Gear;
 pub enum Page {
     Report,
     Workshop,
+    Rivals,
 }
 pub struct Camp;
 #[derive(Component)]
@@ -15,6 +16,9 @@ struct CampScroll(Page);
 enum Label {
     Report,
     Fighter,
+    Heraldry,
+    Rivals,
+    Rival(usize),
     Recipe(Gear),
     Roster(usize),
     Notice,
@@ -43,7 +47,7 @@ fn label(p: &mut ChildSpawnerCommands, kind: Label, size: f32) {
     ));
 }
 fn setup_camp(mut commands: Commands) {
-    for page in [Page::Report, Page::Workshop] {
+    for page in [Page::Report, Page::Workshop, Page::Rivals] {
         commands.spawn((Panel(page), GlobalZIndex(105), Interaction::default(), Node {
             position_type: PositionType::Absolute, width: percent(100), height: percent(100),
             align_items: AlignItems::Center, justify_content: JustifyContent::Center, display: Display::None, ..default()
@@ -51,10 +55,11 @@ fn setup_camp(mut commands: Commands) {
         .with_children(|root| {
             root.spawn((Node { width: px(1180), max_width: vw(94), height: vh(92), padding: UiRect::all(px(24)), flex_direction: FlexDirection::Column, row_gap: px(12), ..default() }, BackgroundColor(Color::srgb(0.035, 0.055, 0.075))))
             .with_children(|p| {
-                p.spawn((Text::new(if page == Page::Report { "BRING THEM HOME | BATTLE REPORT" } else { "SQUAD WORKSHOP" }), font(28.), TextColor(Color::srgb(1.,0.72,0.08))));
+                p.spawn((Text::new(if page == Page::Report { "BRING THEM HOME | BATTLE REPORT" } else if page == Page::Rivals { "THE RIVAL PHALANXES" } else { "SQUAD WORKSHOP" }), font(28.), TextColor(Color::srgb(1.,0.72,0.08))));
                 p.spawn(Node { flex_wrap: FlexWrap::Wrap, ..default() }).with_children(|row| {
                     button(row, "Battle report", Control::Camp(Page::Report));
                     button(row, "Squad & equipment", Control::Camp(Page::Workshop));
+                    button(row, "Rival phalanxes", Control::Camp(Page::Rivals));
                     button(row, "Return to arena", Control::Continue);
                     button(row, "Main menu", Control::Menu);
                 });
@@ -63,6 +68,11 @@ fn setup_camp(mut commands: Commands) {
                 })).with_children(|body| {
                     if page == Page::Report {
                         label(body, Label::Report, 17.);
+                    } else if page == Page::Rivals {
+                        label(body, Label::Rivals, 17.);
+                        for index in 0..5 {
+                            body.spawn((Button, Control::ChooseRival(index), PressLatch::default(), BackgroundColor(Color::srgb(0.12,0.18,0.25)), Node { padding:UiRect::all(px(12)), flex_shrink:0., ..default() })).with_children(|p|label(p, Label::Rival(index),15.));
+                        }
                     } else {
                         body.spawn(Node { column_gap: px(24), align_items: AlignItems::Start, ..default() }).with_children(|columns| {
                             columns.spawn(Node { width: px(330), flex_shrink: 0., flex_direction: FlexDirection::Column, row_gap: px(8), ..default() }).with_children(|roster| {
@@ -74,7 +84,18 @@ fn setup_camp(mut commands: Commands) {
                             });
                             columns.spawn(Node { flex_grow: 1., min_width: px(0), flex_direction: FlexDirection::Column, row_gap: px(10), ..default() }).with_children(|details| {
                                 label(details, Label::Fighter, 16.);
-                                details.spawn((Text::new("RETRAIN | 10 gold (General remains a Paladin)"), font(13.)));
+                                label(details, Label::Heraldry, 14.);
+                                details.spawn(Node { flex_wrap: FlexWrap::Wrap, ..default() }).with_children(|row| {
+                                    button(row, "Next emblem", Control::FlagEmblem);
+                                    button(row, "Primary color", Control::FlagPrimary);
+                                    button(row, "Accent color", Control::FlagAccent);
+                                    button(row, "Make selected standard-bearer", Control::StandardBearer);
+                                });
+                                details.spawn((Text::new("TITLES | free; occupied offices swap holders"), font(13.)));
+                                details.spawn(Node { flex_wrap: FlexWrap::Wrap, ..default() }).with_children(|row| {
+                                    for title in CommandTitle::ALL { button(row, &format!("{} | {}", title.name(), title.description()), Control::Title(title)); }
+                                });
+                                details.spawn((Text::new("RETRAIN | 10 gold (all titles may train any discipline)"), font(13.)));
                                 details.spawn(Node { flex_wrap: FlexWrap::Wrap, ..default() }).with_children(|row| {
                                     for class in FighterClass::ALL { button(row, class.name(), Control::Class(class)); }
                                 });
@@ -104,8 +125,12 @@ fn setup_camp(mut commands: Commands) {
 fn prepared(session: &Session, id: usize) -> phalanx::Unit {
     let mut unit = session.battle.units[id].clone();
     let fighter = &session.campaign.teams[unit.team].fighters[id % session.battle.team_size()];
+    unit.command_title = Some(fighter.title);
+    unit.mastery = fighter.mastery;
+    unit.carries_standard =
+        id % session.battle.team_size() == session.campaign.teams[unit.team].standard_bearer;
     unit.class = Some(fighter.class);
-    unit.role = fighter.class.role();
+    unit.role = unit.trained_role();
     unit.experience = fighter.experience;
     unit.lost_limbs = fighter.lost_limbs;
     unit.prosthetics = fighter.prosthetics;
@@ -129,7 +154,15 @@ fn report(session: &Session) -> String {
     };
     let outcome = r
         .winner
-        .map(|t| format!("{} wins", session.campaign.teams[t].name))
+        .map(|t| {
+            format!(
+                "{} wins",
+                r.team_names
+                    .as_ref()
+                    .map(|n| n[t].as_str())
+                    .unwrap_or("historical opponent")
+            )
+        })
         .unwrap_or_else(|| "Draw".into());
     let mut text = format!(
         "{} | Battle {} | {} | Seed {}\n\n",
@@ -141,10 +174,15 @@ fn report(session: &Session) -> String {
     for team in 0..2 {
         text.push_str(&format!(
             "{} | +{} gold | +{} salvage\n",
-            session.campaign.teams[team].name, r.gold[team], r.salvage[team]
+            r.team_names
+                .as_ref()
+                .map(|n| n[team].as_str())
+                .unwrap_or("historical squad"),
+            r.gold[team],
+            r.salvage[team]
         ));
         for f in &r.fighters[team] {
-            text.push_str(&format!("{} / {} | {} ({:.0}/{:.0} HP)\n  Damage {:.0} | Healing {:.0} | +{} XP | New wounds: {}\n", f.name, f.class.name(), if f.health > 0. { "Survived" } else { "Downed" }, f.health, f.max_health, f.damage, f.healing, f.xp, limb_names(f.new_wounds)));
+            text.push_str(&format!("{} [{}] / {} | {} ({:.0}/{:.0} HP)\n  Damage {:.0} | Healing {:.0} | +{} XP | New wounds: {}\n", f.name, f.title.map(CommandTitle::name).unwrap_or("title not recorded"), f.class.name(), if f.health > 0. { "Survived" } else { "Downed" }, f.health, f.max_health, f.damage, f.healing, f.xp, limb_names(f.new_wounds)));
         }
         text.push('\n');
     }
@@ -183,6 +221,41 @@ fn refresh(
     for (kind, mut text) in &mut texts {
         let value = match kind {
             Label::Report => report(&session),
+            Label::Rivals => format!(
+                "Current opponent: {}\n{}\nRivals earn XP, retain mastery, carry wounds and buy gear with earned gold/salvage.\nThey progress when fought. Choose a challenger before or after battle.\nYour previous battle report stays unchanged.",
+                session.campaign.teams[1].name,
+                session.campaign.teams[1]
+                    .rival_style
+                    .map(|s| s.doctrine())
+                    .unwrap_or("Original local opponent; preserved with its existing identity")
+            ),
+            Label::Rival(index) => session
+                .campaign
+                .rivals
+                .get(*index)
+                .map(|r| {
+                    format!(
+                        "CHALLENGE {}\n{}\n{} gold / {} salvage | {} | {} battles / {} wins",
+                        r.name,
+                        r.rival_style
+                            .map(|s| s.doctrine())
+                            .unwrap_or("Legacy opponent"),
+                        r.gold,
+                        r.salvage,
+                        r.fighters
+                            .iter()
+                            .map(|f| format!(
+                                "{} L{}",
+                                f.class.name(),
+                                1 + (f.experience / 100).min(9)
+                            ))
+                            .collect::<Vec<_>>()
+                            .join(" / "),
+                        r.fighters[0].battles,
+                        r.fighters[0].wins
+                    )
+                })
+                .unwrap_or_default(),
             Label::Notice => format!(
                 "{}\n{}",
                 if locked {
@@ -192,14 +265,25 @@ fn refresh(
                 },
                 session.save_notice
             ),
+            Label::Heraldry => format!(
+                "PHALANX FLAG | {} emblem | bearer: {} [{}]\nPrimary: shared with squad colors | Accent: {:.0}/{:.0}/{:.0}\nThe standard is carried independently of class and title.",
+                team.heraldry.emblem.name(),
+                team.fighters[team.standard_bearer].name,
+                team.fighters[team.standard_bearer].title.name(),
+                team.heraldry.accent[0] * 255.0,
+                team.heraldry.accent[1] * 255.0,
+                team.heraldry.accent[2] * 255.0
+            ),
             Label::Fighter => format!(
-                "{} | {} / {} | {} gold / {} salvage\n{}\nEquipped: {}\nMissing: {} | Iron I: {}",
+                "{} | {} [title: {}] / {} | {} gold / {} salvage\n{}\n{}\nEquipped: {}\nMissing: {} | Iron I: {}",
                 team.name,
                 fighter.name,
+                fighter.title.name(),
                 fighter.class.name(),
                 team.gold,
                 team.salvage,
                 stats(&unit),
+                fighter.mastery.summary(fighter.class),
                 fighter.equipment.summary(),
                 limb_names(fighter.lost_limbs),
                 limb_names(fighter.prosthetics)
@@ -212,10 +296,11 @@ fn refresh(
                     let t = &session.campaign.teams[u.team];
                     let f = &t.fighters[*id % session.battle.team_size()];
                     format!(
-                        "{}{} / {}\n{} | Level {} | {} XP\n{}",
+                        "{}{} / {} [{}]\n{} | Level {} | {} XP\n{}",
                         if *id == session.selected { "> " } else { "" },
                         t.name,
                         f.name,
+                        f.title.name(),
                         f.class.name(),
                         u.level(),
                         f.experience,
@@ -336,7 +421,28 @@ mod tests {
                 .equipment
                 .has(Gear::BalancedWeapon)
         );
+        apply(Control::StandardBearer, &mut session);
+        apply(Control::FlagEmblem, &mut session);
+        apply(Control::FlagPrimary, &mut session);
+        apply(Control::FlagAccent, &mut session);
+        assert!(!session.battle.units[1].carries_standard);
+        assert!(prepared(&session, 1).carries_standard);
+        apply(Control::Title(CommandTitle::Captain), &mut session);
+        assert_eq!(
+            session.battle.units[1].command_title,
+            Some(CommandTitle::Queen)
+        );
+        assert_eq!(
+            prepared(&session, 1).command_title,
+            Some(CommandTitle::Captain)
+        );
+        assert_eq!(report_before, report(&session));
         apply(Control::NextBattle, &mut session);
+        assert_eq!(
+            session.battle.units[1].command_title,
+            Some(CommandTitle::Captain)
+        );
+        assert!(session.battle.units[1].carries_standard);
         assert_eq!(session.camp_page, None);
         assert!(!session.menu);
         assert!(session.battle.units[1].equipment.has(Gear::BalancedWeapon));
@@ -367,7 +473,14 @@ fn scroll_witness(
 fn unavailable(session: &Session, control: Control) -> bool {
     if !matches!(
         control,
-        Control::Workshop(_) | Control::Prosthetic | Control::Class(_)
+        Control::Workshop(_)
+            | Control::Prosthetic
+            | Control::Class(_)
+            | Control::Title(_)
+            | Control::FlagPrimary
+            | Control::FlagAccent
+            | Control::FlagEmblem
+            | Control::StandardBearer
     ) {
         return false;
     }
@@ -382,9 +495,9 @@ fn unavailable(session: &Session, control: Control) -> bool {
             let (gold, salvage) = gear.cost();
             !fighter.equipment.owns(gear) && (team.gold < gold || team.salvage < salvage)
         }
-        Control::Class(class) => {
-            team.gold < 10 || fighter.class == class || fighter.title == CommandTitle::General
-        }
+        Control::Class(class) => team.gold < 10 || fighter.class == class,
+        Control::Title(title) => fighter.title == title,
+        Control::StandardBearer => team.standard_bearer == unit.id % session.battle.team_size(),
         Control::Prosthetic => {
             team.gold < 15 || team.salvage < 5 || fighter.lost_limbs & !fighter.prosthetics == 0
         }
@@ -428,7 +541,14 @@ fn polish(
             };
         } else if !matches!(
             control,
-            Control::Workshop(_) | Control::Prosthetic | Control::Class(_)
+            Control::Workshop(_)
+                | Control::Prosthetic
+                | Control::Class(_)
+                | Control::Title(_)
+                | Control::FlagPrimary
+                | Control::FlagAccent
+                | Control::FlagEmblem
+                | Control::StandardBearer
         ) {
             continue;
         }

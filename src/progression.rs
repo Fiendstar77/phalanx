@@ -106,6 +106,8 @@ pub struct WoundRecord {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Fighter {
     #[serde(default)]
+    pub mastery: crate::mastery::Mastery,
+    #[serde(default)]
     pub equipment: crate::equipment::Equipment,
     pub fighter_id: String,
     pub name: String,
@@ -130,6 +132,12 @@ pub struct Fighter {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Phalanx {
+    #[serde(default)]
+    pub rival_style: Option<crate::rivals::RivalStyle>,
+    #[serde(default)]
+    pub heraldry: crate::heraldry::Heraldry,
+    #[serde(default = "crate::heraldry::default_bearer")]
+    pub standard_bearer: usize,
     pub name: String,
     pub color: [f32; 3],
     pub fighters: Vec<Fighter>,
@@ -140,6 +148,8 @@ pub struct Phalanx {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FighterResult {
+    #[serde(default)]
+    pub title: Option<CommandTitle>,
     pub name: String,
     pub class: FighterClass,
     pub health: f32,
@@ -151,6 +161,8 @@ pub struct FighterResult {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BattleReport {
+    #[serde(default)]
+    pub team_names: Option<[String; 2]>,
     pub arena: Arena,
     pub battle_id: u64,
     pub seed: u64,
@@ -185,6 +197,8 @@ impl BattleReport {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Campaign {
     #[serde(default)]
+    pub rivals: Vec<Phalanx>,
+    #[serde(default)]
     pub last_report: Option<BattleReport>,
     pub schema_version: u32,
     pub teams: [Phalanx; 2],
@@ -205,12 +219,23 @@ impl Campaign {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        Self {
+        let mut campaign = Self {
+            rivals: Vec::new(),
             last_report: None,
             schema_version: 1,
             next_battle_id: 0,
             last_settled_id: None,
             teams: std::array::from_fn(|team| Phalanx {
+                rival_style: None,
+                heraldry: crate::heraldry::Heraldry {
+                    emblem: if team == 0 {
+                        crate::heraldry::Emblem::Sun
+                    } else {
+                        crate::heraldry::Emblem::Crescent
+                    },
+                    ..Default::default()
+                },
+                standard_bearer: 2,
                 name: if team == 0 {
                     "Sunward".into()
                 } else {
@@ -227,6 +252,7 @@ impl Campaign {
                 .into_iter()
                 .enumerate()
                 .map(|(slot, title)| Fighter {
+                    mastery: Default::default(),
                     equipment: Default::default(),
                     fighter_id: format!("{stamp:x}-{team}-{slot}"),
                     name: title.name().into(),
@@ -253,7 +279,9 @@ impl Campaign {
                 })
                 .collect(),
             }),
-        }
+        };
+        crate::rivals::initialize(&mut campaign);
+        campaign
     }
     pub fn validate(&self) -> Result<(), String> {
         if self.last_report.as_ref().is_some_and(|r| {
@@ -271,11 +299,16 @@ impl Campaign {
         {
             return Err("invalid campaign schema or battle sequence".into());
         }
+        if self.rivals.len() > 5 {
+            return Err("too many reserve rivals".into());
+        }
         let mut ids = BTreeSet::new();
         let valid_name =
             |s: &str| !s.is_empty() && s.chars().count() <= 64 && !s.chars().any(char::is_control);
-        for team in &self.teams {
-            if !valid_name(&team.name)
+        for team in self.teams.iter().chain(self.rivals.iter()) {
+            if !team.heraldry.valid()
+                || team.standard_bearer >= team.fighters.len()
+                || !valid_name(&team.name)
                 || team.salvage > 1_000_000
                 || team.gold > 1_000_000
                 || !(3..=4).contains(&team.fighters.len())
@@ -287,23 +320,18 @@ impl Campaign {
             {
                 return Err("invalid squad or color".into());
             }
-            for (slot, f) in team.fighters.iter().enumerate() {
+            let mut titles = BTreeSet::new();
+            for f in &team.fighters {
+                if f.title != CommandTitle::Member && !titles.insert(f.title) {
+                    return Err("duplicate squad title".into());
+                }
                 let m = f.mind;
                 if !f.equipment.valid()
                     || !valid_name(&f.name)
                     || f.fighter_id.is_empty()
                     || f.fighter_id.len() > 128
                     || !ids.insert(&f.fighter_id)
-                    || f.title
-                        != [
-                            CommandTitle::King,
-                            CommandTitle::Queen,
-                            CommandTitle::General,
-                        ]
-                        .get(slot)
-                        .copied()
-                        .unwrap_or(CommandTitle::Member)
-                    || (f.title == CommandTitle::General && f.class != FighterClass::Paladin)
+                    || !f.mastery.valid()
                     || [
                         m.aggression,
                         m.caution,
@@ -372,7 +400,12 @@ impl Campaign {
         b.controller = controller;
         b.pressure_note = arena.challenge().into();
         if let crate::terrain::Arena::Pressure(field) = arena {
-            b.pressure_note = field.reason().into();
+            b.pressure_note = format!(
+                "{} | seed {} / layout {} | two flanks, cover, rough ground and a central objective",
+                field.reason(),
+                field.seed,
+                field.layout
+            );
         }
         let size = b.team_size();
         for u in &mut b.units {
@@ -387,6 +420,9 @@ impl Campaign {
             u.lost_limbs = f.lost_limbs;
             u.prosthetics = f.prosthetics;
             u.equipment = f.equipment;
+            u.mastery = f.mastery;
+            u.carries_standard = u.id % size == self.teams[u.team].standard_bearer;
+            u.role = u.trained_role();
             u.psyche = f.psyche;
             u.health = u.max_health();
         }
@@ -465,7 +501,7 @@ impl Campaign {
         }
         let mut updated = self.clone();
         updated.teams[0].gold -= cost;
-        for team in &mut updated.teams {
+        for team in updated.teams.iter_mut().chain(updated.rivals.iter_mut()) {
             let mut recruit = team.fighters[0].clone();
             recruit.fighter_id = format!("{}-recruit-4", recruit.fighter_id);
             recruit.name = "Recruit".into();
@@ -479,6 +515,7 @@ impl Campaign {
             recruit.lost_limbs = 0;
             recruit.prosthetics = 0;
             recruit.equipment = Default::default();
+            recruit.mastery = Default::default();
             recruit.appearance = Appearance::default();
             recruit.psyche = Psyche::default();
             team.fighters.push(recruit);
@@ -487,7 +524,36 @@ impl Campaign {
         *self = updated;
         Ok(())
     }
-    /// Retraining preserves identity, experience and wounds. Generals remain Paladins.
+    /// Titles are unique offices, except Member. Assigning an occupied office swaps the two titles.
+    pub fn assign_title(
+        &mut self,
+        team: usize,
+        slot: usize,
+        title: CommandTitle,
+    ) -> Result<(), String> {
+        self.validate()?;
+        let squad = self.teams.get_mut(team).ok_or("invalid squad")?;
+        let old = squad.fighters.get(slot).ok_or("invalid fighter")?.title;
+        if old == title {
+            return Err("Already holds this title".into());
+        }
+        // Freeze the existing body choice before changing a title used by legacy appearance defaults.
+        for (index, fighter) in squad.fighters.iter_mut().enumerate() {
+            fighter.appearance = fighter.appearance.resolved(team, index);
+            fighter
+                .appearance
+                .female
+                .get_or_insert(fighter.title == CommandTitle::Queen);
+        }
+        if title != CommandTitle::Member
+            && let Some(other) = squad.fighters.iter().position(|f| f.title == title)
+        {
+            squad.fighters[other].title = old;
+        }
+        squad.fighters[slot].title = title;
+        Ok(())
+    }
+    /// Retraining preserves identity, titles, mastery, experience and wounds.
     pub fn set_class(
         &mut self,
         team: usize,
@@ -497,9 +563,6 @@ impl Campaign {
         self.validate()?;
         let squad = self.teams.get_mut(team).ok_or("invalid squad")?;
         let f = squad.fighters.get_mut(slot).ok_or("invalid fighter")?;
-        if f.title == CommandTitle::General {
-            return Err("The General is your Paladin".into());
-        }
         if f.class == class {
             return Err("Already trained in this class".into());
         }
@@ -586,6 +649,7 @@ impl Campaign {
                 + u32::from(survived) * 5
                 + (u.damage_dealt / 20.0).clamp(0.0, 10.0) as u32;
             f.experience = f.experience.saturating_add(xp).min(1_000_000);
+            f.mastery.train(u.class.unwrap_or(f.class), xp);
             f.battles += 1;
             f.wins += u32::from(won);
             // Deterministic habits, not online PyTorch training or a promise of better tactics.
@@ -617,7 +681,8 @@ impl Campaign {
             }
         }
         updated.last_report = Some(BattleReport {
-            arena: b.arena,
+            team_names: Some(std::array::from_fn(|team| self.teams[team].name.clone())),
+            arena: b.initial_arena,
             battle_id: id,
             seed: b.seed,
             winner,
@@ -633,6 +698,7 @@ impl Campaign {
                         let slot = u.id % b.team_size();
                         let f = &updated.teams[team].fighters[slot];
                         FighterResult {
+                            title: u.command_title,
                             name: f.name.clone(),
                             class: f.class,
                             health: u.health,
@@ -646,14 +712,31 @@ impl Campaign {
                     .collect()
             }),
         });
+        let healing = b
+            .units
+            .iter()
+            .filter(|u| u.team == 0)
+            .map(|u| u.healing_done)
+            .sum();
+        let player = updated.teams[0].clone();
+        crate::rivals::evolve(&mut updated.teams[1], &player, healing);
         updated.last_settled_id = Some(id);
         updated.validate()?;
         *self = updated;
         Ok(())
     }
+    pub fn select_rival(&mut self, index: usize) -> Result<(), String> {
+        self.validate()?;
+        crate::rivals::initialize(self);
+        let rival = self.rivals.get_mut(index).ok_or("invalid rival")?;
+        std::mem::swap(&mut self.teams[1], rival);
+        self.validate()
+    }
     pub fn load(path: &Path) -> Result<Self, String> {
-        let c: Self = serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
+        let mut c: Self = serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
             .map_err(|e| e.to_string())?;
+        c.validate()?;
+        crate::rivals::initialize(&mut c);
         c.validate()?;
         Ok(c)
     }

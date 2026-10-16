@@ -8,14 +8,16 @@ pub enum Gear {
     IronArmor,
     TrailArmor,
     VitalityCharm,
+    WarBanner,
 }
 impl Gear {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::TemperedWeapon,
         Self::BalancedWeapon,
         Self::IronArmor,
         Self::TrailArmor,
         Self::VitalityCharm,
+        Self::WarBanner,
     ];
     pub fn index(self) -> usize {
         Self::ALL.iter().position(|g| *g == self).unwrap()
@@ -24,7 +26,7 @@ impl Gear {
         match self {
             Self::TemperedWeapon | Self::BalancedWeapon => 0,
             Self::IronArmor | Self::TrailArmor => 1,
-            Self::VitalityCharm => 2,
+            Self::VitalityCharm | Self::WarBanner => 2,
         }
     }
     pub fn name(self) -> &'static str {
@@ -34,6 +36,7 @@ impl Gear {
             Self::IronArmor => "Iron armor",
             Self::TrailArmor => "Trail armor",
             Self::VitalityCharm => "Vitality charm",
+            Self::WarBanner => "War banner",
         }
     }
     pub fn effect(self) -> &'static str {
@@ -43,6 +46,7 @@ impl Gear {
             Self::IronArmor => "-20% incoming damage, -15% speed",
             Self::TrailArmor => "+12% speed, +8% incoming damage",
             Self::VitalityCharm => "+20 maximum HP",
+            Self::WarBanner => "Enables retained Banner Bearer rally aura",
         }
     }
     pub fn cost(self) -> (u32, u32) {
@@ -52,6 +56,7 @@ impl Gear {
             Self::IronArmor => (30, 10),
             Self::TrailArmor => (20, 6),
             Self::VitalityCharm => (35, 12),
+            Self::WarBanner => (25, 8),
         }
     }
 }
@@ -65,7 +70,7 @@ impl Equipment {
         self.owned & (1 << gear.index()) != 0
     }
     pub fn valid(self) -> bool {
-        self.owned & !31 == 0
+        self.owned & !63 == 0
             && self
                 .slots
                 .iter()

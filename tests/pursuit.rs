@@ -16,6 +16,7 @@ fn saturated_scars_do_not_freeze_healthy_veterans_or_produce_endless_flight() {
             cover_extra: 0,
             wide: false,
             reach: 1,
+            ..Default::default()
         }),
     ] {
         let mut campaign = Campaign::new();
@@ -65,6 +66,7 @@ fn arriving_in_an_empty_enemy_deployment_zone_starts_a_sweep() {
             cover_extra: 0,
             wide: false,
             reach: 1,
+            ..Default::default()
         }),
     ] {
         let mut battle = Battle::with_founders(42, false, arena);

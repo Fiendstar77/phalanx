@@ -28,6 +28,7 @@ fn setup_menu(mut commands: Commands) {
                     button(p,"Enter arena / manage your fighters",Control::Continue);
                     button(p,"Squad workshop",Control::Camp(camp::Page::Workshop));
                     button(p,"Last battle report",Control::Camp(camp::Page::Report));
+                    button(p,"Choose a rival phalanx",Control::Camp(camp::Page::Rivals));
                     button(p,"Unlock fourth fighter / League 4 - 1000 gold",Control::Recruit);
                     button(p,"View League 3 -> 20 gold ladder",Control::Ladder);
                     button(p,"Change arena",Control::Arena);
