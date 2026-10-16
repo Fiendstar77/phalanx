@@ -1,6 +1,5 @@
 {
   "source_models_preserved": true,
-  "female_cheek_vertices_affected": 1279,
   "clips": [
     "Idle",
     "Walk",
@@ -8,7 +7,15 @@
     "Attack",
     "Throw",
     "Hit",
-    "Death"
+    "Death",
+    "AttackQuick",
+    "AttackHeavy",
+    "AttackDesperate",
+    "ThrowUnderhand",
+    "HitHeavy",
+    "LimbRecoil",
+    "DeathBackward",
+    "DeathDelayed"
   ],
-  "method": "Authored procedural motion; female weights transferred from matching male T-pose; female render copy decimated to 19 percent."
+  "method": "Artist-rigged new bases, independent bone-parented eyes; authored procedural combat motion. Feet normalized to ground."
 }

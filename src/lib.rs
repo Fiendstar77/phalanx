@@ -1,10 +1,13 @@
 //! Fixed-step combat model, independent of rendering and wall-clock time.
 use serde::{Deserialize, Serialize};
 pub mod cognition;
+pub mod equipment;
 pub mod learned;
 pub mod navigation;
 pub mod perception;
+pub mod pressure;
 pub mod progression;
+pub mod psyche;
 pub mod telemetry;
 pub mod terrain;
 use learned::{Comparison, ComparisonSummary, Controller, LearnedPolicy};
@@ -174,6 +177,9 @@ fn is_zero_byte(v: &u8) -> bool {
 fn is_false(v: &bool) -> bool {
     !*v
 }
+fn is_zero_f32(v: &f32) -> bool {
+    *v == 0.0
+}
 #[derive(Clone, Debug, Serialize)]
 pub struct Rock {
     pub shooter: usize,
@@ -205,6 +211,7 @@ pub struct Unit {
     pub lost_limbs: u8,
     #[serde(skip_serializing_if = "is_zero_byte")]
     pub prosthetics: u8,
+    pub equipment: equipment::Equipment,
     pub position: [f32; 2],
     pub health: f32,
     pub mind: Mind,
@@ -236,6 +243,23 @@ pub struct Unit {
     pub comparison: Option<Comparison>,
     #[serde(skip_serializing_if = "search_not_started")]
     pub search_waypoint: u32,
+    /// Persistent scars copied in for a Founders battle. Blank for the Lab.
+    #[serde(skip_serializing_if = "psyche::is_blank_field")]
+    pub psyche: psyche::Psyche,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub exposure_isolation: u32,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub exposure_encirclement: u32,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub exposure_ally_loss: u32,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub exposure_failed_charge: u32,
+    #[serde(skip_serializing_if = "is_zero_byte")]
+    pub witnessed_dead: u8,
+    #[serde(skip_serializing_if = "is_false")]
+    pub charging: bool,
+    #[serde(skip_serializing_if = "is_zero_f32")]
+    pub charge_health: f32,
 }
 impl Unit {
     pub fn level(&self) -> u32 {
@@ -247,7 +271,8 @@ impl Unit {
             .unwrap_or(self.role.name())
     }
     pub fn incoming_multiplier(&self) -> f32 {
-        (if self.blessed { 0.90 } else { 1.0 })
+        self.equipment.incoming()
+            * (if self.blessed { 0.90 } else { 1.0 })
             * match self.class {
                 Some(FighterClass::Guardian) => 0.65,
                 Some(FighterClass::Berserker) => 1.15,
@@ -259,7 +284,8 @@ impl Unit {
             110.0
         } else {
             100.0
-        }) + (self.level() - 1) as f32 * 2.0
+        }) + self.equipment.health()
+            + (self.level() - 1) as f32 * 2.0
             + match self.class {
                 Some(FighterClass::Guardian) => 30.0,
                 Some(FighterClass::Scout) => -15.0,
@@ -270,26 +296,31 @@ impl Unit {
         self.health / self.max_health()
     }
     pub fn movement_multiplier(&self) -> f32 {
-        (match self.class {
-            Some(FighterClass::Scout) => 1.45,
-            Some(FighterClass::Guardian) => 0.8,
-            _ => 1.0,
-        }) * 0.65_f32.powi(((self.lost_limbs & !self.prosthetics) & 12).count_ones() as i32)
+        self.equipment.speed()
+            * (match self.class {
+                Some(FighterClass::Scout) => 1.45,
+                Some(FighterClass::Guardian) => 0.8,
+                _ => 1.0,
+            })
+            * 0.65_f32.powi(((self.lost_limbs & !self.prosthetics) & 12).count_ones() as i32)
             * if self.prosthetics & 3 != 0 { 0.85 } else { 1.0 }
     }
     pub fn damage_multiplier(&self) -> f32 {
-        (match self.class {
-            Some(FighterClass::Berserker) => {
-                1.15 + (1.0 - self.health_fraction()).clamp(0.0, 1.0) * 0.85
-            }
-            Some(FighterClass::Healer) => 0.65,
-            Some(FighterClass::Guardian) => 0.8,
-            _ => 1.0,
-        }) * (if self.command_title.is_some_and(CommandTitle::royal) {
-            1.10
-        } else {
-            1.0
-        }) * (1.0 + (self.level() - 1) as f32 * 0.01)
+        self.equipment.damage()
+            * (match self.class {
+                Some(FighterClass::Berserker) => {
+                    1.15 + (1.0 - self.health_fraction()).clamp(0.0, 1.0) * 0.85
+                }
+                Some(FighterClass::Healer) => 0.65,
+                Some(FighterClass::Guardian) => 0.8,
+                _ => 1.0,
+            })
+            * (if self.command_title.is_some_and(CommandTitle::royal) {
+                1.10
+            } else {
+                1.0
+            })
+            * (1.0 + (self.level() - 1) as f32 * 0.01)
             * (if self.blessed { 1.05 } else { 1.0 })
             * 0.80_f32.powi(((self.lost_limbs & !self.prosthetics) & 3).count_ones() as i32)
             * if self.prosthetics & 3 != 0 { 3.0 } else { 1.0 }
@@ -316,6 +347,9 @@ pub struct Battle {
     pub comparison_summary: ComparisonSummary,
     pub learned_fallbacks: u32,
     pub simulation_version: String,
+    /// Why a Founders pressure field was chosen. Empty for authored arenas.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub pressure_note: String,
     pub ally_distance_sum: [f64; 2],
     pub ally_distance_samples: [u32; 2],
 }
@@ -431,6 +465,7 @@ impl Battle {
                     blessed: false,
                     lost_limbs: 0,
                     prosthetics: 0,
+                    equipment: equipment::Equipment::default(),
                     role: if (founders && id % team_size == 1)
                         || (!founders && id % team_size >= arena.fighters())
                     {
@@ -476,6 +511,14 @@ impl Battle {
                     decision_reason: "Awaiting first decision".into(),
                     comparison: None,
                     search_waypoint: 0,
+                    psyche: psyche::Psyche::default(),
+                    exposure_isolation: 0,
+                    exposure_encirclement: 0,
+                    exposure_ally_loss: 0,
+                    exposure_failed_charge: 0,
+                    witnessed_dead: 0,
+                    charging: false,
+                    charge_health: 0.0,
                 }
             })
             .collect();
@@ -497,6 +540,7 @@ impl Battle {
             comparison_summary: ComparisonSummary::default(),
             learned_fallbacks: 0,
             simulation_version: env!("CARGO_PKG_VERSION").into(),
+            pressure_note: String::new(),
             ally_distance_sum: [0.0; 2],
             ally_distance_samples: [0; 2],
         }
@@ -602,18 +646,25 @@ impl Battle {
                 .collect();
             let enemy = cognition::focus_target(unit, &allies, self.tick);
             // Enemy deployment zones are authored objectives, not live enemy positions.
-            let mut objective =
-                arena.search_waypoint(unit.team, unit.id % team_size, unit.search_waypoint);
-            if arena.large() && enemy.is_none() && distance(unit.position, objective) < 1.8 {
+            let search_goal = |leg: u32| {
+                if self.founders && leg.is_multiple_of(5) {
+                    [
+                        arena.spawn(1 - unit.team, 0)[0],
+                        (unit.id % team_size) as f32 * 1.6 - 1.6,
+                    ]
+                } else {
+                    arena.search_waypoint(unit.team, unit.id % team_size, leg)
+                }
+            };
+            let mut objective = search_goal(unit.search_waypoint);
+            // Reaching an empty deployment zone starts a sweep on every map,
+            // including generated fields. Never consult unseen enemy positions.
+            if (self.founders || arena.large())
+                && enemy.is_none()
+                && distance(unit.position, objective) < 1.8
+            {
                 unit.search_waypoint += 1;
-                objective =
-                    arena.search_waypoint(unit.team, unit.id % team_size, unit.search_waypoint);
-            }
-            if self.founders && unit.search_waypoint.is_multiple_of(5) {
-                objective = [
-                    arena.spawn(1 - unit.team, 0)[0],
-                    (unit.id % team_size) as f32 * 1.6 - 1.6,
-                ];
+                objective = search_goal(unit.search_waypoint);
             }
             let enemy_position = enemy.as_ref().map(|e| e.position).unwrap_or(objective);
             let d = enemy
@@ -640,6 +691,40 @@ impl Battle {
                 .sum::<f32>()
                 / 3.0)
                 .min(1.0);
+            // Founders remember who was cut off, surrounded, or saw an ally fall.
+            // The Lab does not record these, so its serialized battles stay unchanged.
+            if self.founders {
+                let mates: Vec<[f32; 2]> = snapshot
+                    .iter()
+                    .filter(|ally| {
+                        ally.team == unit.team && ally.id != unit.id && ally.health > 0.0
+                    })
+                    .map(|ally| ally.position)
+                    .collect();
+                let foes: Vec<[f32; 2]> = snapshot
+                    .iter()
+                    .filter(|enemy| enemy.team != unit.team && enemy.health > 0.0)
+                    .map(|enemy| enemy.position)
+                    .collect();
+                if psyche::isolated(unit.position, &mates) {
+                    unit.exposure_isolation = unit.exposure_isolation.saturating_add(1);
+                }
+                if psyche::encircled(unit.position, &foes) {
+                    unit.exposure_encirclement = unit.exposure_encirclement.saturating_add(1);
+                }
+                for ally in snapshot.iter().filter(|ally| {
+                    ally.team == unit.team
+                        && ally.id != unit.id
+                        && ally.health <= 0.0
+                        && distance(unit.position, ally.position) <= 8.0
+                }) {
+                    let bit = 1_u8 << (ally.id % team_size);
+                    if unit.witnessed_dead & bit == 0 {
+                        unit.witnessed_dead |= bit;
+                        unit.exposure_ally_loss = unit.exposure_ally_loss.saturating_add(1);
+                    }
+                }
+            }
             let ridge = if arena.large() {
                 arena.high_ground(unit.position)
             } else {
@@ -750,6 +835,82 @@ impl Battle {
                         -1.0
                     },
                 ];
+                let scar = if self.founders {
+                    if unit.charging && unit.charge_health - unit.health >= 8.0 {
+                        unit.exposure_failed_charge = unit.exposure_failed_charge.saturating_add(1);
+                        unit.charging = false;
+                    }
+                    let mates: Vec<[f32; 2]> = snapshot
+                        .iter()
+                        .filter(|ally| {
+                            ally.team == unit.team && ally.id != unit.id && ally.health > 0.0
+                        })
+                        .map(|ally| ally.position)
+                        .collect();
+                    let foes: Vec<[f32; 2]> = snapshot
+                        .iter()
+                        .filter(|enemy| enemy.team != unit.team && enemy.health > 0.0)
+                        .map(|enemy| enemy.position)
+                        .collect();
+                    let ally_hurt = snapshot.iter().any(|ally| {
+                        ally.team == unit.team
+                            && ally.id != unit.id
+                            && distance(unit.position, ally.position) <= 8.0
+                            && (ally.health <= 0.0 || ally.health_fraction() < 0.6)
+                    });
+                    psyche::bias_scores(
+                        unit.psyche,
+                        psyche::Moment {
+                            isolated: psyche::isolated(unit.position, &mates),
+                            encircled: psyche::encircled(unit.position, &foes),
+                            ally_hurt,
+                            closing: enemy.is_some() && !in_range,
+                        },
+                        &mut unit.scores,
+                    )
+                } else {
+                    None
+                };
+                if self.founders {
+                    // Scars color a decision, but cannot lock a healthy veteran
+                    // into HOLD or endless flight. A flinch lasts under a second
+                    // out of each eight-second recovery interval, staggered by ID.
+                    let flinch = (self.tick + unit.id as u32 * 11) % 80 < 8;
+                    let ridge_hold =
+                        arena.has_high_ground() && arrived && d > 3.0 && self.tick < 180;
+                    if !ridge_hold && (!flinch || in_range) {
+                        unit.scores[6] = -1.0;
+                    }
+                    if injury < 0.55 && !(ranged && d < 2.7) && !flinch {
+                        unit.scores[5] = -1.0;
+                    }
+                    // The attack objective survives fear penalties. Cautious
+                    // personalities still prefer safer routes to that objective.
+                    let resolve = if self.tick >= 80 || enemy.is_some() {
+                        0.30
+                    } else {
+                        0.10
+                    };
+                    unit.scores[0] = unit.scores[0].max(0.25) + resolve + 0.15 * m.courage;
+                    if in_range {
+                        unit.scores[1] = unit.scores[1].max(0.85) + 0.45 + 0.20 * m.courage;
+                    }
+                    if enemy.is_some() {
+                        for action in [4, 8] {
+                            if unit.scores[action] >= 0.0
+                                && unit.class != Some(FighterClass::Healer)
+                            {
+                                unit.scores[action] *= 0.65;
+                            }
+                        }
+                    }
+                    if self.tick >= 120 && unit.scores[7] >= 0.0 {
+                        unit.scores[7] *= 0.5;
+                    }
+                    if matches!(previous_action, 0 | 3) && unit.scores[previous_action] >= 0.0 {
+                        unit.scores[previous_action] += 0.12;
+                    }
+                }
                 for (i, score) in unit.scores.iter_mut().enumerate() {
                     if *score >= 0.0 {
                         *score += noise(self.seed, self.tick, unit.id, i);
@@ -884,6 +1045,18 @@ impl Battle {
                 .into();
                 if active_controller == Controller::Learned && learned_action.is_some() {
                     unit.decision_reason = "Learned proposal; scores show utility baseline".into();
+                } else if let Some(line) = scar.as_ref().filter(|line| line.action == unit.action) {
+                    unit.decision_reason = line.text.into();
+                }
+                if self.founders {
+                    if unit.action == 0 {
+                        if !unit.charging {
+                            unit.charging = true;
+                            unit.charge_health = unit.health;
+                        }
+                    } else {
+                        unit.charging = false;
+                    }
                 }
             }
             unit.enemy = enemy.as_ref().map(|e| e.enemy);
@@ -1027,16 +1200,35 @@ impl Battle {
                             unit.position[1]
                                 + (waypoint[1] - unit.position[1]) / remaining * amount,
                         ];
+                        let mut separation = [0.0_f32; 2];
                         for ally in &allies {
                             let gap = distance(next, ally.position);
                             if gap > 0.001 && gap < 0.65 {
-                                let separated = [
-                                    next[0] + (next[0] - ally.position[0]) / gap * 0.045,
-                                    next[1] + (next[1] - ally.position[1]) / gap * 0.045,
-                                ];
-                                if arena.walk_segment(unit.position, separated) {
-                                    next = separated;
+                                if self.founders {
+                                    let push = (0.65 - gap) / 0.65;
+                                    separation[0] += (next[0] - ally.position[0]) / gap * push;
+                                    separation[1] += (next[1] - ally.position[1]) / gap * push;
+                                } else {
+                                    // Preserve the published Lab movement baseline.
+                                    let separated = [
+                                        next[0] + (next[0] - ally.position[0]) / gap * 0.045,
+                                        next[1] + (next[1] - ally.position[1]) / gap * 0.045,
+                                    ];
+                                    if arena.walk_segment(unit.position, separated) {
+                                        next = separated;
+                                    }
                                 }
+                            }
+                        }
+                        let push_length = distance([0.0, 0.0], separation);
+                        if push_length > 0.001 {
+                            let push = push_length.min(amount * 0.30);
+                            let separated = [
+                                next[0] + separation[0] / push_length * push,
+                                next[1] + separation[1] / push_length * push,
+                            ];
+                            if arena.walk_segment(unit.position, separated) {
+                                next = separated;
                             }
                         }
                         next[0] =

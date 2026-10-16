@@ -39,11 +39,27 @@ Battle-conditioned habits are deterministic and small:
 
 Traits remain within 0–1. These are authored adaptation rules, **not online PyTorch training**, and they do not establish that veterans make better decisions. The frozen imitation policy remains available for same-state comparison. Improvements in tactical quality need their own experiment.
 
+## Psychological scars
+
+A completed Founders battle can mark a fighter. There is no sanity meter. Each scar names one trigger and one reaction. The seven mind traits stay the fighter's personality; the scar is what that personality learned.
+
+| Trigger | What counts | What a personality may learn |
+| --- | --- | --- |
+| Isolation | More than 40 ticks with no living ally within 5 units | Fear, attachment, hesitation, or recklessness |
+| Encirclement | More than 15 ticks with enemies on opposite sides, or three within 4.5 | Fear, hesitation, or recklessness |
+| Ally loss | A teammate falls within 8 units | Attachment, fear, hesitation, or recklessness |
+| Failed charge | An advance loses at least 8 HP before the next choice | Hesitation, or recklessness if aggressive and undisciplined |
+| Confidence | Survive below half health, or survive after 80 isolated ticks or 30 encircled ticks | A separate steadiness score. Courage gains more; self-preservation gains less |
+
+The same exposure writes the same intensity on different minds, and a different reaction. One battle adds at most **0.55** intensity. A contradicting personality wears the old reaction down to zero before a new one is written. Dying trims confidence by 0.05 and leaves the scars.
+
+During the next battle the scar changes utility scores only while its trigger is happening again. Fear of isolation can open a retreat and pull the fighter back to the squad. Recklessness from the same isolation raises the charge. Blank minds, and every Lab battle, keep the old scores. The inspector shows the saved scars. A matching bark can say them out loud.
+
 ## Roadmap position
 
 Persistent fighter data now lives separately in `src/progression.rs`; `Unit` remains the temporary combat state. Validated saved squads can create a deterministic battle and produce a serialized result, with a save/reload replay test. This closes Phase A's snapshot foundation.
 
-Phase B now has stable IDs, names, command titles, classes, minds, XP, records, and recent history. Both supplied body bases now have game-ready skinned copies and basic combat clips; persistent limb wounds and a first prosthetic recipe are implemented. Relationships and richer psychological state remain unfinished. Phase C has persistent squads, save/load and a first fourth-member recruitment purchase; a dedicated roster and reserve screen remains unfinished. The eight launch classes plus Rock Thrower and Paladin now have mechanics and retraining controls. The first 1,000-gold recruitment unlock expands both local sides to four fighters. A full roster/bench screen and leagues 5–20 remain unfinished.
+Phase B now has stable IDs, names, command titles, classes, minds, XP, records, and recent history. Both supplied body bases now have game-ready skinned copies and basic combat clips; persistent limb wounds and a first prosthetic recipe are implemented. Phase G now has the first psychological scars: isolation, encirclement, ally loss, failed charges, and confidence. Relationships are still unfinished. Phase C has persistent squads, save/load and a first fourth-member recruitment purchase; a dedicated roster and reserve screen remains unfinished. The eight launch classes plus Rock Thrower and Paladin now have mechanics and retraining controls. The first 1,000-gold recruitment unlock expands both local sides to four fighters. Founders battles now generate a mirrored pressure field for leagues 3 and 4. A three-fighter field is 36×26 and a four-fighter field is 48×34. A full roster/bench screen and leagues 5–20 remain unfinished.
 
 Lab rosters, seed-42 Choke results, and frozen experiment artifacts remain unchanged. Lab battles do not grant campaign XP. Progression tests cover real aura damage/range/death, persistent growth, duplicate rewards, snapshot replay, invalid data, backups, colors, and bounded progression.
 
@@ -62,3 +78,17 @@ Appearance controls change Body, Hair, Face, Eyes and Nose for any selected Foun
 [Character, painting, gore and rendering details](visual-combat.md). [Proposed roster and replacement loop](roster-design.md).
 
 Gold rewards, recruitment milestone and the full priced 3–20 ladder: [economy](economy.md).
+
+## Equipment workshop
+
+Select a Founders fighter and scroll the inspector to the recipe buttons. Craft before the first tick or after a completed battle. Gold and salvage come from the existing battle rewards. Crafting equips the item immediately; after battle, it takes effect in the next battle. Each fighter owns their own gear. Click an owned recipe to equip or remove it for free. Replacing an item retains the previous item in that fighter's inventory.
+
+| Recipe | Gold / salvage | Effect |
+| --- | --- | --- |
+| Tempered weapon | 25 / 8 | +20% damage, -8% movement |
+| Balanced weapon | 20 / 6 | +8% damage, +5% movement |
+| Iron armor | 30 / 10 | -20% incoming damage, -15% movement |
+| Trail armor | 20 / 6 | +12% movement, +8% incoming damage |
+| Vitality charm | 35 / 12 | +20 maximum HP |
+
+One weapon, one armor, and one charm may be equipped together. Multipliers combine with class, level, wounds, and blessings. Recipes work across classes; class weapons retain their current appearance. Gear currently has no distinct meshes. The inspector reports the loadout and effective damage, movement, and incoming damage multipliers. Loadouts persist with the squad; older saves receive empty inventories. Lab battles retain their original stats. Recruitment starts with an empty inventory.

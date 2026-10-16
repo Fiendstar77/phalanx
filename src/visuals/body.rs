@@ -28,6 +28,7 @@ pub(super) struct IronAssets {
     bar: Handle<Mesh>,
     joint: Handle<Mesh>,
     metal: Handle<StandardMaterial>,
+    wood: Handle<StandardMaterial>,
     wound: Handle<StandardMaterial>,
 }
 #[derive(Component)]
@@ -55,6 +56,12 @@ pub(super) fn setup(
             perceptual_roughness: 0.28,
             ..default()
         }),
+        wood: materials.add(StandardMaterial {
+            base_color: Color::srgb(0.45, 0.28, 0.14),
+            metallic: 0.0,
+            perceptual_roughness: 0.86,
+            ..default()
+        }),
         wound: materials.add(StandardMaterial {
             base_color: Color::srgb(0.55, 0.012, 0.027),
             perceptual_roughness: 0.25,
@@ -68,7 +75,10 @@ pub(super) fn ready(
     mut commands: Commands,
     children: Query<&Children>,
     models: Query<&Model>,
-    primitives: Query<(&Mesh3d, &MeshMaterial3d<StandardMaterial>)>,
+    primitives: Query<
+        (&Mesh3d, &MeshMaterial3d<StandardMaterial>),
+        With<bevy::mesh::skinning::SkinnedMesh>,
+    >,
     names: Query<&Name>,
     transforms: Query<&Transform>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -88,6 +98,9 @@ pub(super) fn ready(
             let mut mat = materials.get(&material.0).cloned().unwrap_or_default();
             mat.base_color = Color::WHITE;
             mat.base_color_texture = None;
+            mat.normal_map_texture = None;
+            mat.occlusion_texture = None;
+            mat.metallic_roughness_texture = None;
             mat.perceptual_roughness = 0.7;
             let material_handle = materials.add(mat);
             commands.entity(entity).insert((
@@ -187,43 +200,6 @@ fn selected_indices(mesh: &Mesh, mask: u8, keep: bool) -> Vec<u32> {
         .copied()
         .collect()
 }
-fn pixel(
-    image: &Image,
-    index: usize,
-    cols: usize,
-    rows: usize,
-    u: f32,
-    v: f32,
-    nose: bool,
-) -> Option<Srgba> {
-    if !(0.0..1.0).contains(&u) || !(0.0..1.0).contains(&v) {
-        return None;
-    }
-    let x = (index % cols) as f32 / cols as f32 + u / cols as f32;
-    let y = if nose {
-        let (a, b) = [(200., 395.), (465., 660.), (720., 905.), (970., 1160.)][index / 4];
-        (a + v * (b - a)) / 1254.0
-    } else if cols == 3 && rows == 5 {
-        let (a, b) = [
-            (75., 275.),
-            (305., 525.),
-            (560., 745.),
-            (780., 980.),
-            (1000., 1205.),
-        ][index / 3];
-        (a + v * (b - a)) / 1254.0
-    } else {
-        (index / cols) as f32 / rows as f32 + v / rows as f32
-    };
-    image
-        .get_color_at(
-            (x * image.width() as f32) as u32,
-            (y * image.height() as f32) as u32,
-        )
-        .ok()
-        .map(|c| c.to_srgba())
-        .filter(|c| c.alpha > 0.5)
-}
 fn paint_uv(mesh: &mut Mesh) {
     // UV discontinuities must be per triangle: shared seam vertices previously
     // interpolated from a facial UV to the skin swatch across an entire cheek.
@@ -254,147 +230,35 @@ fn paint_uv(mesh: &mut Mesh) {
     mesh.remove_attribute(Mesh::ATTRIBUTE_COLOR);
 }
 
-fn texture(
-    a: phalanx::progression::Appearance,
-    looks: &Looks,
-    images: &Assets<Image>,
-    expression: u8,
-) -> Option<Image> {
-    for (kind, choice) in [(1, a.face), (2, a.eyes), (3, a.nose)] {
-        if choice > 0 && images.get(&looks.images[kind][0]).is_none() {
-            return None;
-        }
-    }
-    let size = if a.face == 0 && a.eyes == 0 && a.nose == 0 && expression == 0 {
-        4
-    } else {
-        512
-    };
-    let mut data = Vec::with_capacity(size * size * 4);
-    let skin = Srgba::new(1.0, 0.82, 0.69, 1.0);
-    for y in 0..size {
-        for x in 0..size {
-            let px = (x as f32 / (size - 1) as f32 - 0.5) * 0.80;
-            let py = 2.03 - y as f32 / (size - 1) as f32 * 0.80;
-            let mut color = skin;
-            // Compose each feature exactly once. Never project a complete illustrated
-            // head beneath replacement eyes: that left two separate sets of eyes.
-            let eye_u = px / 0.60 + 0.5;
-            let eye_v = (1.64 - py) / 0.25;
-            let eye_v = if expression == 2 {
-                (eye_v - 0.6) * 1.45 + 0.6
-            } else {
-                eye_v
-            };
-            let mut layers = Vec::with_capacity(3);
-            if a.eyes > 0 {
-                layers.push(pixel(
-                    images.get(&looks.images[2][0])?,
-                    a.eyes as usize - 1,
-                    3,
-                    5,
-                    eye_u,
-                    eye_v,
-                    false,
-                ));
-            } else if a.face > 0 && (0.0..1.0).contains(&eye_u) && (0.0..1.0).contains(&eye_v) {
-                layers.push(pixel(
-                    images.get(&looks.images[1][0])?,
-                    a.face as usize - 1,
-                    4,
-                    4,
-                    0.12 + eye_u * 0.76,
-                    0.36 + eye_v * 0.43,
-                    false,
-                ));
-            }
-            // Mouth is independently cropped from the face sheet, below the eyes.
-            let mouth_u = px / 0.12 + 0.5;
-            let mouth_v = (1.34 - py) / 0.065;
-            if a.face > 0 && (0.0..1.0).contains(&mouth_u) && (0.0..1.0).contains(&mouth_v) {
-                layers.push(pixel(
-                    images.get(&looks.images[1][0])?,
-                    a.face as usize - 1,
-                    4,
-                    4,
-                    0.43 + mouth_u * 0.14,
-                    0.84 + mouth_v * 0.09,
-                    false,
-                ));
-            }
-            if a.nose > 0 {
-                layers.push(pixel(
-                    images.get(&looks.images[3][0])?,
-                    a.nose as usize - 1,
-                    4,
-                    4,
-                    px / 0.085 + 0.5,
-                    (1.405 - py) / 0.07,
-                    true,
-                ));
-            }
-            for sample in layers.into_iter().flatten() {
-                let f = sample.alpha;
-                color = Srgba::new(
-                    color.red * (1.0 - f) + sample.red * f,
-                    color.green * (1.0 - f) + sample.green * f,
-                    color.blue * (1.0 - f) + sample.blue * f,
-                    1.0,
-                );
-            }
-            // Simple painted expressions on the same material seen in the portrait.
-            if expression > 0 {
-                let mouth = match expression {
-                    1 => (px / 0.045).powi(2) + ((py - 1.31) / 0.035).powi(2) < 1.0,
-                    2 => px.abs() < 0.048 && (py - (1.31 + 0.16 * px)).abs() < 0.008,
-                    _ => (px / 0.04).powi(2) + ((py - 1.315) / 0.045).powi(2) < 1.0,
-                };
-                // Erase the neutral mouth before drawing an open/shouting/grimacing one.
-                if px.abs() < 0.065 && (1.26..1.35).contains(&py) {
-                    color = skin;
-                }
-                if mouth {
-                    color = Srgba::new(0.21, 0.025, 0.035, 1.0);
-                }
-                let brow = 1.645
-                    + if expression == 1 {
-                        0.15 * px.abs()
-                    } else {
-                        -0.12 * px.abs()
-                    };
-                if (0.07..0.24).contains(&px.abs()) && (py - brow).abs() < 0.008 {
-                    color = Srgba::new(0.22, 0.12, 0.08, 1.0);
-                }
-            }
-            data.extend(
-                [color.red, color.green, color.blue, 1.0]
-                    .map(|v| (v.clamp(0.0, 1.0) * 255.0) as u8),
-            );
-        }
-    }
-    Some(Image::new(
+// The new sculpt supplies the face. Do not remap old portrait sheets or source
+// normal maps onto its UVs; a mismatched normal map made the face look torn.
+fn texture() -> Image {
+    Image::new(
         Extent3d {
-            width: size as u32,
-            height: size as u32,
+            width: 4,
+            height: 4,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
-        data,
+        [255, 255, 255, 255].repeat(16),
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::default(),
-    ))
+    )
 }
 #[allow(clippy::too_many_arguments)]
 pub(super) fn update(
     session: Res<Session>,
-    looks: Res<Looks>,
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut cache: ResMut<PaintCache>,
     iron: Res<IronAssets>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut bodies: Query<(&mut Painted, &Mesh3d, &GlobalTransform)>,
-    mut replacements: Query<(&Iron, &mut Visibility)>,
+    mut replacements: Query<(
+        &Iron,
+        &mut Visibility,
+        &mut MeshMaterial3d<StandardMaterial>,
+    )>,
     mut commands: Commands,
     gibs: Query<Entity, With<Gib>>,
 ) {
@@ -403,17 +267,8 @@ pub(super) fn update(
         let Some(u) = session.battle.units.get(body.id) else {
             continue;
         };
-        let a = look(&session, body.id);
-        let expression = if u.health <= 0.0 {
-            3
-        } else if u.health_fraction() < 0.3 {
-            2
-        } else if u.action == 1 && u.cooldown > 0.4 {
-            1
-        } else {
-            0
-        };
-        let choice = [a.face, a.eyes, a.nose, expression];
+        // Expressions live on the new socketed head, never on the body texture.
+        let choice = [look(&session, body.id).skin, 0, 0, 0];
         let reset = body.seed != session.battle.seed || session.battle.tick < body.tick;
         if reset {
             body.mask = 0;
@@ -431,9 +286,7 @@ pub(super) fn update(
                 continue;
             };
             if !cache.0.contains_key(&choice) {
-                let Some(image) = texture(a, &looks, &images, expression) else {
-                    continue;
-                };
+                let image = texture();
                 if cache.0.len() >= 128
                     && let Some(key) = cache.0.keys().next().copied()
                 {
@@ -443,6 +296,7 @@ pub(super) fn update(
             }
             if let Some(mut material) = materials.get_mut(&body.material) {
                 material.base_color_texture = Some(cache.0[&choice].clone());
+                material.base_color = skin_color(&session, body.id);
             }
             paint_uv(&mut painted);
             let detached = mask & !body.mask;
@@ -480,15 +334,15 @@ pub(super) fn update(
                     let transform = world.compute_transform();
                     let origin = world.transform_point(center);
                     let angle = u.id as f32 * 2.1 + bit as f32 * 0.7;
-                    let speed = if bit == 16 { 4.0 } else { 2.7 };
+                    let speed = if bit == 16 { 7.5 } else { 5.2 };
                     commands.spawn((
                         Gib {
                             velocity: Vec3::new(
                                 angle.cos() * speed,
-                                3.0 + bit as f32 * 0.06,
+                                5.6 + bit as f32 * 0.08,
                                 angle.sin() * speed,
                             ),
-                            spin: Vec3::new(4., 2., 3.),
+                            spin: Vec3::new(7., 4., 5.),
                             life: 180.0,
                             run: session.run_id,
                             settled: false,
@@ -512,17 +366,26 @@ pub(super) fn update(
         body.seed = session.battle.seed;
         body.tick = session.battle.tick;
     }
-    for (replacement, mut visible) in &mut replacements {
-        *visible = if session
+    for (replacement, mut visible, mut material) in &mut replacements {
+        let stand_in = session
             .battle
             .units
             .get(replacement.id)
-            .is_some_and(|u| u.prosthetics & replacement.bit != 0)
-        {
-            Visibility::Inherited
-        } else {
-            Visibility::Hidden
-        };
+            .map(|u| {
+                phalanx::progression::limb_stand_in(u.lost_limbs, u.prosthetics, replacement.bit)
+            })
+            .unwrap_or(phalanx::progression::LimbStandIn::None);
+        match stand_in {
+            phalanx::progression::LimbStandIn::Iron => {
+                *visible = Visibility::Inherited;
+                material.0 = iron.metal.clone();
+            }
+            phalanx::progression::LimbStandIn::Wood => {
+                *visible = Visibility::Inherited;
+                material.0 = iron.wood.clone();
+            }
+            phalanx::progression::LimbStandIn::None => *visible = Visibility::Hidden,
+        }
     }
 }
 pub(super) fn physics(

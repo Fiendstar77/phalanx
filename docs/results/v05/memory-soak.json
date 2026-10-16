@@ -1,0 +1,31 @@
+{
+  "labels_on": {
+    "native_labels": "on",
+    "label_environment_override": "0",
+    "validation_layer_loaded": true,
+    "requested_seconds": 150.0,
+    "warmup_seconds": 30.0,
+    "sampled_seconds": 145.024,
+    "samples": 30,
+    "stop_reason": "duration reached",
+    "peak_rss_mib": 2840.28515625,
+    "steady_growth_mib": 107.91796875,
+    "steady_growth_mib_per_minute": 56.29523669796557,
+    "campaign_isolated": true
+  },
+  "patched_default": {
+    "native_labels": "default",
+    "label_environment_override": null,
+    "validation_layer_loaded": true,
+    "requested_seconds": 150.0,
+    "warmup_seconds": 30.0,
+    "sampled_seconds": 145.027,
+    "samples": 30,
+    "stop_reason": "duration reached",
+    "peak_rss_mib": 2450.859375,
+    "steady_growth_mib": 4.26953125,
+    "steady_growth_mib_per_minute": 2.2271554572168806,
+    "campaign_isolated": true
+  },
+  "comparison_note": "Two isolated paused Quarry sessions, run concurrently on the same machine without heap instrumentation. Rendering cadence is logged; short test, not overnight certification."
+}

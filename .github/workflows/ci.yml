@@ -18,8 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: sudo apt-get update && sudo apt-get install -y libudev-dev libwayland-dev libxkbcommon-dev
+      - run: sudo apt-get update && sudo apt-get install -y libudev-dev libwayland-dev libxkbcommon-dev libasound2-dev
       - run: cargo check --locked --bin phalanx
+      - run: cargo test --locked --bin phalanx
   python-analysis:
     runs-on: ubuntu-latest
     steps:
@@ -29,6 +30,7 @@ jobs:
           python-version: '3.12'
       - run: python -m unittest analysis.test_analysis
       - run: python tools/validate_character_assets.py
+      - run: python tools/validate_face_assets.py
   pytorch-smoke:
     runs-on: ubuntu-latest
     steps:

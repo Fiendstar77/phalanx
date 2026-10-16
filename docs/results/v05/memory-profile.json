@@ -1,0 +1,20 @@
+{
+  "workload": "Paused Founders Quarry, debug executable, Vulkan, same scene/assets; tcmalloc heap instrumentation",
+  "validation_layer": "1.4.363.0-1",
+  "baseline": {
+    "seconds": 44.58,
+    "start_live_mib": 500.9519,
+    "end_live_mib": 542.6806,
+    "growth_mib": 41.7287,
+    "growth_mib_per_minute": 56.1627
+  },
+  "native_labels_discarded": {
+    "seconds": 40.007,
+    "start_live_mib": 482.1955,
+    "end_live_mib": 482.5651,
+    "growth_mib": 0.3697,
+    "growth_mib_per_minute": 0.5544
+  },
+  "retained_allocation_path": "Vulkan validation layer called by wgpu-hal native GPU debug naming (buffers, bind groups, texture views).",
+  "limitation": "Short local samples; not an overnight stability certification."
+}

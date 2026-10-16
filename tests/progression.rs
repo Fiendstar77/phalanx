@@ -158,7 +158,13 @@ fn appearance_is_backward_compatible_persistent_and_cannot_change_combat() {
     for team in old_save["teams"].as_array_mut().unwrap() {
         team.as_object_mut().unwrap().remove("salvage");
         for fighter in team["fighters"].as_array_mut().unwrap() {
-            for field in ["appearance", "lost_limbs", "prosthetics", "wounds"] {
+            for field in [
+                "appearance",
+                "lost_limbs",
+                "prosthetics",
+                "wounds",
+                "psyche",
+            ] {
                 fighter.as_object_mut().unwrap().remove(field);
             }
         }
@@ -166,17 +172,22 @@ fn appearance_is_backward_compatible_persistent_and_cannot_change_combat() {
     let mut restored: Campaign = serde_json::from_value(old_save).unwrap();
     restored.validate().unwrap();
     assert_eq!(restored.teams[0].fighters[0].appearance.hair, 0);
+    assert!(restored.teams[0].fighters[0].psyche.is_blank());
     restored.teams[0].fighters[0].appearance = Appearance {
         female: Some(true),
         hair: 6,
         face: 16,
         eyes: 15,
         nose: 16,
+        skin: 7,
+        hair_color: 4,
     };
     let mut copy: Campaign =
         serde_json::from_str(&serde_json::to_string(&restored).unwrap()).unwrap();
     copy.validate().unwrap();
     assert_eq!(copy.teams[0].fighters[0].appearance.female, Some(true));
+    assert_eq!(copy.teams[0].fighters[0].appearance.skin, 7);
+    assert_eq!(copy.teams[0].fighters[0].appearance.hair_color, 4);
     let (_, mut original_battle) = campaign
         .clone()
         .begin_battle(42, Arena::Citadel, Controller::Utility)
@@ -195,6 +206,34 @@ fn appearance_is_backward_compatible_persistent_and_cannot_change_combat() {
     }
     copy.teams[0].fighters[0].appearance.eyes = 16;
     assert!(copy.validate().is_err());
+    let untouched = Appearance::default().resolved(1, 2);
+    assert_eq!(untouched.female, None);
+    assert!((1..=6).contains(&untouched.hair));
+    assert!((1..=16).contains(&untouched.face));
+    assert!((1..=15).contains(&untouched.eyes));
+    assert!((1..=16).contains(&untouched.nose));
+    let bald = Appearance {
+        female: Some(false),
+        hair: 0,
+        face: 0,
+        eyes: 0,
+        nose: 0,
+        skin: 0,
+        hair_color: 0,
+    };
+    assert_eq!(bald.resolved(0, 0), bald);
+    assert_eq!(
+        phalanx::progression::limb_stand_in(0b0101, 0b0001, 1),
+        phalanx::progression::LimbStandIn::Iron
+    );
+    assert_eq!(
+        phalanx::progression::limb_stand_in(0b0101, 0b0001, 4),
+        phalanx::progression::LimbStandIn::Wood
+    );
+    assert_eq!(
+        phalanx::progression::limb_stand_in(0b0101, 0b0001, 2),
+        phalanx::progression::LimbStandIn::None
+    );
 }
 
 #[test]
@@ -275,4 +314,158 @@ fn battle_salvage_crafting_and_wounds_survive_the_next_battle() {
     assert_eq!(next.units[0].lost_limbs, 1);
     assert_eq!(next.units[0].prosthetics, 1);
     assert!((next.units[0].damage_multiplier() - 3.3).abs() < 0.0001);
+}
+
+#[test]
+fn the_same_events_scar_different_personalities() {
+    use phalanx::psyche::{Exposure, Psyche, Reaction};
+    let isolation = Exposure {
+        isolation_ticks: 200,
+        ..Exposure::default()
+    };
+    let mut reckless = Psyche::default();
+    let mut attached = Psyche::default();
+    let mut afraid = Psyche::default();
+    let cautious = phalanx::Mind {
+        aggression: 0.2,
+        caution: 0.9,
+        courage: 0.25,
+        teamwork: 0.3,
+        patience: 0.5,
+        self_preservation: 0.85,
+        discipline: 0.4,
+    };
+    reckless.absorb(phalanx::Mind::aggressive(), isolation);
+    attached.absorb(phalanx::Mind::disciplined(), isolation);
+    afraid.absorb(cautious, isolation);
+    assert_eq!(reckless.isolation.reaction, Reaction::OverAggression);
+    assert_eq!(attached.isolation.reaction, Reaction::Attachment);
+    assert_eq!(afraid.isolation.reaction, Reaction::Fear);
+    assert!((reckless.isolation.intensity - attached.isolation.intensity).abs() < 0.0001);
+    assert!(reckless.isolation.intensity > 0.4);
+
+    let surrounded = Exposure {
+        encirclement_ticks: 80,
+        ally_losses: 1,
+        failed_charges: 1,
+        survived_pressure: true,
+        ..Exposure::default()
+    };
+    reckless.absorb(phalanx::Mind::aggressive(), surrounded);
+    attached.absorb(phalanx::Mind::disciplined(), surrounded);
+    assert_eq!(reckless.encirclement.reaction, Reaction::OverAggression);
+    assert_eq!(attached.encirclement.reaction, Reaction::Fear);
+    assert_eq!(reckless.ally_loss.reaction, Reaction::OverAggression);
+    assert_eq!(attached.ally_loss.reaction, Reaction::Attachment);
+    assert_eq!(reckless.failed_charge.reaction, Reaction::OverAggression);
+    assert_eq!(attached.failed_charge.reaction, Reaction::Hesitation);
+    assert!(reckless.confidence > attached.confidence);
+    assert!(attached.confidence > 0.0);
+
+    let mut replaced = Psyche::default();
+    replaced.absorb(phalanx::Mind::aggressive(), isolation);
+    replaced.absorb(cautious, isolation);
+    assert!(replaced.isolation.reaction == Reaction::None);
+    replaced.absorb(cautious, isolation);
+    assert_eq!(replaced.isolation.reaction, Reaction::Fear);
+}
+
+#[test]
+fn isolation_fear_and_recklessness_change_the_same_decision() {
+    use phalanx::psyche::{Reaction, Response};
+    let mut fear = Battle::with_founders(7, false, Arena::OpenField);
+    let mut rage = fear.clone();
+    let mut plain = fear.clone();
+    for battle in [&mut fear, &mut rage, &mut plain] {
+        for unit in &mut battle.units {
+            if unit.team == 1 {
+                unit.health = 0.0;
+            }
+            unit.mind = phalanx::Mind::aggressive();
+        }
+        battle.units[0].position = [-6.0, 0.0];
+        battle.units[1].position = [6.0, 3.0];
+        battle.units[2].position = [6.0, -3.0];
+    }
+    fear.units[0].psyche.isolation = Response {
+        reaction: Reaction::Fear,
+        intensity: 1.0,
+    };
+    rage.units[0].psyche.isolation = Response {
+        reaction: Reaction::OverAggression,
+        intensity: 1.0,
+    };
+    fear.step();
+    rage.step();
+    plain.step();
+    assert_eq!(
+        plain.units[0].action, 0,
+        "an unscarred fighter still advances: {:?}",
+        plain.units[0].scores
+    );
+    assert_eq!(
+        fear.units[0].action, 4,
+        "isolation fear regroups: {:?} {}",
+        fear.units[0].scores, fear.units[0].decision_reason
+    );
+    assert!(fear.units[0].decision_reason.contains("Isolation fear"));
+    assert_eq!(
+        rage.units[0].action, 0,
+        "the same isolation drives a charge: {:?}",
+        rage.units[0].scores
+    );
+    assert!(rage.units[0].scores[0] > fear.units[0].scores[0]);
+    assert!(fear.units[0].scores[4] > rage.units[0].scores[4]);
+    assert!(
+        rage.units[0]
+            .decision_reason
+            .contains("Isolation drives a charge")
+    );
+}
+
+#[test]
+fn scars_persist_across_save_and_the_next_battle() {
+    use phalanx::psyche::Reaction;
+    let mut campaign = Campaign::new();
+    let (id, mut battle) = campaign
+        .begin_battle(9, Arena::OpenField, Controller::Utility)
+        .unwrap();
+    battle.units[0].exposure_isolation = 200;
+    battle.units[3].exposure_isolation = 200;
+    battle.finished = true;
+    battle.result = "Draw".into();
+    campaign.settle(id, &battle).unwrap();
+    assert_eq!(
+        campaign.teams[0].fighters[0].psyche.isolation.reaction,
+        Reaction::OverAggression
+    );
+    assert_eq!(
+        campaign.teams[1].fighters[0].psyche.isolation.reaction,
+        Reaction::Attachment
+    );
+    let mut loaded: Campaign =
+        serde_json::from_str(&serde_json::to_string(&campaign).unwrap()).unwrap();
+    loaded.validate().unwrap();
+    let (_, next) = loaded
+        .begin_battle(10, Arena::OpenField, Controller::Utility)
+        .unwrap();
+    assert_eq!(next.units[0].psyche, campaign.teams[0].fighters[0].psyche);
+    assert_eq!(next.units[3].psyche, campaign.teams[1].fighters[0].psyche);
+    let mut invalid = campaign.clone();
+    invalid.teams[0].fighters[0].psyche.isolation.intensity = 2.0;
+    assert!(invalid.validate().is_err());
+    invalid.teams[0].fighters[0].psyche.isolation.intensity = 0.0;
+    assert!(invalid.validate().is_err());
+}
+
+#[test]
+fn lab_battles_do_not_record_scars() {
+    let mut battle = Battle::new(42, false);
+    for _ in 0..40 {
+        battle.step();
+    }
+    let json = serde_json::to_string(&battle).unwrap();
+    assert!(!json.contains("exposure_isolation"));
+    assert!(!json.contains("\"psyche\""));
+    assert!(battle.units.iter().all(|unit| unit.psyche.is_blank()));
 }

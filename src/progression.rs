@@ -1,5 +1,7 @@
 //! Local persistent squads and bounded battle-conditioned progression. No online authority.
-use crate::{Battle, CommandTitle, FighterClass, Mind, learned::Controller, terrain::Arena};
+use crate::{
+    Battle, CommandTitle, FighterClass, Mind, learned::Controller, psyche::Psyche, terrain::Arena,
+};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, path::Path};
 /// Earned-gold slot prices, indexed by the destination league (4 through 20).
@@ -43,13 +45,58 @@ pub struct History {
     pub prosthetics: u8,
 }
 /// Cosmetic choices only. Defaults keep older local saves readable.
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Appearance {
     pub female: Option<bool>,
     pub hair: u8,
     pub face: u8,
     pub eyes: u8,
     pub nose: u8,
+    #[serde(default)]
+    pub skin: u8,
+    #[serde(default)]
+    pub hair_color: u8,
+}
+impl Appearance {
+    /// Saved zeros mean this fighter was never customized. Painting uses a stable look.
+    /// An explicit sex choice keeps a blank face, so "none" remains selectable.
+    pub fn resolved(self, team: usize, slot: usize) -> Self {
+        if self.female.is_some()
+            || self.hair != 0
+            || self.face != 0
+            || self.eyes != 0
+            || self.nose != 0
+            || self.skin != 0
+            || self.hair_color != 0
+        {
+            return self;
+        }
+        Self {
+            female: None,
+            hair: 1 + ((slot + team * 3) % 6) as u8,
+            face: 1 + ((slot * 3 + team * 5) % 16) as u8,
+            eyes: 1 + ((slot * 2 + team) % 15) as u8,
+            nose: 1 + ((slot * 4 + team * 2) % 16) as u8,
+            skin: ((slot + team * 2) % 8) as u8,
+            hair_color: 0,
+        }
+    }
+}
+/// What a missing limb shows. Wood is cosmetic; only iron changes combat stats.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LimbStandIn {
+    None,
+    Wood,
+    Iron,
+}
+pub fn limb_stand_in(lost_limbs: u8, prosthetics: u8, bit: u8) -> LimbStandIn {
+    if prosthetics & bit != 0 {
+        LimbStandIn::Iron
+    } else if lost_limbs & bit != 0 {
+        LimbStandIn::Wood
+    } else {
+        LimbStandIn::None
+    }
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WoundRecord {
@@ -58,6 +105,8 @@ pub struct WoundRecord {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Fighter {
+    #[serde(default)]
+    pub equipment: crate::equipment::Equipment,
     pub fighter_id: String,
     pub name: String,
     pub title: CommandTitle,
@@ -75,6 +124,9 @@ pub struct Fighter {
     pub prosthetics: u8,
     #[serde(default)]
     pub wounds: Vec<WoundRecord>,
+    /// Personality-specific scars. Absent on older saves, which load as blank.
+    #[serde(default)]
+    pub psyche: Psyche,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Phalanx {
@@ -128,6 +180,7 @@ impl Campaign {
                 .into_iter()
                 .enumerate()
                 .map(|(slot, title)| Fighter {
+                    equipment: Default::default(),
                     fighter_id: format!("{stamp:x}-{team}-{slot}"),
                     name: title.name().into(),
                     title,
@@ -149,6 +202,7 @@ impl Campaign {
                     lost_limbs: 0,
                     prosthetics: 0,
                     wounds: Vec::new(),
+                    psyche: Psyche::default(),
                 })
                 .collect(),
             }),
@@ -181,7 +235,8 @@ impl Campaign {
             }
             for (slot, f) in team.fighters.iter().enumerate() {
                 let m = f.mind;
-                if !valid_name(&f.name)
+                if !f.equipment.valid()
+                    || !valid_name(&f.name)
                     || f.fighter_id.is_empty()
                     || f.fighter_id.len() > 128
                     || !ids.insert(&f.fighter_id)
@@ -222,6 +277,9 @@ impl Campaign {
                     || f.appearance.face > 16
                     || f.appearance.eyes > 15
                     || f.appearance.nose > 16
+                    || f.appearance.skin > 7
+                    || f.appearance.hair_color > 6
+                    || !f.psyche.valid()
                     || f.experience > 1_000_000
                     || f.battles > 1_000_000
                     || f.wins > f.battles
@@ -258,6 +316,10 @@ impl Campaign {
             .ok_or("battle sequence overflow")?;
         let mut b = Battle::with_roster(seed, false, arena, true, self.teams[0].fighters.len());
         b.controller = controller;
+        b.pressure_note = arena.challenge().into();
+        if let crate::terrain::Arena::Pressure(field) = arena {
+            b.pressure_note = field.reason().into();
+        }
         let size = b.team_size();
         for u in &mut b.units {
             let f = &self.teams[u.team].fighters[u.id % size];
@@ -270,9 +332,50 @@ impl Campaign {
             u.mind = f.mind;
             u.lost_limbs = f.lost_limbs;
             u.prosthetics = f.prosthetics;
+            u.equipment = f.equipment;
+            u.psyche = f.psyche;
             u.health = u.max_health();
         }
         Ok((id, b))
+    }
+    /// Craft once and equip; owned recipes toggle freely without further costs.
+    pub fn workshop(
+        &mut self,
+        team: usize,
+        slot: usize,
+        gear: crate::equipment::Gear,
+    ) -> Result<String, String> {
+        self.validate()?;
+        let squad = self.teams.get_mut(team).ok_or("invalid squad")?;
+        let fighter = squad.fighters.get_mut(slot).ok_or("invalid fighter")?;
+        let equipment = &mut fighter.equipment;
+        if equipment.owns(gear) {
+            let removing = equipment.has(gear);
+            equipment.slots[gear.slot()] = if removing { None } else { Some(gear) };
+            return Ok(format!(
+                "{} {}",
+                if removing { "Unequipped" } else { "Equipped" },
+                gear.name()
+            ));
+        }
+        let (gold, salvage) = gear.cost();
+        if squad.gold < gold || squad.salvage < salvage {
+            return Err(format!(
+                "{} needs {gold} gold + {salvage} salvage (have {} / {})",
+                gear.name(),
+                squad.gold,
+                squad.salvage
+            ));
+        }
+        squad.gold -= gold;
+        squad.salvage -= salvage;
+        equipment.owned |= 1 << gear.index();
+        equipment.slots[gear.slot()] = Some(gear);
+        Ok(format!(
+            "Crafted and equipped {}: {}",
+            gear.name(),
+            gear.effect()
+        ))
     }
     /// First crafting recipe: one tier-I iron limb costs five battle salvage.
     pub fn craft_prosthetic(&mut self, team: usize, slot: usize) -> Result<&'static str, String> {
@@ -321,7 +424,9 @@ impl Campaign {
             recruit.wounds.clear();
             recruit.lost_limbs = 0;
             recruit.prosthetics = 0;
+            recruit.equipment = Default::default();
             recruit.appearance = Appearance::default();
+            recruit.psyche = Psyche::default();
             team.fighters.push(recruit);
         }
         updated.validate()?;
@@ -407,6 +512,21 @@ impl Campaign {
             }
             f.lost_limbs = u.lost_limbs;
             f.prosthetics = u.prosthetics;
+            let survived_pressure = survived
+                && (u.health_fraction() < 0.5
+                    || u.exposure_encirclement >= 30
+                    || u.exposure_isolation >= 80);
+            f.psyche.absorb(
+                u.mind,
+                crate::psyche::Exposure {
+                    isolation_ticks: u.exposure_isolation,
+                    encirclement_ticks: u.exposure_encirclement,
+                    ally_losses: u.exposure_ally_loss,
+                    failed_charges: u.exposure_failed_charge,
+                    survived_pressure,
+                    broke: !survived,
+                },
+            );
             let xp = 25
                 + u32::from(won) * 15
                 + u32::from(survived) * 5

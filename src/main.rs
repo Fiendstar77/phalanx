@@ -1,10 +1,16 @@
+mod audio;
 mod front;
+mod presentation;
 mod visuals;
 use bevy::{
     asset::RenderAssetUsages,
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     mesh::PrimitiveTopology,
     prelude::*,
+    render::{
+        RenderPlugin,
+        settings::{PowerPreference, WgpuSettings},
+    },
 };
 use phalanx::{
     ACTION_COUNT, ACTIONS, Battle, CommandTitle, DT, FighterClass, Mind, PALADIN_AURA_RADIUS, Role,
@@ -14,6 +20,14 @@ use phalanx::{
     progression::{Campaign, PALETTE},
     terrain::Arena,
 };
+
+fn frame_zoom(arena: Arena) -> f32 {
+    if arena.large() {
+        52.0
+    } else {
+        (arena.half_size()[0] * 2.15).clamp(24.0, 72.0)
+    }
+}
 
 #[derive(Resource)]
 struct Session {
@@ -72,8 +86,20 @@ impl Session {
                     .map(|h| h.seed.wrapping_add(1))
                     .unwrap_or(battle.seed)
             };
-            match campaign.begin_battle(seed, battle.arena, battle.controller) {
+            let arena = if std::env::args().any(|a| a == "--arena") {
+                battle.arena
+            } else {
+                phalanx::pressure::generate(&campaign.teams, seed)
+            };
+            match campaign.begin_battle(seed, arena, battle.controller) {
                 Ok((id, b)) => {
+                    if !b.pressure_note.is_empty() {
+                        notice = if notice.is_empty() {
+                            b.pressure_note.clone()
+                        } else {
+                            format!("{notice} | {}", b.pressure_note)
+                        };
+                    }
                     battle = b;
                     Some(id)
                 }
@@ -87,7 +113,7 @@ impl Session {
         };
         let previous_positions = battle.units.iter().map(|u| u.position).collect();
         let paths = if battle.arena.large() { 1 } else { 0 };
-        let zoom = if battle.arena.large() { 52.0 } else { 24.0 };
+        let zoom = frame_zoom(battle.arena);
         let mut session = Self {
             battle,
             menu: true,
@@ -297,6 +323,7 @@ enum Control {
     TeamColor(usize),
     Appearance(usize),
     Prosthetic,
+    Workshop(phalanx::equipment::Gear),
     NextMatch,
     Aggressive,
     Disciplined,
@@ -318,6 +345,10 @@ fn main() {
                 .expect("seed must be an unsigned integer")
         })
         .unwrap_or(42);
+    if args.iter().any(|a| a == "--audio-witness") {
+        audio::export_witness(seed).expect("export synthesized audio");
+        return;
+    }
     if args.iter().any(|a| a == "--headless") {
         let mut battle = Battle::with_setup(
             seed,
@@ -353,6 +384,32 @@ fn main() {
         session.menu = false;
         session.running = true;
         session.speed = 4.0;
+        if args.iter().any(|a| a == "--face-witness") {
+            session.running = false;
+            if std::env::var_os("PHALANX_WITNESS_CLOSE").is_some() {
+                session.camera_follow = true;
+                session.zoom = 3.3;
+                session.pitch = 0.12;
+                session.orbit = 1.35;
+            }
+            session.selected = std::env::var("PHALANX_FACE_UNIT")
+                .ok()
+                .and_then(|id| id.parse::<usize>().ok())
+                .filter(|id| *id < session.battle.units.len())
+                .unwrap_or(0);
+        }
+        if std::env::var_os("PHALANX_WITNESS_CLOSE").is_some() {
+            let unit = &mut session.battle.units[session.selected];
+            unit.target = [unit.position[0] + 1.0, unit.position[1]];
+        }
+        if let Ok(name) = std::env::var("PHALANX_EQUIPMENT_CLASS")
+            && let Some(class) = FighterClass::ALL
+                .into_iter()
+                .find(|c| c.name().eq_ignore_ascii_case(&name))
+        {
+            session.battle.units[session.selected].class = Some(class);
+            session.battle.units[session.selected].role = class.role();
+        }
         if args.iter().any(|a| a == "--menu-witness") {
             session.menu = true;
             session.ladder = args.iter().any(|a| a == "--ladder-witness");
@@ -379,64 +436,82 @@ fn main() {
     if args.iter().any(|a| a == "--battle") {
         session.menu = false;
     }
-    app.add_plugins((visuals::BattleVisuals, front::FrontEnd))
-        .add_plugins(
-            DefaultPlugins
-                .set(AssetPlugin {
-                    file_path: if std::path::Path::new("assets/characters").exists() {
-                        std::env::current_dir()
-                            .unwrap()
-                            .join("assets")
-                            .to_string_lossy()
-                            .into_owned()
-                    } else {
-                        "assets".into()
-                    },
+    app.add_plugins((
+        visuals::BattleVisuals,
+        audio::GameAudio,
+        front::FrontEnd,
+        presentation::PresentationGuard,
+    ))
+    .add_plugins(
+        DefaultPlugins
+            .set(RenderPlugin {
+                render_creation: WgpuSettings {
+                    power_preference: PowerPreference::HighPerformance,
+                    instance_flags: presentation::player_instance_flags(
+                        WgpuSettings::default().instance_flags,
+                    ),
+                    adapter_name: std::env::var("WGPU_ADAPTER_NAME").ok(),
                     ..default()
-                })
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: if visual_witness {
-                            "PHALANX | Visual QA".into()
-                        } else {
-                            "PHALANX | Minds x Terrain".into()
-                        },
-                        resolution: (1440, 900).into(),
-                        visible: !visual_witness,
-                        ..default()
-                    }),
+                }
+                .into(),
+                ..default()
+            })
+            .set(AssetPlugin {
+                file_path: if std::path::Path::new("assets/characters").exists() {
+                    std::env::current_dir()
+                        .unwrap()
+                        .join("assets")
+                        .to_string_lossy()
+                        .into_owned()
+                } else {
+                    "assets".into()
+                },
+                ..default()
+            })
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: if visual_witness {
+                        "PHALANX | Visual QA".into()
+                    } else {
+                        "PHALANX | Minds x Terrain".into()
+                    },
+                    resolution: (1440, 900).into(),
+                    visible: !visual_witness && !args.iter().any(|a| a == "--memory-soak"),
                     ..default()
                 }),
+                ..default()
+            }),
+    )
+    .insert_resource(ClearColor(Color::srgb(0.025, 0.035, 0.055)))
+    .insert_resource(session)
+    .add_systems(Startup, setup)
+    .add_systems(
+        Update,
+        (
+            controls,
+            keyboard,
+            scroll_inspector,
+            simulate,
+            settle_progression,
+            sync_team_colors,
+            log_disagreements,
+            sync_terrain,
+            sync_bridges,
+            sync_rocks,
+            sync_pawns,
+            sync_insignia,
+            pick,
+            camera_motion,
+            overlays,
+            update_text,
+            update_minds,
+            update_workshop,
+            update_status,
+            update_divergence,
         )
-        .insert_resource(ClearColor(Color::srgb(0.025, 0.035, 0.055)))
-        .insert_resource(session)
-        .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (
-                controls,
-                keyboard,
-                scroll_inspector,
-                simulate,
-                settle_progression,
-                sync_team_colors,
-                log_disagreements,
-                sync_terrain,
-                sync_bridges,
-                sync_rocks,
-                sync_pawns,
-                sync_insignia,
-                pick,
-                camera_motion,
-                overlays,
-                update_text,
-                update_minds,
-                update_status,
-                update_divergence,
-            )
-                .chain(),
-        );
-    if visual_witness {
+            .chain(),
+    );
+    if visual_witness || args.iter().any(|a| a == "--memory-soak") {
         app.insert_resource(bevy::winit::WinitSettings::continuous());
     }
     if args.iter().any(|a| a == "--profile") {
@@ -713,7 +788,7 @@ fn setup(
                 },
             ));
             p.spawn((
-                Text::new("LOOK | Body / Hair / Face / Eyes / Nose"),
+                Text::new("LOOK | Body / Hair / Face / Eyes / Nose / Skin / Dye"),
                 font(12.0),
                 Node {
                     margin: UiRect::top(px(10)),
@@ -725,7 +800,10 @@ fn setup(
                 ..default()
             })
             .with_children(|row| {
-                for (i, label) in ["Body", "Hair", "Face", "Eyes", "Nose"].iter().enumerate() {
+                for (i, label) in ["Body", "Hair", "Face", "Eyes", "Nose", "Skin", "Dye"]
+                    .iter()
+                    .enumerate()
+                {
                     button(row, label, Control::Appearance(i));
                 }
                 button(
@@ -733,6 +811,14 @@ fn setup(
                     "Craft iron I (15 gold + 5 salvage)",
                     Control::Prosthetic,
                 );
+                for gear in phalanx::equipment::Gear::ALL {
+                    let (gold, salvage) = gear.cost();
+                    button(
+                        row,
+                        &format!("{} ({gold}g/{salvage}s) | {}", gear.name(), gear.effect()),
+                        Control::Workshop(gear),
+                    );
+                }
                 for class in FighterClass::ALL {
                     button(row, class.name(), Control::Class(class));
                 }
@@ -817,7 +903,7 @@ fn setup(
             }
         });
     commands.spawn(Node { position_type: PositionType::Absolute, left: px(20), bottom: px(18), flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
-        p.spawn((Text::new("LMB select | RMB orbit | MMB / Shift+RMB pan | Wheel zoom | F follow | Home arena | Space pause/run"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
+        p.spawn((Text::new("WASD move | RMB orbit | MMB pan | Wheel zoom | Shift faster | F follow | Home arena | Space pause/run"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
         p.spawn(Node { margin: UiRect::top(px(8)),flex_wrap:FlexWrap::Wrap,width:vw(95.0), ..default() }).with_children(|row| {
             button(row,"Menu",Control::Menu);button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup); button(row,"Next battle",Control::NextBattle);button(row,"Save",Control::Save);button(row,"Load",Control::Load);
             for (i,name) in ["Amber","Teal","Violet","Coral","Azure","Lime","Pink","Ivory"].iter().enumerate() {button(row,name,Control::TeamColor(i));}
@@ -897,6 +983,31 @@ fn apply(control: Control, session: &mut Session) {
                 Err(e) => session.save_notice = e,
             }
         }
+        Control::Workshop(gear) => {
+            if session.battle.founders && (session.battle.tick == 0 || session.battle.finished) {
+                let u = &session.battle.units[session.selected];
+                let (team, slot) = (u.team, u.id % session.battle.team_size());
+                match session.campaign.workshop(team, slot, gear) {
+                    Ok(message) => {
+                        if session.battle.tick == 0 {
+                            let equipment = session.campaign.teams[team].fighters[slot].equipment;
+                            let u = &mut session.battle.units[session.selected];
+                            u.equipment = equipment;
+                            u.health = u.max_health();
+                        }
+                        if session.autosave {
+                            session.save_campaign();
+                        }
+                        session.save_notice = format!(
+                            "{message}. Owned gear toggles free; post-battle changes apply next battle."
+                        );
+                    }
+                    Err(e) => session.save_notice = e,
+                }
+            } else {
+                session.save_notice = "Use the workshop before or after a Founders battle".into();
+            }
+        }
         Control::Prosthetic => {
             if session.battle.founders && (session.battle.tick == 0 || session.battle.finished) {
                 let u = &session.battle.units[session.selected];
@@ -925,6 +1036,7 @@ fn apply(control: Control, session: &mut Session) {
                 let u = &session.battle.units[session.selected];
                 let slot = u.id % session.battle.team_size();
                 let look = &mut session.campaign.teams[u.team].fighters[slot].appearance;
+                *look = look.resolved(u.team, slot);
                 match choice {
                     0 => {
                         look.female = Some(
@@ -936,7 +1048,9 @@ fn apply(control: Control, session: &mut Session) {
                     1 => look.hair = (look.hair + 1) % 7,
                     2 => look.face = (look.face + 1) % 17,
                     3 => look.eyes = (look.eyes + 1) % 16,
-                    _ => look.nose = (look.nose + 1) % 17,
+                    4 => look.nose = (look.nose + 1) % 17,
+                    5 => look.skin = (look.skin + 1) % 8,
+                    _ => look.hair_color = (look.hair_color + 1) % 7,
                 }
                 if session.autosave {
                     session.save_campaign();
@@ -978,11 +1092,15 @@ fn apply(control: Control, session: &mut Session) {
                 session.save_notice = "Finish a Founders battle before advancing".into();
                 return;
             }
+            let seed = session.battle.seed.wrapping_add(1);
             session.restart_founders(
-                session.battle.seed.wrapping_add(1),
-                session.battle.arena,
+                seed,
+                phalanx::pressure::generate(&session.campaign.teams, seed),
                 controller,
             );
+            if !session.battle.pressure_note.is_empty() {
+                session.save_notice = session.battle.pressure_note.clone();
+            }
             session.running = false;
             session.accumulator = 0.0;
         }
@@ -993,9 +1111,12 @@ fn apply(control: Control, session: &mut Session) {
         Control::Load => match Campaign::load(std::path::Path::new("outputs/phalanx-save.json")) {
             Ok(c) => {
                 session.campaign = c;
-                session.battle =
-                    Battle::with_founders(session.battle.seed, false, session.battle.arena);
-                session.restart_founders(session.battle.seed, session.battle.arena, controller);
+                let arena =
+                    phalanx::pressure::generate(&session.campaign.teams, session.battle.seed);
+                session.restart_founders(session.battle.seed, arena, controller);
+                if !session.battle.pressure_note.is_empty() {
+                    session.save_notice = session.battle.pressure_note.clone();
+                }
                 session.running = false;
                 session.accumulator = 0.0;
                 session.autosave = true;
@@ -1068,12 +1189,16 @@ fn apply(control: Control, session: &mut Session) {
             }
         }
         Control::Setup => {
-            session.battle = Battle::with_setup(
-                session.battle.seed,
-                session.battle.swapped,
-                session.battle.arena,
-                !session.battle.founders,
-            );
+            let entering = !session.battle.founders;
+            let arena = if entering {
+                phalanx::pressure::generate(&session.campaign.teams, session.battle.seed)
+            } else if matches!(session.battle.arena, Arena::Pressure(_)) {
+                Arena::Ridge
+            } else {
+                session.battle.arena
+            };
+            session.battle =
+                Battle::with_setup(session.battle.seed, session.battle.swapped, arena, entering);
             session.running = false;
             session.accumulator = 0.0;
         }
@@ -1151,11 +1276,7 @@ fn apply(control: Control, session: &mut Session) {
         session.run_id += 1;
         session.previous_positions = session.battle.units.iter().map(|u| u.position).collect();
         session.selected = session.selected.min(session.battle.units.len() - 1);
-        session.zoom = if session.battle.arena.large() {
-            52.0
-        } else {
-            24.0
-        };
+        session.zoom = frame_zoom(session.battle.arena);
         session.remember_positions();
     }
 }
@@ -1236,7 +1357,7 @@ fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
     if keys.just_pressed(KeyCode::Escape) {
         apply(Control::ClearPair, &mut session);
     }
-    if keys.just_pressed(KeyCode::KeyD) {
+    if keys.just_pressed(KeyCode::KeyJ) {
         apply(Control::NextMatch, &mut session);
     }
     if keys.just_pressed(KeyCode::Tab) {
@@ -1464,11 +1585,19 @@ fn camera_motion(
     if keys.pressed(KeyCode::KeyE) {
         session.orbit += dt * 0.7;
     }
-    if keys.pressed(KeyCode::KeyW) {
-        session.zoom -= dt * 8.0;
-    }
-    if keys.pressed(KeyCode::KeyS) {
-        session.zoom += dt * 8.0;
+    if !session.menu {
+        let movement = Vec2::new(
+            (keys.pressed(KeyCode::KeyD) as u8 as f32) - (keys.pressed(KeyCode::KeyA) as u8 as f32),
+            (keys.pressed(KeyCode::KeyW) as u8 as f32) - (keys.pressed(KeyCode::KeyS) as u8 as f32),
+        )
+        .normalize_or_zero();
+        if movement != Vec2::ZERO {
+            let right = Vec3::new(session.orbit.cos(), 0.0, -session.orbit.sin());
+            let forward = Vec3::new(-session.orbit.sin(), 0.0, -session.orbit.cos());
+            let speed = (session.zoom * 0.65).clamp(2.0, 30.0) * if shift { 2.0 } else { 1.0 };
+            session.camera_target += (right * movement.x + forward * movement.y) * speed * dt;
+            session.camera_follow = false;
+        }
     }
     if keys.just_pressed(KeyCode::KeyF) {
         session.camera_follow = true;
@@ -1478,11 +1607,7 @@ fn camera_motion(
     if keys.just_pressed(KeyCode::Home) {
         session.camera_follow = false;
         session.camera_target = Vec3::new(3.5, 0.0, 0.0);
-        session.zoom = if session.battle.arena.large() {
-            52.0
-        } else {
-            24.0
-        };
+        session.zoom = frame_zoom(session.battle.arena);
         session.pitch = 0.72;
     }
     if session.camera_follow {
@@ -1755,11 +1880,11 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
         .unwrap_or_else(|| "Comparison awaits first decision".into());
     for mut t in &mut text {
         let content = format!(
-            "{}  HP {:.0}/{:.0}\n{} | {}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n{}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}\nWhy (last decision):\n{}",
+            "{}  HP {:.0}/{:.0}\n{} | {}{}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n{}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}\nWhy (last decision):\n{}",
             format_args!(
                 "{}
 Missing {} / Iron I {} | Salvage {}
-Damage x{:.2} / Movement x{:.2}",
+Damage x{:.2} / Movement x{:.2} / Incoming x{:.2}\nGear: {}\nWorkshop: craft once; click owned recipe to equip/remove free.",
                 session.unit_label(u.id),
                 limb_names(u.lost_limbs),
                 limb_names(u.prosthetics),
@@ -1769,7 +1894,9 @@ Damage x{:.2} / Movement x{:.2}",
                     0
                 },
                 u.damage_multiplier(),
-                u.movement_multiplier()
+                u.movement_multiplier(),
+                u.incoming_multiplier(),
+                if session.battle.founders { session.campaign.teams[u.team].fighters[u.id % session.battle.team_size()].equipment.summary() } else { u.equipment.summary() }
             ),
             u.health,
             u.max_health(),
@@ -1791,6 +1918,16 @@ Damage x{:.2} / Movement x{:.2}",
                     "OUTSIDE AURA"
                 }
             ),
+            if session.battle.founders {
+                format!(
+                    "\n{}",
+                    session.campaign.teams[u.team].fighters[u.id % session.battle.team_size()]
+                        .psyche
+                        .summary()
+                )
+            } else {
+                String::new()
+            },
             if u.health <= 0.0 {
                 "ELIMINATED"
             } else {
@@ -1825,7 +1962,7 @@ Damage x{:.2} / Movement x{:.2}",
 fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>) {
     for mut t in &mut text {
         let content = format!(
-            "{} | {:.1}s | x{:.0} | Seed {}\n{} {} / {}     {} {} / {}\n{} | {}\nController: {} | disagreements {} | Paths {}\nOverlay: {} | {}",
+            "{} | {:.1}s | x{:.0} | Seed {}\n{} {} / {}     {} {} / {}\n{} | {}{}\nController: {} | disagreements {} | Paths {}\nOverlay: {} | {}",
             if session.running { "RUNNING" } else { "PAUSED" },
             session.battle.tick as f32 * DT,
             session.speed,
@@ -1850,6 +1987,11 @@ fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>
                 }
             ),
             session.battle.arena.name(),
+            if session.battle.pressure_note.is_empty() {
+                String::new()
+            } else {
+                format!("\n{}", session.battle.pressure_note)
+            },
             session.battle.controller.name(),
             session.battle.disagreements.len(),
             ["ALL", "SELECTED", "OFF"][session.paths],
@@ -1952,7 +2094,13 @@ fn terrain_mesh(arena: Arena) -> Mesh {
             let c = [a[0], a[1] + 0.5];
             let d = [a[0] + 0.5, a[1] + 0.5];
             let middle = [a[0] + 0.25, a[1] + 0.25];
-            let color = if arena.cover(middle) > 0.0 {
+            let color = if arena == Arena::Quarry && arena.cover(middle) == 0.0 {
+                Color::srgb(0.42, 0.39, 0.32)
+            } else if arena == Arena::Mire && arena.roughness(middle) > 0.0 {
+                Color::srgb(0.16, 0.23, 0.20)
+            } else if arena == Arena::Gauntlet && arena.cover(middle) == 0.0 {
+                Color::srgb(0.27, 0.29, 0.32)
+            } else if arena.cover(middle) > 0.0 {
                 Color::srgb(0.24, 0.34, 0.13)
             } else if arena.roughness(middle) > 0.0 {
                 Color::srgb(0.37, 0.29, 0.19)
@@ -2134,5 +2282,44 @@ fn limb_names(bits: u8) -> String {
         "none".into()
     } else {
         names.join(", ")
+    }
+}
+
+fn update_workshop(
+    session: Res<Session>,
+    buttons: Query<(&Control, &Children)>,
+    mut labels: Query<&mut Text>,
+) {
+    let u = &session.battle.units[session.selected];
+    for (control, children) in &buttons {
+        let Control::Workshop(gear) = *control else {
+            continue;
+        };
+        let label = if session.battle.founders {
+            let kit = session.campaign.teams[u.team].fighters[u.id % session.battle.team_size()]
+                .equipment;
+            if kit.owns(gear) {
+                format!(
+                    "{} {} | {}",
+                    if kit.has(gear) { "Unequip" } else { "Equip" },
+                    gear.name(),
+                    gear.effect()
+                )
+            } else {
+                let (gold, salvage) = gear.cost();
+                format!(
+                    "Craft {} ({gold}g/{salvage}s) | {}",
+                    gear.name(),
+                    gear.effect()
+                )
+            }
+        } else {
+            format!("{} | Founders workshop", gear.name())
+        };
+        for child in children.iter() {
+            if let Ok(mut text) = labels.get_mut(child) {
+                **text = label.clone();
+            }
+        }
     }
 }

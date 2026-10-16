@@ -11,12 +11,12 @@ struct Voice {
     text: String,
 }
 #[derive(Resource, Default)]
-struct Voices {
+pub(super) struct Voices {
     units: Vec<Voice>,
     run: Option<u32>,
 }
 #[derive(Component)]
-struct Bubble(usize);
+pub(super) struct Bubble(usize);
 pub(super) fn install(app: &mut App) {
     app.init_resource::<Voices>()
         .add_systems(Startup, setup_bubbles.after(super::setup))
@@ -41,7 +41,7 @@ fn setup_bubbles(mut commands: Commands) {
         ));
     }
 }
-fn bubbles(
+pub(super) fn bubbles(
     session: Res<Session>,
     mut voices: ResMut<Voices>,
     camera: Single<(&Camera, &GlobalTransform), super::super::MainCameraFilter>,
@@ -82,7 +82,9 @@ fn bubbles(
                 "I'M HIT!"
             });
         } else if b.tick.saturating_sub(v.last) > 80 {
-            if u.action == 5 && v.action != 5 {
+            if let Some(text) = scar_bark(b, u) {
+                line = Some(text);
+            } else if u.action == 5 && v.action != 5 {
                 line = Some(if u.mind.courage > 0.7 {
                     "TACTICAL RETREAT!"
                 } else {
@@ -156,4 +158,47 @@ fn bubbles(
             }
         }
     }
+}
+fn scar_bark(battle: &phalanx::Battle, unit: &phalanx::Unit) -> Option<&'static str> {
+    if !battle.founders || unit.health <= 0.0 || unit.psyche.is_blank() {
+        return None;
+    }
+    let allies: Vec<[f32; 2]> = battle
+        .units
+        .iter()
+        .filter(|ally| ally.team == unit.team && ally.id != unit.id && ally.health > 0.0)
+        .map(|ally| ally.position)
+        .collect();
+    let enemies: Vec<[f32; 2]> = battle
+        .units
+        .iter()
+        .filter(|enemy| enemy.team != unit.team && enemy.health > 0.0)
+        .map(|enemy| enemy.position)
+        .collect();
+    let ally_hurt = battle.units.iter().any(|ally| {
+        ally.team == unit.team
+            && ally.id != unit.id
+            && phalanx::distance(unit.position, ally.position) <= 8.0
+            && (ally.health <= 0.0 || ally.health_fraction() < 0.6)
+    });
+    let closing = unit.enemy.is_some_and(|id| {
+        unit.contacts.iter().any(|contact| {
+            contact.enemy == id
+                && phalanx::distance(unit.position, contact.position) > unit.role.range()
+        })
+    });
+    phalanx::psyche::bark(
+        unit.psyche,
+        phalanx::psyche::Moment {
+            isolated: phalanx::psyche::isolated(unit.position, &allies),
+            encircled: phalanx::psyche::encircled(unit.position, &enemies),
+            ally_hurt,
+            closing,
+        },
+    )
+}
+
+// Facial animation uses the same active bark interval as the text bubble.
+pub(super) fn speaking(voices: &Voices, id: usize, tick: u32) -> bool {
+    voices.units.get(id).is_some_and(|voice| voice.until > tick)
 }

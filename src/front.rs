@@ -30,8 +30,9 @@ fn setup_menu(mut commands: Commands) {
                     button(p,"Switch Game / AI Lab",Control::Setup);
                     button(p,"Save squads",Control::Save);
                     button(p,"Load saved squads",Control::Load);
+                    super::audio::menu(p);
                     button(p,"Quit",Control::Quit);
-                    p.spawn((Text::new("Select a fighter to change class, appearance and mind.\nRetrain: 10 gold | Iron limb: 15 gold + 5 salvage\nLeague 3: 30 gold win / 15 otherwise | rewards rise by league\n\nRMB orbit | MMB pan | Wheel zoom | F follow\nSpace pause / run | Tab next fighter | Esc menu\n\nLocal prototype | no account or connection required"),font(14.0)));
+                    p.spawn((Text::new("Select a fighter to change class, appearance and mind.\nRetrain: 10 gold | Iron limb: 15 gold + 5 salvage\nLeague 3: 30 gold win / 15 otherwise | rewards rise by league\nBattles scar minds. The same event marks two personalities differently.\nFounders fields are generated for both squads. Arena returns to the Lab maps.\n\nRMB orbit | MMB pan | Wheel zoom | F follow\nSpace pause / run | Tab next fighter | Esc menu\n\nLocal prototype | no account or connection required"),font(14.0)));
                 });
         });
     let mut ladder = String::from(

@@ -1,7 +1,11 @@
 //! Deterministic Dijkstra search over a one-unit grid. All edge costs are positive.
 use crate::{Mind, Unit, distance, terrain::Arena};
 use serde::Serialize;
-use std::{cmp::Ordering, collections::BinaryHeap, sync::OnceLock};
+use std::{
+    cmp::Ordering,
+    collections::{BinaryHeap, HashMap},
+    sync::{Mutex, OnceLock},
+};
 fn point(arena: Arena, id: usize) -> [f32; 2] {
     let size = arena.half_size();
     let width = (size[0] * 2.0) as usize;
@@ -12,7 +16,56 @@ fn point(arena: Arena, id: usize) -> [f32; 2] {
 }
 /// Static wall-clearance graph: authored terrain does not change within an arena.
 /// Neighbor order matches the original dz/dx traversal to preserve deterministic ties.
+fn build_graph(arena: Arena) -> Vec<Vec<usize>> {
+    let size = arena.half_size();
+    let width = (size[0] * 2.0) as usize;
+    let height = (size[1] * 2.0) as usize;
+    (0..width * height)
+        .map(|id| {
+            let x = (id % width) as i32;
+            let z = (id / width) as i32;
+            let mut edges = Vec::new();
+            for dz in -1..=1 {
+                for dx in -1..=1 {
+                    let nx = x + dx;
+                    let nz = z + dz;
+                    if (dx != 0 || dz != 0)
+                        && nx >= 0
+                        && nx < width as i32
+                        && nz >= 0
+                        && nz < height as i32
+                    {
+                        let next = nz as usize * width + nx as usize;
+                        if arena.walk_segment(point(arena, id), point(arena, next)) {
+                            edges.push(next);
+                        }
+                    }
+                }
+            }
+            edges
+        })
+        .collect()
+}
+fn pressure_graph(field: crate::pressure::PressureField) -> &'static Vec<Vec<usize>> {
+    type PressureGraphs = HashMap<crate::pressure::PressureField, &'static Vec<Vec<usize>>>;
+    static CACHE: OnceLock<Mutex<PressureGraphs>> = OnceLock::new();
+    let mut cache = CACHE
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
+    if let Some(graph) = cache.get(&field) {
+        return graph;
+    }
+    let graph: &'static Vec<Vec<usize>> = Box::leak(Box::new(build_graph(Arena::Pressure(field))));
+    cache.insert(field, graph);
+    graph
+}
+/// Static wall-clearance graph. Authored arenas are cached once.
+/// Each distinct pressure field keeps its own graph for the process lifetime.
 fn neighbors(arena: Arena) -> &'static Vec<Vec<usize>> {
+    if let Arena::Pressure(field) = arena {
+        return pressure_graph(field);
+    }
     static RIDGE: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
     static CHOKE: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
     static OPEN: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
@@ -20,6 +73,9 @@ fn neighbors(arena: Arena) -> &'static Vec<Vec<usize>> {
     static HIGHLANDS: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
     static RUINS: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
     static GRAND: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
+    static GAUNTLET: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
+    static QUARRY: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
+    static MIRE: OnceLock<Vec<Vec<usize>>> = OnceLock::new();
     let cache = match arena {
         Arena::Ridge => &RIDGE,
         Arena::Choke => &CHOKE,
@@ -28,37 +84,12 @@ fn neighbors(arena: Arena) -> &'static Vec<Vec<usize>> {
         Arena::Highlands => &HIGHLANDS,
         Arena::Ruins => &RUINS,
         Arena::GrandArena => &GRAND,
+        Arena::Gauntlet => &GAUNTLET,
+        Arena::Quarry => &QUARRY,
+        Arena::Mire => &MIRE,
+        Arena::Pressure(_) => unreachable!("pressure graphs are cached by field"),
     };
-    cache.get_or_init(|| {
-        let size = arena.half_size();
-        let width = (size[0] * 2.0) as usize;
-        let height = (size[1] * 2.0) as usize;
-        (0..width * height)
-            .map(|id| {
-                let x = (id % width) as i32;
-                let z = (id / width) as i32;
-                let mut edges = Vec::new();
-                for dz in -1..=1 {
-                    for dx in -1..=1 {
-                        let nx = x + dx;
-                        let nz = z + dz;
-                        if (dx != 0 || dz != 0)
-                            && nx >= 0
-                            && nx < width as i32
-                            && nz >= 0
-                            && nz < height as i32
-                        {
-                            let next = nz as usize * width + nx as usize;
-                            if arena.walk_segment(point(arena, id), point(arena, next)) {
-                                edges.push(next);
-                            }
-                        }
-                    }
-                }
-                edges
-            })
-            .collect()
-    })
+    cache.get_or_init(|| build_graph(arena))
 }
 fn nearest(arena: Arena, p: [f32; 2]) -> Option<usize> {
     let size = arena.half_size();

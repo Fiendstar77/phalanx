@@ -37,17 +37,17 @@ for style,name in enumerate(NAMES):
   for j in range(sides):a=i*sides+j;b=i*sides+(j+1)%sides;faces.append((a,a+sides,b+sides,b))
  mesh('Continuous scalp',verts,faces,colors[0])
  # Swept, pointed fringe clumps have a full elliptical cross section.
- for k in range(9):
-  x=(k-4)*.075;sweep=(.11 if style==2 else -.045 if style==1 else .03)*math.sin(k*.8+1);endz=1.63+(.07 if k%2 else -.025)
+ for k in range(13):
+  x=(k-6)*.052;sweep=(.11 if style==2 else -.045 if style==1 else .03)*math.sin(k*.8+1);endz=1.79+(.045 if k%2 else -.015)
   if style==1:endz+=.07*(k%3)
   if style==2:sweep=-.14;endz+=.06
   if style==4:sweep=(-1 if x<0 else 1)*.13;endz+=.05
-  lock('Fringe',[(x*.55,-.10,1.99),(x,-.27,1.92),(x+sweep,-.36,1.79),(x+sweep*1.4,-.39,endz)],.072,colors[k%3])
+  lock('Fringe',[(x*.55,-.10,1.99),(x,-.27,1.92),(x+sweep,-.36,1.86),(x+sweep*1.4,-.39,endz)],.047,colors[k%3])
  # Locks across the back and temples make the silhouette volumetric.
  for k in range(15):
   phi=k/14*math.pi;phi=phi+.0 # back (+Y), with side locks at both ends
   x=math.cos(phi);y=math.sin(phi);length=.17 if style<3 else .43 if style==3 else .87 if style==4 else .20
-  lock('Back lock',[(x*.28,y*.24,1.94),(x*.405,y*.35,1.77),(x*.43,y*.36,1.55),(x*.39,y*.33,1.55-length)],.072,colors[k%3])
+  lock('Back lock',[(x*.28,y*.24,1.94),(x*.405,y*.35,1.77),(x*.43,y*.36,1.55),(x*.39,y*.33,1.55-length)],.047,colors[k%3])
  if style==1:
   for k in range(7):
    x=(k-3)*.09;lock('Crown spike',[(x,-.02,1.97),(x+.04,.00,2.06),(x+.10,.03,2.10)],.07,colors[k%3])
@@ -55,6 +55,10 @@ for style,name in enumerate(NAMES):
   for side in [-1,1]:
    for k in range(5):
     d=(k-2)*.035;lock('Ponytail',[(side*.34,.10,1.88),(side*(.53+d),.12,1.75),(side*(.58+d),.15,1.42),(side*(.50+d),.13,1.08),(side*(.62+d),.10,.86)],.085,colors[k%3])
+ if style in [0,1,5]:
+  for k in range(11):
+   phi=k/11*math.tau;dx=math.cos(phi);dy=math.sin(phi)
+   lock('Wild silhouette',[(dx*.22,dy*.20,1.99),(dx*.36,dy*.29,2.06),(dx*.49,dy*.40,2.11),(dx*.54,dy*.44,2.07)],.040,colors[k%3])
  # One editable object per hairstyle, with a few strand-shading material slots.
  bpy.ops.object.select_all(action='SELECT');bpy.context.view_layer.objects.active=next(o for o in bpy.context.scene.objects if o.type=='MESH');bpy.ops.object.join();bpy.context.object.name=name
  bpy.ops.wm.save_as_mainfile(filepath=str(OUT/(str(style+1)+'-'+name.lower()+'.blend')))

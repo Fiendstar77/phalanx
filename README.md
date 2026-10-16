@@ -4,7 +4,7 @@
 
 Players shape battlefields and agent personalities, then observe autonomous teams fight. PHALANX explores how terrain, individual psychology, and teamwork affect collective behavior—and how to make those decisions explainable and measurable.
 
-> **Status: early playable prototype.** The default Founders setup starts each team with a King, Queen, and General. The Lab keeps its original 5-versus-5 standard battles and 10-versus-10 Citadel arena, personality-weighted routes, cover, rough ground, seven arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
+> **Status: early playable prototype.** The default Founders setup starts each team with a King, Queen, and General. The Lab keeps its original 5-versus-5 standard battles and 10-versus-10 Citadel arena, personality-weighted routes, cover, rough ground, ten arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
 
 ![Citadel: 20 agents and clickable disagreement highlights](docs/images/citadel-filter.png)
 
@@ -16,7 +16,7 @@ Every starting squad has a **King, Queen, and General**. King and Queen wear bas
 
 ![King, Queen, and General](docs/images/founders.png)
 
-The squads now persist locally: fighter IDs, minds, classes, XP, battle history, and chosen team colors survive save/load. Completed battles award XP and small battle-conditioned habit changes; **Next battle** continues with the same fighters. [Play the progression loop and see its current limits](docs/progression.md). Recruitment and the wider game follow the [commercial roadmap](PHALANX_COMMERCIAL_GAME_ROADMAP_v0.1.md). **Founders/Lab** switches setups; launch with `--lab` for the original experimental rosters. Both share the same simulation, controllers, telemetry, and inspector.
+The squads now persist locally: fighter IDs, minds, classes, XP, battle history, psychological scars, and chosen team colors survive save/load. Completed battles award XP, small habit changes, and personality-specific reactions to isolation, encirclement, a fallen ally, or a failed charge. **Next battle** continues with the same fighters. [Play the progression loop and see its current limits](docs/progression.md). Recruitment and the wider game follow the [commercial roadmap](PHALANX_COMMERCIAL_GAME_ROADMAP_v0.1.md). **Founders/Lab** switches setups; launch with `--lab` for the original experimental rosters. Both share the same simulation, controllers, telemetry, and inspector.
 
 ## Visual combat and wounded veterans
 
@@ -28,13 +28,13 @@ The supplied male/female bases now have derived game-ready rigs with seven basic
 
 ## Local game loop
 
-Start in the main menu, enter the arena, select a fighter, customize its class/mind, then watch autonomous combat. Eight launch classes plus Rock Thrower and Paladin have real mechanics; the General remains a Paladin. Authored event barks and starter painted expressions reflect combat state. Earn gold, retrain for 10 gold, or fit an iron limb for 15 gold + 5 salvage. Save 1,000 gold to recruit the fourth fighter and enter a matched local 4v4 league.
+Start in the main menu, enter the arena, select a fighter, customize its class/mind, then watch autonomous combat. Eight launch classes plus Rock Thrower and Paladin have real mechanics; the General remains a Paladin. Authored event barks, including scar lines, and socketed 3D faces and animated expressions reflect combat state. Earn gold, retrain for 10 gold, or fit an iron limb for 15 gold + 5 salvage. Save 1,000 gold to recruit the fourth fighter and enter a matched local 4v4 league. Each Founders battle generates a mirrored pressure field from both squads. Three fighters fight on a 36×26 field, four on a 48×34 field. [How the field is chosen](docs/pressure.md).
 
 The menu includes the full **3 → 20 gold ladder**, ending at 650,000 gold for slot 20. **Playable leagues currently stop at 4**; later prices are tuning targets. [Economy and complete ladder](docs/economy.md) · [Class mechanics](docs/classes.md). No networking, automatic online discovery or LLM runtime is implemented in this slice.
 
 ## Implemented
 
-- Seven 3D arenas: Ridge, Choke, Open Field, Citadel, Highlands, Ruins and Grand Arena; green cover, brown rough ground, and solid choke walls.
+- Ten 3D arenas: Ridge, Choke, Open Field, Citadel, Highlands, Ruins, Grand Arena, Gauntlet, Quarry and Mire; green cover, brown rough ground, and solid choke walls.
 - Standard arenas: three melee fighters and two rock throwers per team. Citadel: **six warriors and four rock throwers per team**, on a **44 × 40 footprint (5× the standard area)**, with twin elevated positions, multiple choke passages, barricades, cover, rough ground, and **two walkable raised passerelles with ramps**.
 - Visible rocks, travel time, possible misses, and blocked shots.
 - Seven editable mind traits and nine scored tactical actions (including seeking cover and supporting allies).
@@ -116,17 +116,19 @@ Install a current stable Rust toolchain, then:
 cargo run --locked --bin phalanx
 ```
 
-On Linux, Bevy requires graphical drivers and development libraries for the window/input stack. On Debian/Ubuntu, install `build-essential pkg-config libudev-dev libwayland-dev libxkbcommon-dev libx11-dev libxi-dev libxrandr-dev`.
+The window prefers a high-performance GPU. Set `WGPU_ADAPTER_NAME` to pick a specific adapter. A window initialization pass works around the [Bevy startup presentation issue](https://github.com/bevyengine/bevy/issues/22733); graphics validation remains enabled.
+
+On Linux, Bevy requires graphical drivers and development libraries for the window/input stack. On Debian/Ubuntu, install `build-essential pkg-config libudev-dev libwayland-dev libxkbcommon-dev libx11-dev libxi-dev libxrandr-dev libasound2-dev`.
 
 Click **Run**. Click a fighter to inspect it, then use the presets or trait buttons to change its mind. **Swap profiles** resets the battle with the teams' psychological profiles exchanged. **Reset** restores the original profiles for the current orientation and seed, including discarding individual edits.
 
 **Arena** cycles Ridge → Choke → Open Field → Citadel and resets the battle. **Overlay** cycles Off → Terrain → Threat → Elevation → Knowledge. Threat uses the selected unit’s known contacts; the knowledge view marks last-observed positions, including stale ones.
 
-Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **W/S** zoom, **M** arena, **O** overlay, **C** Utility/Learned controller, **D** next filtered match, **Esc** menu. Mouse: **RMB** orbit, **MMB / Shift+RMB** pan, **wheel** zoom, **F** follow selected fighter, **Home** frame arena.
+Keyboard: **Space** run/pause, **R** reset, **N** single-step, **Tab** cycle units, **Q/E** orbit, **WASD** move camera (**Shift** faster), **M** arena, **O** overlay, **C** Utility/Learned controller, **J** next filtered match, **Esc** menu. Mouse: **RMB** orbit, **MMB / Shift+RMB** pan, **wheel** zoom, **F** follow selected fighter, **Home** frame arena.
 
 **Paths** cycles All → Selected → Off; Citadel starts with only the selected route to keep a 20-agent battle readable.
 
-Click a top disagreement pair to filter living agents by their latest Utility → Learned proposals. Matching agents glow pink; a live match pauses and opens its inspector. **D** cycles matches, and **Show all / Esc** clears the filter. Historical counts can remain high while there are zero live matches.
+Click a top disagreement pair to filter living agents by their latest Utility → Learned proposals. Matching agents glow pink; a live match pauses and opens its inspector. **J** cycles matches, and **Show all / Esc** clears the filter. Historical counts can remain high while there are zero live matches.
 
 Launch the larger map with `cargo run --locked --bin phalanx -- --arena citadel`. The frozen learned policy was trained on the three smaller arenas; Citadel control is exploratory and its feature distribution differs from training.
 
@@ -158,3 +160,7 @@ RUST_LOG=info cargo run --locked --bin phalanx -- --arena choke --profile
 Guillaume Heinerth · [GitHub](https://github.com/Fiendstar77)
 
 > Do not command the phalanx. Build the minds and terrain from which the phalanx emerges.
+
+New content: [Gauntlet, Quarry and Mire](docs/new-arenas.md), [class equipment and procedural audio](docs/visual-combat.md), and the [character art targets](docs/art-direction/README.md).
+
+**Equipment workshop:** Founders fighters can now craft two weapon variants, two armor variants, and a vitality charm using gold and salvage. Gear changes combat stats, persists across battles, and can be freely re-equipped after crafting. Select a fighter and use the inspector's Craft/Equip/Unequip buttons before or after battle. [Recipes and tradeoffs](docs/progression.md#equipment-workshop).

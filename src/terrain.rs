@@ -2,7 +2,7 @@
 use crate::distance;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum Arena {
     #[default]
@@ -13,6 +13,10 @@ pub enum Arena {
     Highlands,
     Ruins,
     GrandArena,
+    Gauntlet,
+    Quarry,
+    Mire,
+    Pressure(crate::pressure::PressureField),
 }
 impl Arena {
     pub fn name(self) -> &'static str {
@@ -24,6 +28,10 @@ impl Arena {
             Self::Highlands => "THE HIGHLANDS",
             Self::Ruins => "THE RUINS",
             Self::GrandArena => "THE GRAND ARENA",
+            Self::Gauntlet => "THE GAUNTLET",
+            Self::Quarry => "THE QUARRY",
+            Self::Mire => "THE MIRE",
+            Self::Pressure(field) => field.name(),
         }
     }
     pub fn parse(name: &str) -> Option<Self> {
@@ -35,6 +43,9 @@ impl Arena {
             "highlands" => Some(Self::Highlands),
             "ruins" => Some(Self::Ruins),
             "grand" => Some(Self::GrandArena),
+            "gauntlet" => Some(Self::Gauntlet),
+            "quarry" => Some(Self::Quarry),
+            "mire" => Some(Self::Mire),
             _ => None,
         }
     }
@@ -46,20 +57,36 @@ impl Arena {
             Self::Citadel => Self::Highlands,
             Self::Highlands => Self::Ruins,
             Self::Ruins => Self::GrandArena,
-            Self::GrandArena => Self::Ridge,
+            Self::GrandArena => Self::Gauntlet,
+            Self::Gauntlet => Self::Quarry,
+            Self::Quarry => Self::Mire,
+            Self::Mire => Self::Ridge,
+            Self::Pressure(_) => Self::Ridge,
         }
     }
     pub fn large(self) -> bool {
         matches!(
             self,
-            Self::Citadel | Self::Highlands | Self::Ruins | Self::GrandArena
+            Self::Citadel
+                | Self::Highlands
+                | Self::Ruins
+                | Self::GrandArena
+                | Self::Gauntlet
+                | Self::Quarry
+                | Self::Mire
         )
     }
     pub fn half_size(self) -> [f32; 2] {
+        if let Self::Pressure(field) = self {
+            return field.half();
+        }
         if self == Self::GrandArena {
             return [30.0, 24.0];
         }
-        if matches!(self, Self::Highlands | Self::Ruins) {
+        if matches!(
+            self,
+            Self::Highlands | Self::Ruins | Self::Gauntlet | Self::Quarry | Self::Mire
+        ) {
             return [25.0, 20.0];
         }
         if self == Self::Citadel {
@@ -77,10 +104,20 @@ impl Arena {
     pub fn has_high_ground(self) -> bool {
         matches!(
             self,
-            Self::Ridge | Self::Citadel | Self::Highlands | Self::GrandArena
-        )
+            Self::Ridge | Self::Citadel | Self::Highlands | Self::GrandArena | Self::Quarry
+        ) || matches!(self, Self::Pressure(field) if field.lesson == crate::pressure::Lesson::Ridge)
     }
     pub fn spawn(self, team: usize, slot: usize) -> [f32; 2] {
+        if let Self::Pressure(field) = self {
+            return [
+                if team == 0 {
+                    -field.spawn_x()
+                } else {
+                    field.spawn_x()
+                },
+                slot as f32 * 1.6 - 3.2,
+            ];
+        }
         if self.large() && self != Self::Citadel {
             return [
                 if team == 0 {
@@ -102,6 +139,18 @@ impl Arena {
     }
     pub fn walls(self) -> &'static [([f32; 2], [f32; 2])] {
         match self {
+            Self::Gauntlet => &[
+                ([-6., -5.], [2.0, 18.]),
+                ([6., 5.], [2.0, 18.]),
+                ([-15., 6.], [2.0, 6.]),
+                ([15., -6.], [2.0, 6.]),
+            ],
+            Self::Quarry => &[
+                ([0., 0.], [4., 8.]),
+                ([-11., -9.], [2., 5.]),
+                ([11., 9.], [2., 5.]),
+            ],
+            Self::Mire => &[([0., -11.], [2., 5.]), ([0., 11.], [2., 5.])],
             Self::Ruins => &[
                 ([-8., -9.], [2., 10.]),
                 ([-8., 9.], [2., 10.]),
@@ -117,6 +166,7 @@ impl Arena {
                 ([12., 0.], [2., 8.]),
             ],
             Self::Choke => &[([0.0, -5.0], [2.0, 6.0]), ([0.0, 5.0], [2.0, 6.0])],
+            Self::Pressure(field) => field.walls(),
             Self::Citadel => &[
                 ([0.0, -12.0], [2.0, 6.0]),
                 ([0.0, 0.0], [2.0, 6.0]),
@@ -125,6 +175,20 @@ impl Arena {
                 ([9.0, 0.0], [2.0, 8.0]),
             ],
             _ => &[],
+        }
+    }
+    pub fn challenge(self) -> &'static str {
+        match self {
+            Self::Gauntlet => {
+                "Switchback ruins: keep the squad moving through two offset choke points."
+            }
+            Self::Quarry => {
+                "Two ridges and a central pit: contest elevation or flank the stonework."
+            }
+            Self::Mire => {
+                "Deep mud slows the direct route. Dry causeways reward a longer approach."
+            }
+            _ => "",
         }
     }
     pub fn high_ground(self, p: [f32; 2]) -> [f32; 2] {
@@ -138,11 +202,30 @@ impl Arena {
         }
     }
     pub fn search_waypoint(self, team: usize, slot: usize, leg: u32) -> [f32; 2] {
-        if !self.large() || leg.is_multiple_of(5) {
+        if leg.is_multiple_of(5) {
             return self.spawn(1 - team, slot);
         }
         let sign = if team == 0 { 1.0 } else { -1.0 };
         let spread = (slot % 3) as f32 * 0.7 - 0.7;
+        if self == Self::Gauntlet {
+            let point = match leg % 5 {
+                1 => [0.0, 16.0],
+                2 => [12.0, -16.0],
+                3 => [0.0, -16.0],
+                _ => [-12.0, 16.0],
+            };
+            return [point[0] * sign, point[1] * sign + spread];
+        }
+        if !self.large() {
+            let [hx, hz] = self.half_size();
+            let (x, z) = match leg % 5 {
+                1 => (0.60, 0.65),
+                2 => (0.60, -0.65),
+                3 => (-0.60, -0.65),
+                _ => (-0.60, 0.65),
+            };
+            return [x * hx * sign, z * hz * sign + spread];
+        }
         match leg % 5 {
             1 => [6.0 * sign + spread, 9.0 * sign + spread],
             2 => [14.0 * sign, -11.0 * sign + spread],
@@ -161,8 +244,24 @@ impl Arena {
         self.ground_elevation(p).max(self.bridge_height(p))
     }
     pub fn ground_elevation(self, p: [f32; 2]) -> f32 {
-        if self == Self::Ruins {
+        if let Self::Pressure(field) = self {
+            return field.elevation(p);
+        }
+        if matches!(self, Self::Ruins | Self::Gauntlet) {
             return 0.0;
+        }
+        if self == Self::Mire {
+            return if (p[1].abs() - 6.0).abs() < 1.5 {
+                0.35
+            } else {
+                0.0
+            };
+        }
+        if self == Self::Quarry {
+            return [[-6., -9.], [6., 9.]]
+                .into_iter()
+                .map(|c| 4.5 * (1.0 - distance(p, c) / 8.0).max(0.0))
+                .fold(0.0, f32::max);
         }
         if self == Self::Highlands {
             return [[-9., -7.], [9., 7.], [0., 0.]]
@@ -182,6 +281,9 @@ impl Arena {
         }
     }
     pub fn cover(self, p: [f32; 2]) -> f32 {
+        if let Self::Pressure(field) = self {
+            return field.cover(p);
+        }
         if self.large() {
             return f32::from(
                 self.cover_points()
@@ -199,6 +301,19 @@ impl Arena {
         }
     }
     pub fn roughness(self, p: [f32; 2]) -> f32 {
+        if self == Self::Mire {
+            return if (p[1].abs() - 6.0).abs() < 1.5 || p[0].abs() > 17.0 {
+                0.0
+            } else {
+                1.6
+            };
+        }
+        if self == Self::Quarry {
+            return f32::from(p[0].abs() < 4.0);
+        }
+        if let Self::Pressure(field) = self {
+            return field.roughness(p);
+        }
         if self.large() {
             return f32::from(
                 (p[0].abs() < 4.0 && p[1].abs() < 8.0) || (p[0].abs() > 10.0 && p[1].abs() < 2.0),
@@ -211,6 +326,9 @@ impl Arena {
         }
     }
     pub fn blocked(self, p: [f32; 2]) -> bool {
+        if let Self::Pressure(field) = self {
+            return field.blocked(p);
+        }
         if self.large() {
             let size = self.half_size();
             return p[0].abs() > size[0] - 0.3
@@ -268,6 +386,14 @@ impl Arena {
     pub fn nearest_cover(self, p: [f32; 2]) -> Option<[f32; 2]> {
         if self == Self::OpenField {
             return None;
+        }
+        if let Self::Pressure(field) = self {
+            return field
+                .cover_anchors()
+                .iter()
+                .copied()
+                .filter(|pocket| self.cover(*pocket) > 0.0)
+                .min_by(|a, b| distance(p, *a).total_cmp(&distance(p, *b)));
         }
         self.cover_points()
             .iter()

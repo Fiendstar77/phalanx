@@ -1,40 +1,63 @@
 # Character and veteran combat slice
 
-The artist's original GLBs remain in `assets/`; the renderer uses derived `assets/characters/male.glb` and `female.glb`. The original collision GLBs are preserved but do not replace the simulation's navigation/clearance rules.
+## Current models
 
-## Models and animation
-
-The male source had a Mixamo-named skeleton and no clips; the female had neither. The female export used disconnected per-triangle vertices. Welding coincident vertices before smoothing/decimation is essential: decimating that disconnected input punches holes instead of reducing a joined surface.
-
-The derived female has a localized cheek smoothing and 5.5% weighted lateral reduction below the eyes, followed by a 19% triangle-budget reduction and nearest-surface weight transfer from the matching male T-pose. The male's existing weights are retained. Source files are untouched. This is a starter rig, not a professionally corrected anatomical skinning pass.
-
-![Female source cheeks](images/female-cheeks-before.png)
-![Derived female cheeks](images/female-cheeks-after.png)
-
-Both exports contain **Idle, Walk, Run, Attack, Throw, Hit and Death**. Procedurally authored Blender bone keys are in-place; movement comes from Battle, and animation time follows speed/pause. Attack cooldown changes trigger gestures; actual HP changes trigger hit/death. Corpses remain visible. Foot IK, terrain-adaptive stepping, contact-perfect throws and full ragdolls remain unfinished.
-
-Rebuild with Blender's Python and `bpy`:
+The runtime now uses the artist's new rigged male and female bases with fitted
+independent eyes. Originals remain in `assets/characters/phalanx_base_male.glb`
+and `phalanx_female_base.glb`; edited `male-eyed.blend` / `female-eyed.blend`
+and matching GLBs preserve the original rig and skin weights, adding eye bones.
+`male.glb` / `female.glb` are the derived animated game exports. Older body
+sources and experimental replacement heads/face parts have been deleted.
 
 ```sh
-python tools/prepare_combat_characters.py
+blender -b --python tools/fit_rigged_eyes.py
+blender -b --python tools/rig_character_faces.py
+blender -b --python tools/prepare_combat_characters.py
 python tools/validate_character_assets.py
+python tools/validate_face_assets.py
 ```
 
-The asset checker validates actual geometry, normalized weights, valid joints, nondegenerate triangles and all seven animation channels. Current exports: female 6,967 vertices / 9,494 triangles; male 26,287 vertices / 30,868 triangles.
+The preparation step normalizes centered bases to feet-at-zero coordinates
+and bakes fifteen clips in stable order: the original Idle, Walk, Run, Attack,
+Throw, Hit and Death, plus AttackQuick, AttackHeavy, AttackDesperate,
+ThrowUnderhand, HitHeavy, LimbRecoil, DeathBackward and DeathDelayed.
+Both sexes retain their own artist-authored skin weights; no weight transfer
+from the older male or decimation of the female is performed.
 
-## Appearance
+## Appearance and facial rig
 
-Ten user-supplied PNGs are preserved unchanged in `assets/customization/`. Six hairstyles, sixteen face cells, fifteen eye pairs and sixteen nose cells are selectable, with zero meaning no cosmetic override. The mouth sheet is preserved for a later control.
+`tools/rig_character_faces.py` separates each artist-authored head along existing
+triangles, opens the existing lip seam and adds a mouth interior, teeth, tongue,
+lip rim, ink-like brows and spherical eyelid shells. It does not replace the
+head with primitive geometry. The original source GLBs and eyed Blends remain
+unchanged. Editable sources are `male-facial-rig.blend` / `female-facial-rig.blend`.
 
-Faces are baked into cached 512×512 skin textures and projected onto the skinned body. The eye layer replaces the face sheet’s eye features rather than drawing over a second complete face. Triangle-local UV seams prevent cheek interpolation from stretching the paint. Facial textures provide starter neutral, shouting, wounded and incapacitated expressions; these are painted expressions, not a facial blendshape rig. Feature registration and source-mesh shading still need art polish.
+Six live controls provide rage, asymmetric pain, fear, grin/laughter, shout and
+blink. Four smaller controls provide nose length/width, jaw width and cheek
+variation. Eye bones carry the real eyeballs and curved irises. Faces and skin
+materials update after body animation, before transform propagation; combat
+clips contain no morph-weight channels that could overwrite those controls.
+Damage, attack cooldown, retreat, low health, victory and barks drive the poses.
+Time freezes on pause and advances when stepping. Expressions are presentation
+only and do not consume the combat RNG.
 
-Hair is now actual **volumetric 3D geometry** attached to the animated head. `tools/build_hair_meshes.py` generates six starter interpretations of the supplied reference silhouettes; editable `.blend` sources and `.glb` exports are in `assets/characters/hair/`. These chunky starter styles are approximations, not exact 3D reconstructions or finished hair with physics.
+Eight skin tones, six hair dyes plus automatic black/copper, five iris colours,
+six volumetric hair styles and subtle face/nose variations are available. Skin
+and Dye buttons save by fighter identity, alongside existing appearance choices;
+older saves default the new fields. The portrait photographs the actual fighter.
+Warrior steel, Guardian blue steel, Ranger green, Scout dark leather, Healer
+ivory, Berserker red, Hexer purple and Banner Bearer ochre distinguish the eight
+core classes. Rock Thrower keeps earth tones and Paladin gold. Team colour is
+retained as an accent; class weapons and heavy-class shoulder plates remain.
 
-![Actual model camera portrait](images/model-portrait.png)
+These are a first 3D interpretation of the supplied comic sheets, not a faithful
+finished reconstruction. Wide mouth poses and the neck transition still need
+sculpt/retopology polish; hair remains a chunky procedural starter asset.
 
-The inspector portrait is a second camera photographing the **same on-field model**, including its current hair, paint, crown, pose and equipment. It does not substitute a drawing or a duplicate cosmetic preview. Every Founder can use either body regardless of title; choices persist by fighter identity.
-
-RMB orbits, MMB or Shift+RMB pans, wheel zooms, F follows the selected fighter at close range, and Home restores arena framing. Camera controls remain active while combat is paused. Escape opens the menu.
+WASD pans relative to camera orientation, Shift moves faster, Q/E orbits, RMB
+orbits, MMB or Shift+RMB pans and the wheel zooms. Manual movement exits follow.
+F follows the selected fighter, Home restores arena framing. Controls work while
+paused. J now cycles filtered disagreements, freeing D for camera movement.
 
 ## Blood, limbs and prosthetics
 
@@ -50,7 +73,7 @@ Earth/grass variation, shrubs inside authored cover, ruin stones inside existing
 
 ## Evidence
 
-A live graphics witness completed combat with all seven clip states observed, blood active, detached limbs present and wounded units still alive. It used 40 loaded male/female animation players, with only the chosen body visible per unit. Run a separate QA copy of the save if testing Founders rewards:
+The earlier facial-rig witness completed combat with the original seven clip states observed, blood active, detached limbs present and wounded units still alive. It used 40 loaded male/female animation players, with only the chosen body visible per unit. Run a separate QA copy of the save if testing Founders rewards:
 
 ```sh
 cargo run --bin phalanx -- --lab --arena ridge --visual-witness
@@ -63,3 +86,59 @@ The standard Lab does not acquire persistent wounds or salvage, so its published
 ## Barks and AI boundaries
 
 Comic text bubbles react to damage, limb loss, retreat, attacks and healing, with class and personality-specific lines. At most four are visible; per-fighter cooldowns limit repetition. Their lifetime follows simulation ticks and pauses with combat. These lines are authored and event-driven, not LLM-generated. Optional future LLM flavor should use real event context, generate between battles, cache results and retain authored fallbacks; it must not determine combat truth.
+
+## Sound
+
+A local seeded composer generates sixteen bars of a minor-key waltz at startup, with bass, staccato chords, a varying melody, sustained brass-like harmonies and downbeat drums. It loops at a modest level beneath combat. Twenty-four synthesized effects cover swings, impacts, cutting, blood spray, slurps, blops, gurgles, splats, throws and blessing, plus male/female pain, fear, victory and screams. Voice choice follows the selected 3D body; barks continue to supply words. These are original synthetic placeholders, including vocal-like oscillators rather than recorded human screams. They need listening and mix/art direction; they are not production foley.
+
+Effects follow real HP loss, wounds, cooldown changes and projectile hits. The mixer admits at most four new voices per frame and sixteen active effects. Effects pause with combat; music remains available in the menu. F8 toggles music, F9 toggles effects, and the menu exposes both controls. Preferences save locally in `outputs/audio-settings.json`. Visual witnesses stay silent unless `--audible-witness` is supplied.
+
+`cargo run --bin phalanx -- --audio-witness --seed 42` exports the score and twenty-four effect WAV files to `outputs/audio-witness/` without starting graphics or altering the campaign.
+
+## Class equipment
+
+![Starter class equipment photographed in the game](images/starter-class-equipment.png)
+
+Starter garments are extracted from each body's actual surface, expanded slightly and rendered with the same skin weights, inverse bind poses and joint entities. Tunics/chest armour and trousers/boots follow motion and remove the matching sections after limb loss. Leather bracers and belts add a shared silhouette; heavy classes have shoulder plates. Clothing color follows the phalanx color, and metallic chest materials distinguish Warrior, Guardian and Paladin. This is a starter fitted shell, not finished cloth topology or simulated fabric.
+
+Weapons attach to animated hand bones and change immediately with class: Warrior sword/shield; Guardian mace/shield; Ranger bow; Scout two daggers; Healer staff; Berserker axe; Hexer orb staff; Banner Bearer pennant lance; Rock Thrower sling; Paladin hammer/shield. They visualize existing class mechanics and do not add hidden item bonuses, projectile physics or contact-perfect weapon collisions.
+
+The user-provided [character reference sheets](art-direction/README.md) now define the art target. The 3D faces, hair and equipment are still starter interpretations. Facial poses now deform the actual new sculpts; the deleted prototype heads are not used.
+
+## Animation validation
+
+The asset validator checks changing animation samples, not just clip names.
+The live witness also measures actual joint rotation separately for male and
+female, and counts replayed gestures. Older screenshots and witness records
+show earlier models and are historical evidence, not previews of the new bases.
+
+## Combat motion variants
+
+The additional clips are authored bone keyframes on the new male and female
+rigs, not downloaded mocap or renamed copies of one motion. Editable action
+libraries are saved as `assets/characters/male-combat.blend` and
+`female-combat.blend`. Hand motion still lacks contact/foot IK and physical
+weapon contact; these are stylized in-place gestures, not finished stunt work.
+
+Class, discipline, courage, patience, health and attack ordinal select attack
+variants without consuming battle RNG. Scouts favor quick strikes; heavy
+classes favor wind-ups; wounded fighters can flail desperately. Throws have
+overhand/underhand choices. Limb loss and large hits interrupt attacks, while
+a simultaneous light hit allows the strike to remain visible. Repeated gestures
+restart; death clips play once and hold. Front collapse, backward fall and a
+delayed side topple vary deterministically with fighter identity and battle seed.
+Simulation damage and its timing remain authoritative; visual wind-up is not
+a new hit-frame or projectile-contact mechanic.
+
+For isolated art review, set `PHALANX_ANIMATION=AttackHeavy` and
+`PHALANX_ANIMATION_TIME=0.48` with `--visual-witness --face-witness`. This forces
+a review pose, so it must not be reported as evidence of normal clip selection.
+
+External options: [Mixamo](https://www.mixamo.com/) and the
+[ActorCore free selection](https://actorcore.reallusion.com/3d-motion/free?motionTech=Mocap&saleType=Items).
+This pass contains no assets downloaded from either service.
+
+The local [combat-motion witness](results/v05/combat-motion-witness.json)
+observed fourteen of fifteen clips during a completed battle, including both
+sexes moving and all three death variants. HitHeavy was checked with a forced
+review pose; that battle did not produce a hit above its 16% health threshold.
