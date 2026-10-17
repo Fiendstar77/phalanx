@@ -177,3 +177,9 @@ Living fighters now show overhead HP bars. Healers—including a Queen retrained
 **Every phalanx has its standard:** a designated fighter carries a tall back-mounted pole and rippling cloth flag in the squad's colors and emblem. Choose the bearer, primary/accent colors, and emblem in the workshop. [Heraldry rules and controls](docs/progression.md#mandatory-squad-standards-and-heraldry).
 
 **Solid bodies, blood and rivals:** swept collision stops living fighters passing through one another, including between rendered ticks. Damaging contacts produce directional droplets and persistent ground stains. Campaign arenas now use seeded tactical layouts with destructible barricades; five persistent rivals can be selected in the camp. [Behavior and current limits](docs/progression.md#physical-contacts-generated-arenas-and-rivals).
+
+**Weapon evolution:** rock practice unlocks throwing spears, then spear practice unlocks atlatls. Each has distinct range, damage, windup, ammunition, hand-held models and airborne projectiles. Empty bundles switch to a melee sidearm; mastered healing and banners keep working. [Unlocks, crafting and combat rules](docs/weapons.md).
+
+**Proper archers:** Rangers now draw real bows, fire arrows and carry visible quivers. Bow users seek clear lanes behind allies, make short retreats, and switch to sidearms when rushed or out of arrows. Other classes can craft bows through weapon progression. [Archery behavior](docs/weapons.md#proper-archery).
+
+The [RPG workshop](docs/rpg-workshop.md) gives every member a full-body character sheet, drag-and-drop inventories, ten active and three passive skill slots, and an animated forge with item levels and alloy reforging. All fighters now have triple HP, with tenfold blood bursts.

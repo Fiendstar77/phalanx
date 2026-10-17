@@ -5,6 +5,7 @@ use bevy::mesh::{Indices, VertexAttributeValues, skinning::SkinnedMesh};
 use phalanx::{
     FighterClass as Class,
     equipment::{Equipment, Gear},
+    weapons::ProjectileWeapon as W,
 };
 
 #[derive(Resource)]
@@ -21,8 +22,20 @@ pub(super) struct Kit {
 }
 #[derive(Component)]
 struct Item {
+    limb: u8,
+    hand: bool,
     id: usize,
     class: Class,
+}
+#[derive(Component)]
+struct LimbFitting {
+    id: usize,
+    limb: u8,
+}
+#[derive(Component)]
+struct Technology {
+    id: usize,
+    weapon: W,
 }
 #[derive(Component)]
 struct Crafted {
@@ -114,6 +127,41 @@ fn block(
         Vec3::from_array(scale),
         Quat::IDENTITY,
     );
+}
+fn dart(p: &mut ChildSpawnerCommands, kit: &Kit, length: f32, x: f32, z: f32, fletched: bool) {
+    let center = if fletched { 1.05 } else { 0.18 };
+    block(p, kit, &kit.leather, [x, center, z], [0.032, length, 0.032]);
+    part(
+        p,
+        &kit.cone,
+        &kit.steel,
+        Vec3::new(x, center + length * 0.5 + 0.07, z),
+        Vec3::new(0.065, 0.16, 0.035),
+        Quat::IDENTITY,
+    );
+    if fletched {
+        for angle in [0.0, std::f32::consts::FRAC_PI_2] {
+            part(
+                p,
+                &kit.cube,
+                &kit.cloth,
+                Vec3::new(x, center + 0.07 - length * 0.5, z),
+                Vec3::new(0.12, 0.18, 0.015),
+                Quat::from_rotation_y(angle),
+            );
+        }
+    }
+}
+fn technology(p: &mut ChildSpawnerCommands, kit: &Kit, weapon: W) {
+    if weapon == W::Spear {
+        dart(p, kit, 1.25, 0., 0., false);
+    } else {
+        // Short hooked throwing lever supports a longer, visibly fletched dart.
+        block(p, kit, &kit.leather, [0., 0.12, 0.], [0.06, 0.54, 0.055]);
+        block(p, kit, &kit.gold, [0.055, 0.37, 0.], [0.15, 0.05, 0.065]);
+        block(p, kit, &kit.gold, [0., -0.10, 0.], [0.075, 0.09, 0.07]);
+        dart(p, kit, 1.55, 0.11, 0., true);
+    }
 }
 fn weapon(p: &mut ChildSpawnerCommands, kit: &Kit, class: Class, left: bool) {
     if class == Class::BannerBearer {
@@ -360,6 +408,8 @@ pub(super) fn ready(
                     commands.entity(entity).with_children(|p| {
                         p.spawn((
                             Item {
+                                limb: if left { 1 } else { 2 },
+                                hand: true,
                                 id: model.id,
                                 class,
                             },
@@ -380,6 +430,23 @@ pub(super) fn ready(
                 }
             }
             if name.as_str() == "mixamorigRightHand" {
+                for weapon in [W::Spear, W::Atlatl] {
+                    commands.entity(entity).with_children(|p| {
+                        p.spawn((
+                            Technology {
+                                id: model.id,
+                                weapon,
+                            },
+                            Transform::from_rotation(if model.female {
+                                Quat::from_xyzw(0.783481, 0., 0.599873, 0.162204)
+                            } else {
+                                Quat::from_xyzw(0.903484, 0., 0.397842, 0.159494)
+                            }),
+                            Visibility::Hidden,
+                        ))
+                        .with_children(|p| technology(p, &kit, weapon));
+                    });
+                }
                 for gear in [Gear::TemperedWeapon, Gear::BalancedWeapon] {
                     commands.entity(entity).with_children(|p| {
                         p.spawn((
@@ -461,14 +528,28 @@ pub(super) fn ready(
                 "mixamorigLeftForeArm" | "mixamorigRightForeArm"
             ) {
                 commands.entity(entity).with_children(|p| {
-                    part(
-                        p,
-                        &kit.sphere,
-                        &kit.leather,
-                        Vec3::new(0.0, 0.13, 0.0),
-                        Vec3::new(0.070, 0.085, 0.070),
-                        Quat::IDENTITY,
-                    );
+                    p.spawn((
+                        LimbFitting {
+                            id: model.id,
+                            limb: if name.as_str() == "mixamorigLeftForeArm" {
+                                1
+                            } else {
+                                2
+                            },
+                        },
+                        Transform::default(),
+                        Visibility::Hidden,
+                    ))
+                    .with_children(|p| {
+                        part(
+                            p,
+                            &kit.sphere,
+                            &kit.leather,
+                            Vec3::new(0.0, 0.13, 0.0),
+                            Vec3::new(0.070, 0.085, 0.070),
+                            Quat::IDENTITY,
+                        );
+                    });
                 });
             }
             if matches!(name.as_str(), "mixamorigLeftArm" | "mixamorigRightArm") {
@@ -476,6 +557,12 @@ pub(super) fn ready(
                     for class in [Class::Guardian, Class::Paladin, Class::Warrior] {
                         p.spawn((
                             Item {
+                                limb: if name.as_str() == "mixamorigLeftArm" {
+                                    1
+                                } else {
+                                    2
+                                },
+                                hand: false,
                                 id: model.id,
                                 class,
                             },
@@ -512,14 +599,31 @@ pub(super) fn ready(
 }
 fn update(
     session: Res<Session>,
-    mut items: Query<(&Item, &mut Visibility), Without<Crafted>>,
-    mut crafted: Query<(&Crafted, &mut Visibility), Without<Item>>,
+    mut items: Query<(&Item, &mut Visibility), (Without<Crafted>, Without<Technology>)>,
+    mut technologies: Query<(&Technology, &mut Visibility), (Without<Item>, Without<Crafted>)>,
+    mut crafted: Query<(&Crafted, &mut Visibility), (Without<Item>, Without<Technology>)>,
+    mut fittings: Query<
+        (&LimbFitting, &mut Visibility),
+        (Without<Item>, Without<Crafted>, Without<Technology>),
+    >,
     mut garments: Query<(&mut Garment, &Mesh3d)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    for (item, mut visible) in &mut technologies {
+        *visible = if session.visual_unit(item.id).is_some_and(|u| {
+            u.health > 0.0
+                && u.ammunition > 0
+                && u.projectile_weapon() == Some(item.weapon)
+                && u.lost_limbs & !u.prosthetics & 2 == 0
+        }) {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
     for (piece, mut visible) in &mut crafted {
-        *visible = if session.battle.units.get(piece.id).is_some_and(|u| {
+        *visible = if session.visual_unit(piece.id).is_some_and(|u| {
             u.health > 0.0
                 && u.equipment.has(piece.gear)
                 && (u.lost_limbs & !u.prosthetics & piece.limb == 0)
@@ -529,13 +633,32 @@ fn update(
             Visibility::Hidden
         };
     }
+    for (fitting, mut visible) in &mut fittings {
+        *visible = if session
+            .visual_unit(fitting.id)
+            .is_some_and(|u| u.health > 0. && u.lost_limbs & !u.prosthetics & fitting.limb == 0)
+        {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
     for (item, mut visible) in &mut items {
-        *visible = if session.battle.units.get(item.id).is_some_and(|u| {
+        *visible = if session.visual_unit(item.id).is_some_and(|u| {
             u.health > 0.0
-                && u.class.unwrap_or(if u.role == Role::RockThrower {
-                    Class::RockThrower
-                } else {
+                && u.lost_limbs & !u.prosthetics & item.limb == 0
+                && (!item.hand
+                    || u.projectile_weapon() != Some(W::Bow)
+                    || (!u.is_ranged() && !u.bow_follow_through()))
+                && (!item.hand || u.equipment.projectile_weapon().is_none() || !u.is_ranged())
+                && (if item.hand && u.projectile_weapon().is_some() && !u.is_ranged() {
                     Class::Warrior
+                } else {
+                    u.class.unwrap_or(if u.role == Role::RockThrower {
+                        Class::RockThrower
+                    } else {
+                        Class::Warrior
+                    })
                 }) == item.class
         }) {
             Visibility::Inherited
@@ -544,7 +667,7 @@ fn update(
         };
     }
     for (mut garment, mesh) in &mut garments {
-        let Some(unit) = session.battle.units.get(garment.id) else {
+        let Some(unit) = session.visual_unit(garment.id) else {
             continue;
         };
         let class = unit.class.unwrap_or(Class::Warrior);

@@ -264,7 +264,7 @@ pub(super) fn update(
 ) {
     let mut active_gibs = gibs.iter().count();
     for (mut body, mesh, world) in &mut bodies {
-        let Some(u) = session.battle.units.get(body.id) else {
+        let Some(u) = session.visual_unit(body.id) else {
             continue;
         };
         // Expressions live on the new socketed head, never on the body texture.
@@ -301,6 +301,7 @@ pub(super) fn update(
             paint_uv(&mut painted);
             let detached = mask & !body.mask;
             if detached != 0
+                && body.id != super::super::rpg::PREVIEW_ID
                 && !reset
                 && body.choice.is_some()
                 && body.female == female(&session, body.id)
@@ -368,9 +369,7 @@ pub(super) fn update(
     }
     for (replacement, mut visible, mut material) in &mut replacements {
         let stand_in = session
-            .battle
-            .units
-            .get(replacement.id)
+            .visual_unit(replacement.id)
             .map(|u| {
                 phalanx::progression::limb_stand_in(u.lost_limbs, u.prosthetics, replacement.bit)
             })

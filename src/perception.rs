@@ -14,6 +14,7 @@ pub struct Contact {
     pub position: [f32; 2],
     pub health: f32,
     pub role: Role,
+    pub range: f32,
     pub seen_tick: u32,
     pub source: Source,
     pub visible: bool,
@@ -65,6 +66,7 @@ pub fn update(units: &mut [Unit], arena: Arena, tick: u32) {
                         e.health_fraction() * 100.0
                     },
                     role: e.role,
+                    range: e.attack_range(),
                     seen_tick: tick,
                     source: Source::OwnSight,
                     visible: true,
@@ -142,7 +144,7 @@ pub fn threats(unit: &Unit, tick: u32) -> Vec<Threat> {
         .iter()
         .map(|c| Threat {
             position: c.position,
-            range: c.role.range(),
+            range: c.range,
             confidence: c.confidence(tick),
         })
         .collect()

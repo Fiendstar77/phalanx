@@ -184,7 +184,7 @@ fn scar_bark(battle: &phalanx::Battle, unit: &phalanx::Unit) -> Option<&'static 
     let closing = unit.enemy.is_some_and(|id| {
         unit.contacts.iter().any(|contact| {
             contact.enemy == id
-                && phalanx::distance(unit.position, contact.position) > unit.role.range()
+                && phalanx::distance(unit.position, contact.position) > unit.attack_range()
         })
     });
     phalanx::psyche::bark(

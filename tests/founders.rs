@@ -18,11 +18,11 @@ fn every_starting_phalanx_has_king_queen_general_with_bounded_royal_bonus() {
             ]
         );
         for royal in &units[..2] {
-            assert_eq!(royal.health, 110.0);
+            assert_eq!(royal.health, 330.0);
             assert_eq!(royal.health_fraction(), 1.0);
             assert_eq!(royal.damage_multiplier(), 1.1);
         }
-        assert_eq!(units[2].max_health(), 100.0);
+        assert_eq!(units[2].max_health(), 300.0);
         assert_eq!(units[2].damage_multiplier(), 1.0);
     }
     let lab = Battle::new(42, false);
@@ -30,7 +30,7 @@ fn every_starting_phalanx_has_king_queen_general_with_bounded_royal_bonus() {
     assert!(
         lab.units
             .iter()
-            .all(|u| u.command_title.is_none() && u.max_health() == 100.0)
+            .all(|u| u.command_title.is_none() && u.max_health() == 300.0)
     );
 }
 #[test]

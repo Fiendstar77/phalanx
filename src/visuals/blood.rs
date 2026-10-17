@@ -5,7 +5,8 @@ use bevy::{
     mesh::{Indices, PrimitiveTopology},
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
-const COUNT: usize = 1024;
+const COUNT: usize = 8192;
+const INTENSITY: usize = 10;
 const SIZE: usize = 512;
 #[derive(Component)]
 pub(super) struct Particle(usize);
@@ -111,6 +112,8 @@ fn setup(
     for i in 0..COUNT {
         commands.spawn((
             Particle(i),
+            bevy::light::NotShadowCaster,
+            bevy::light::NotShadowReceiver,
             Mesh3d(drop.clone()),
             MeshMaterial3d(wet.clone()),
             Transform::default(),
@@ -171,11 +174,12 @@ impl Fx {
         self.dirty = true;
     }
     fn emit(&mut self, p: Vec3, direction: Vec3, amount: f32, severe: bool, blunt: bool) {
-        let count = if severe {
-            90
-        } else {
-            (amount * 2.0).clamp(12.0, 50.0) as usize
-        };
+        let count = INTENSITY
+            * if severe {
+                90
+            } else {
+                (amount * 2.0).clamp(12.0, 50.0) as usize
+            };
         let forward = direction.normalize_or_zero();
         let side = Vec3::new(-forward.z, 0., forward.x);
         for j in 0..count {
@@ -198,9 +202,9 @@ impl Fx {
                 2.0 + n * 2.5
             };
             let radius = if blunt {
-                0.025 + n * 0.025
+                0.035 + n * 0.035
             } else {
-                0.012 + n * 0.023
+                0.018 + n * 0.028
             };
             self.particles[index] = Droplet {
                 p,
@@ -256,8 +260,8 @@ pub(super) fn effects(
             fx.stamp(
                 arena,
                 pos,
-                0.3,
-                1.3,
+                0.65,
+                1.7,
                 event.velocity[1].atan2(event.velocity[0]),
                 0.65,
             );
@@ -272,7 +276,7 @@ pub(super) fn effects(
         0.0
     };
     fx.drip += dt;
-    if fx.drip >= 0.28 {
+    if fx.drip >= 0.10 {
         fx.drip = 0.;
         for u in &session.battle.units {
             if u.health > 0.0
@@ -290,7 +294,7 @@ pub(super) fn effects(
                 fx.stamp(
                     arena,
                     pos,
-                    0.025 + 0.015 * u.lost_limbs.count_ones() as f32,
+                    0.055 + 0.025 * u.lost_limbs.count_ones() as f32,
                     1.1,
                     u.id as f32,
                     0.35,
@@ -322,7 +326,7 @@ pub(super) fn effects(
                 let speed = p.v.xz().length();
                 landed.push((
                     p.p,
-                    (p.scale.x * 2.0).max(0.025),
+                    (p.scale.x * 2.5).max(0.04),
                     1.0 + (speed * 0.2).min(2.0),
                     p.v.z.atan2(p.v.x),
                 ));

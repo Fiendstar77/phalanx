@@ -6,7 +6,11 @@ use phalanx::{
 fn sparse(arena: Arena, ids: &[usize]) -> Battle {
     let mut b = Battle::with_arena(42, false, arena);
     for u in &mut b.units {
-        u.health = if ids.contains(&u.id) { 100.0 } else { 0.0 };
+        u.health = if ids.contains(&u.id) {
+            u.max_health()
+        } else {
+            0.0
+        };
     }
     b
 }
@@ -122,6 +126,7 @@ fn cooperative_target_selection_can_follow_an_allied_focus() {
             position: [if id == 5 { 4.0 } else { 3.5 }, 0.0],
             health: 100.0,
             role: b.units[id].role,
+            range: b.units[id].attack_range(),
             seen_tick: 0,
             source: Source::OwnSight,
             visible: true,
@@ -185,6 +190,7 @@ fn a_remembered_position_inside_weapon_range_does_not_authorize_a_throw() {
         position: [2.0, 0.0],
         health: 100.0,
         role: enemy_role,
+        range: enemy_role.range(),
         seen_tick: 0,
         source: Source::OwnSight,
         visible: false,
@@ -193,7 +199,7 @@ fn a_remembered_position_inside_weapon_range_does_not_authorize_a_throw() {
     assert_eq!(b.units[0].visible_enemies, 0);
     assert_eq!(b.units[0].enemy, Some(5));
     assert!(b.rocks.is_empty());
-    assert_eq!(b.units[5].health, 100.0);
+    assert_eq!(b.units[5].health, b.units[5].max_health());
 }
 #[test]
 fn reports_do_not_reach_teammates_outside_communication_range() {

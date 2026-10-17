@@ -187,7 +187,7 @@ pub fn threat_at(arena: Arena, p: [f32; 2], team: usize, units: &[Unit]) -> f32 
         .filter(|u| u.team != team && u.health > 0.0)
         .map(|u| Threat {
             position: u.position,
-            range: u.role.range(),
+            range: u.attack_range(),
             confidence: 1.0,
         })
         .collect();
@@ -219,7 +219,7 @@ pub fn plan(
         .filter(|u| u.team != team && u.health > 0.0)
         .map(|u| Threat {
             position: u.position,
-            range: u.role.range(),
+            range: u.attack_range(),
             confidence: 1.0,
         })
         .collect();

@@ -145,7 +145,7 @@ pub(super) fn ready(
     let Ok(model) = models.get(event.entity) else {
         return;
     };
-    let Some(unit) = session.battle.units.get(model.id) else {
+    let Some(unit) = session.visual_unit(model.id) else {
         return;
     };
     let cloth = meshes.add(cloth_mesh());
@@ -208,7 +208,7 @@ fn update(
     mut kit: ResMut<Standards>,
     mut images: ResMut<Assets<Image>>,
     mut standards: Query<(&Standard, &mut Visibility)>,
-    cloths: Query<(&Cloth, &Mesh3d)>,
+    mut cloths: Query<(&Cloth, &Mesh3d, &mut MeshMaterial3d<StandardMaterial>)>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     for team in 0..2 {
@@ -225,9 +225,7 @@ fn update(
     let carries = |id: usize| {
         session.battle.founders
             && session
-                .battle
-                .units
-                .get(id)
+                .visual_unit(id)
                 .is_some_and(|u| u.displays_standard())
     };
     for (standard, mut visibility) in &mut standards {
@@ -237,11 +235,16 @@ fn update(
             Visibility::Hidden
         };
     }
-    for (cloth, mesh) in &cloths {
+    for (cloth, mesh, mut material) in &mut cloths {
         if !carries(cloth.id) {
             continue;
         }
-        let unit = &session.battle.units[cloth.id];
+        let Some(unit) = session.visual_unit(cloth.id) else {
+            continue;
+        };
+        if material.0 != kit.materials[unit.team] {
+            material.0 = kit.materials[unit.team].clone();
+        }
         let moving = session.running && unit.health > 0.0 && !matches!(unit.action, 1 | 6);
         if let Some(mut mesh) = meshes.get_mut(&mesh.0) {
             mesh.insert_attribute(

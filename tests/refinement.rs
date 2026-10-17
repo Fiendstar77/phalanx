@@ -106,6 +106,7 @@ fn remembered_enemy_can_trigger_real_barricade_destruction_and_open_navigation()
         position: enemy.position,
         health: 100.,
         role: enemy.role,
+        range: enemy.attack_range(),
         seen_tick: 0,
         source: phalanx::perception::Source::OwnSight,
         visible: false,

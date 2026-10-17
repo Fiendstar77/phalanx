@@ -1,6 +1,6 @@
 //! Coordination operates on the recipient's contacts and nearby allied information.
 use crate::{
-    Role, Unit, distance,
+    Unit, distance,
     perception::{Contact, cooperative},
     terrain::Arena,
 };
@@ -56,11 +56,7 @@ pub fn support_ally<'a>(unit: &Unit, allies: &[&'a Unit], tick: u32) -> Option<(
         .max_by(|a, b| a.1.total_cmp(&b.1).then_with(|| b.0.id.cmp(&a.0.id)))
 }
 pub fn support_position(arena: Arena, unit: &Unit, ally: &Unit) -> [f32; 2] {
-    let back = if unit.role == Role::RockThrower {
-        1.8
-    } else {
-        0.8
-    };
+    let back = if unit.is_ranged() { 1.8 } else { 0.8 };
     let p = [
         (ally.position[0] + if unit.team == 0 { -back } else { back })
             .clamp(-arena.half_size()[0] + 0.5, arena.half_size()[0] - 0.5),

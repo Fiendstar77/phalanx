@@ -69,7 +69,7 @@ Founders who remain above zero HP can lose an arm when damage crosses 50% maximu
 
 Completed battles keep the missing limbs and replacements with the same fighter ID. First recorded loss of each limb has a permanent battle-ID record; the latest twenty battle summaries also store limb state. HP recovers next match; limbs do not grow back. Aborting/resetting an unfinished match does not settle its wounds or rewards.
 
-The squad earns **10 salvage for victory, 6 otherwise**, once per completed battle. Before a match starts or after it finishes, select a fighter and click **Craft iron I (15 gold + 5 salvage)**. It crafts one missing replacement, arms before legs. Insufficient funds and repeated attempts without a missing limb leave the inventory unchanged. The recipe is intentionally simple: no workshop, ingredients graph or real-money purchase.
+The squad earns **10 salvage for victory, 6 otherwise**, once per completed battle. Before a match starts or after it finishes, select a fighter and click **Craft iron I (15 gold + 5 salvage)**. It crafts one missing replacement, arms before legs. Insufficient funds and repeated attempts without a missing limb leave the inventory unchanged. Prosthetics currently use this simple recipe; equipment levels and alloy reforging are separate.
 
 A tier-I iron arm restores the missing-arm penalty, multiplies the fighter's damage by **3**, and imposes **15% slower movement** for balance/weight. Two arms do not stack that multiplier to 9×. An iron leg restores that leg's movement penalty. These are early balance constants, not measured balanced equipment. A severe crossing can destroy an equipped replacement. No durability meter, higher crafting tiers, retirement or reserve roster exists yet.
 
@@ -87,11 +87,14 @@ Select a Founders fighter and scroll the inspector to the recipe buttons. Craft 
 | --- | --- | --- |
 | Tempered weapon | 25 / 8 | +20% damage, -8% movement |
 | Balanced weapon | 20 / 6 | +8% damage, +5% movement |
+| Throwing spear | 30 / 8 | 100 rock practice; 6 spears, planted windup, first-body interception |
+| Atlatl | 45 / 12 | 100 spear practice; 4 darts, longer range and windup |
+| Bow | 55 / 14 | 100 atlatl practice or Ranger mastery; 12 arrows, draw/aim/release |
 | Iron armor | 30 / 10 | -20% incoming damage, -15% movement |
 | Trail armor | 20 / 6 | +12% movement, +8% incoming damage |
-| Vitality charm | 35 / 12 | +20 maximum HP |
+| Vitality charm | 35 / 12 | +60 maximum HP |
 
-One weapon, one armor, and one charm may be equipped together. Multipliers combine with class, level, wounds, and blessings. Recipes work across classes; class weapons retain their class silhouette. Crafted weapons add silver or gold fittings; iron armor adds a steel breastplate and metallic garment treatment; trail armor adds leather straps and a leather garment treatment; the vitality charm adds a green chest gem. The inspector reports the loadout and effective damage, movement, and incoming damage multipliers. Loadouts persist with the squad; older saves receive empty inventories. Lab battles retain their original stats. Recruitment starts with an empty inventory.
+One weapon, one armor, and one charm may be equipped together. Multipliers combine with class, level, wounds, and blessings. Recipes work across classes. Starter/quality weapons retain their class silhouette; crafted spears, atlatls and bows replace the hand-held weapon and select the attack behavior. Crafted weapons add silver or gold fittings; iron armor adds a steel breastplate and metallic garment treatment; trail armor adds leather straps and a leather garment treatment; the vitality charm adds a green chest gem. The inspector reports the loadout and effective damage, movement, and incoming damage multipliers. Loadouts persist with the squad; older saves receive empty inventories. Lab battles retain their original stats. Recruitment starts with an empty inventory.
 
 
 ## Health and healer feedback
@@ -106,7 +109,7 @@ For a reproducible graphics check, run `phalanx --visual-witness --healing-witne
 
 Completed Founders battles open the battle report after rewards settle. It records the arena, seed, outcome, actual gold/salvage awarded to each team, and each fighter's survival, remaining HP, damage, healing, XP, and new missing limbs. Healing totals cover the whole battle, independently of the bounded presentation-event queue. The latest report is serialized with the campaign and remains available from **Battle report** or **Last battle report** after restarting.
 
-Open **Squad workshop** from the arena controls or main menu, or choose **Squad & equipment** from the report. Select a fighter from either squad to compare full-health preparation stats, inspect wounds, retrain, fit iron limbs, and craft or switch gear. Recipe cards show ownership, affordability, resulting stats, and deltas for the exact equip/remove action. Scroll to reach lower recipes. Lower incoming-damage multipliers mean greater protection.
+Open **Squad workshop** from the arena controls or main menu. Select any member for a large rotatable character preview, missing limbs, prosthetics and drag-and-drop equipment. Use the Skills, Forge, and Training & titles tabs for preparation. The shared chest transfers physical items between fighters. The forge upgrades items to level 5 and melts them into stronger alloys. See the [RPG workshop](rpg-workshop.md) for capacities, progression, and save compatibility. Lower incoming-damage multipliers mean greater protection.
 
 The campaign's serialized fighter records own inventories and equipped slots. Previews derive temporary copies using saved class, XP, wounds and equipment; they exclude temporary blessings and low-health rage bonuses. Confirmed preparation changes use the existing campaign operations and autosave path. Before the first tick they also update the staged battle unit. After a completed battle they affect only the next battle's freshly generated roster; the completed combat snapshot and saved report remain unchanged. Preparation actions are blocked while a battle is in progress.
 
@@ -127,7 +130,7 @@ These stage and complete a real seeded simulation with a Queen healer, then craf
 
 Titles, active discipline, permanent mastery, equipment and identity are separate serialized fighter properties. Workshop title buttons assign an office for free. Assigning an occupied title swaps the two holders' titles; assigning Member vacates the selected fighter's office. Each squad can have one of each named office and any number of Members. Offices are optional, and title assignment does not change class, fighter ID, body choice, name, gear or practice. Existing title-based body defaults are frozen before reassignment so a new title cannot change an existing fighter's appearance.
 
-Title bonuses: King/Queen +10 maximum HP and +10% damage; General -10% incoming damage; Captain +10% movement; Champion +10% damage; Member no bonus. These follow the current holder. The General's title protection is distinct from Paladin's blessing. Preparation changes update the staged roster before battle; post-battle changes apply next battle and preserve the completed report's original titles.
+Title bonuses: King/Queen +30 maximum HP and +10% damage; General -10% incoming damage; Captain +10% movement; Champion +10% damage; Member no bonus. These follow the current holder. The General's title protection is distinct from Paladin's blessing. Preparation changes update the staged roster before battle; post-battle changes apply next battle and preserve the completed report's original titles.
 
 Completed-battle XP also trains that fighter's active discipline, once per settlement. Practice is independent for all ten disciplines; 100 retains the supported skill after retraining, with ranks at 100/300/600. Retraining retains accumulated practice, so partial training can be resumed later. Older saves start at zero practice; historical class use cannot be reliably reconstructed. A new recruit starts at zero practice rather than inheriting the template fighter's skills.
 
@@ -154,4 +157,6 @@ Damage events drive directional airborne droplets, with heavier blunt drops and 
 
 Generated campaign fields store their seed and layout in the battle snapshot. Eight mirrored layouts combine four destructible barricades, a central elevation, rough approaches, cover and two flanks. Navigation checks connect deployment zones to the objective and both flanks. Fighters can break nearby obstructing barricades; destruction opens navigation immediately. Reports retain the initial arena for replay. Identical seed, squads and build reproduce the simulation; these are constrained authored layouts with seeded variations, rather than an unconstrained world generator.
 
-The **Rival phalanxes** tab selects Obsidian Coven, Iron Sentinel, Bloodhound Syndicate, Vanguard of the Sun or Null Collective. Moonward remains available when swapped into the reserve list. All rosters, offices, standards, equipment, practice, wounds and resources persist. Only the rival actually fought earns progress. Rivals spend earned currencies on gear, prosthetics and cross-training; Null uses observed player composition and the last match's healing to choose counters. This is deterministic adaptation, not a trained online model. Guns, life leech and new stun abilities remain future class content.
+The **Rival phalanxes** tab selects Obsidian Coven, Iron Sentinel, Bloodhound Syndicate, Vanguard of the Sun or Null Collective. Moonward remains available when swapped into the reserve list. All rosters, offices, standards, equipment, practice, wounds and resources persist. Only the rival actually fought earns progress. Rivals spend earned currencies on gear, prosthetics and cross-training, and can unlock spears/atlatls/bows through their own earned weapon practice; Null uses observed player composition and the last match's healing to choose counters. This is deterministic adaptation, not a trained online model. Guns, life leech and new stun abilities remain future class content.
+
+Weapon practice and technology details: [Rock → spear → atlatl](weapons.md).

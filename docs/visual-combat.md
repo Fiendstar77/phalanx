@@ -142,3 +142,5 @@ The local [combat-motion witness](results/v05/combat-motion-witness.json)
 observed fourteen of fifteen clips during a completed battle, including both
 sexes moving and all three death variants. HitHeavy was checked with a forced
 review pose; that battle did not produce a hit above its 16% health threshold.
+
+The RPG character-sheet preview reuses the actual body masking, armor, equipment, flag and fitted iron-limb renderers from saved member state. Unfitted missing limbs remain absent. Blood bursts now emit ten times the previous counts, within an 8,192-droplet pool, with larger splats/pools and wound trails every 0.1 simulated seconds. See [RPG workshop](rpg-workshop.md).

@@ -46,7 +46,7 @@ Each team has three melee fighters and two rock throwers, all starting with 100 
 
 Throws require a clear segment, aim at the enemy's position when launched, and travel at 10 world units per second. At impact, enemies within 0.75 units of the aim point receive damage. Moving targets can evade the rock. Hits are target contacts: one rock may damage multiple enemies. There is no friendly fire. Rendered rock arcs follow the corresponding simulation projectile; the arc is visual, while hit resolution uses the aimed ground position.
 
-Damage resolves simultaneously. Rocks persist after their thrower's death, and elimination does not end a battle while rocks remain airborne. The battle ends on team elimination with no pending rocks, or at 120 simulated seconds. Timeouts are draws.
+Damage resolves simultaneously. Rocks persist after their thrower's death, and elimination does not end a battle while rocks remain airborne. The battle ends on team elimination with no pending rocks, or at 360 simulated seconds. Timeouts are draws.
 
 ## Current limits
 
@@ -82,7 +82,7 @@ The live disagreement summary counts all teams and controller modes in the curre
 
 ## Citadel and live pair inspection
 
-Citadel is a 44×40 arena (five times the standard 22×16 footprint), with 6 warriors + 4 rock throwers per team. Authored twin hills rise to 3.8 units. Five barricades create central passages and lateral approaches; six cover zones and rough ground add route choices. Grid dimensions, damage accumulation, rendering, roster colors/roles, unit labels, camera framing, and selection now follow arena size. The default three arenas retain their original rules and rosters. Citadel retains the 120-second cap. The original larger-map search stalled at deployment zones; scouts now continue through authored patrol waypoints and stop camping empty hills after the opening. With the walkways and search fix, seed 42 finished in a Red win at 67.8 seconds. The model features scale position, height, and team counts to the arena while preserving the original small-map values; the frozen small-arena policy is not validated for Citadel generalization.
+Citadel is a 44×40 arena (five times the standard 22×16 footprint), with 6 warriors + 4 rock throwers per team. Authored twin hills rise to 3.8 units. Five barricades create central passages and lateral approaches; six cover zones and rough ground add route choices. Grid dimensions, damage accumulation, rendering, roster colors/roles, unit labels, camera framing, and selection now follow arena size. The default three arenas retain their original rules and rosters. Citadel now shares the 360-second cap and triple-HP tuning. The original larger-map search stalled at deployment zones; scouts now continue through authored patrol waypoints and stop camping empty hills after the opening. In the earlier 100-HP tuning, with the walkways and search fix, seed 42 finished in a Red win at 67.8 seconds. The model features scale position, height, and team counts to the arena while preserving the original small-map values; the frozen small-arena policy is not validated for Citadel generalization.
 
 Top disagreement rows are clickable. A filter selects living agents whose **latest** proposals match the exact pair; pink rings and markers identify them. A found match pauses and selects an agent. J cycles matching agents; Esc/Show all clears the filter. Counts remain historical, so zero current matches is shown explicitly. Filters clear on reset/map change. UI clicks cannot also select a world pawn.
 
@@ -92,7 +92,7 @@ Two raised passerelles cross the central lanes at 3.2 units, with ramp entrances
 
 ## Founders setup
 
-The graphical app now defaults to three fighters per team: King, Queen, and General, centered in each deployment zone. Command titles are independent of melee/rock-thrower roles. Initial King and General are melee fighters; Queen is a rock thrower. Royals have 110 maximum HP and multiply base weapon damage by 1.10. General retains 100 HP and normal damage. Own injury and ally-support calculations use health relative to maximum HP; observed enemy health is represented as a percentage for utility features. Gold/silver crown meshes and a chest chevron patch follow these titles.
+The graphical app now defaults to three fighters per team: King, Queen, and General, centered in each deployment zone. Command titles are independent of melee/rock-thrower roles. Initial King and General are melee fighters; Queen is a rock thrower. Royals have 330 maximum HP and multiply base weapon damage by 1.10. General starts at 300 HP and normal damage. Own injury and ally-support calculations use health relative to maximum HP; observed enemy health is represented as a percentage for utility features. Gold/silver crown meshes and a chest chevron patch follow these titles.
 
 Founders/Lab switches between the new setup and the original experiment rosters. Reset, profile swap, and arena changes preserve the active setup and controller. Graphical `--lab` and the default headless batch preserve original Lab behavior; batch `--founders` enables the new setup. The Lab's seed-42 Choke output still matches byte-for-byte. Three new tests cover roster composition, actual royal melee/projectile damage, and deterministic finite battles on every arena.
 

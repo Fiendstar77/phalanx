@@ -89,11 +89,9 @@ pub enum LimbStandIn {
     Wood,
     Iron,
 }
-pub fn limb_stand_in(lost_limbs: u8, prosthetics: u8, bit: u8) -> LimbStandIn {
+pub fn limb_stand_in(_lost_limbs: u8, prosthetics: u8, bit: u8) -> LimbStandIn {
     if prosthetics & bit != 0 {
         LimbStandIn::Iron
-    } else if lost_limbs & bit != 0 {
-        LimbStandIn::Wood
     } else {
         LimbStandIn::None
     }
@@ -105,6 +103,8 @@ pub struct WoundRecord {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Fighter {
+    #[serde(default)]
+    pub skills: Option<crate::skills::SkillLoadout>,
     #[serde(default)]
     pub mastery: crate::mastery::Mastery,
     #[serde(default)]
@@ -133,6 +133,8 @@ pub struct Fighter {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Phalanx {
     #[serde(default)]
+    pub inventory: Vec<crate::equipment::Item>,
+    #[serde(default)]
     pub rival_style: Option<crate::rivals::RivalStyle>,
     #[serde(default)]
     pub heraldry: crate::heraldry::Heraldry,
@@ -158,6 +160,10 @@ pub struct FighterResult {
     pub healing: f32,
     pub xp: u32,
     pub new_wounds: u8,
+    #[serde(default, deserialize_with = "crate::weapons::deserialize_practice")]
+    pub weapon_training: [u32; 4],
+    #[serde(default)]
+    pub discoveries: Vec<crate::equipment::Gear>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BattleReport {
@@ -190,6 +196,16 @@ impl BattleReport {
                             && f.health <= f.max_health
                             && f.xp <= 55
                             && f.new_wounds <= 15
+                            && f.weapon_training.iter().all(|p| *p <= 55)
+                            && f.discoveries.len() <= 3
+                            && f.discoveries.iter().all(|g| {
+                                matches!(
+                                    g,
+                                    crate::equipment::Gear::ThrowingSpear
+                                        | crate::equipment::Gear::Atlatl
+                                        | crate::equipment::Gear::Bow
+                                )
+                            })
                     })
             })
     }
@@ -226,6 +242,7 @@ impl Campaign {
             next_battle_id: 0,
             last_settled_id: None,
             teams: std::array::from_fn(|team| Phalanx {
+                inventory: Vec::new(),
                 rival_style: None,
                 heraldry: crate::heraldry::Heraldry {
                     emblem: if team == 0 {
@@ -252,6 +269,7 @@ impl Campaign {
                 .into_iter()
                 .enumerate()
                 .map(|(slot, title)| Fighter {
+                    skills: None,
                     mastery: Default::default(),
                     equipment: Default::default(),
                     fighter_id: format!("{stamp:x}-{team}-{slot}"),
@@ -306,7 +324,9 @@ impl Campaign {
         let valid_name =
             |s: &str| !s.is_empty() && s.chars().count() <= 64 && !s.chars().any(char::is_control);
         for team in self.teams.iter().chain(self.rivals.iter()) {
-            if !team.heraldry.valid()
+            if team.inventory.len() > 128
+                || team.inventory.iter().any(|i| !i.valid())
+                || !team.heraldry.valid()
                 || team.standard_bearer >= team.fighters.len()
                 || !valid_name(&team.name)
                 || team.salvage > 1_000_000
@@ -326,7 +346,8 @@ impl Campaign {
                     return Err("duplicate squad title".into());
                 }
                 let m = f.mind;
-                if !f.equipment.valid()
+                if f.skills.is_some_and(|s| !s.valid(f.class, f.mastery))
+                    || !f.equipment.valid()
                     || !valid_name(&f.name)
                     || f.fighter_id.is_empty()
                     || f.fighter_id.len() > 128
@@ -421,8 +442,10 @@ impl Campaign {
             u.prosthetics = f.prosthetics;
             u.equipment = f.equipment;
             u.mastery = f.mastery;
+            u.skills = f.skills;
             u.carries_standard = u.id % size == self.teams[u.team].standard_bearer;
             u.role = u.trained_role();
+            u.ammunition = u.projectile_weapon().map(|w| w.ammunition()).unwrap_or(0);
             u.psyche = f.psyche;
             u.health = u.max_health();
         }
@@ -435,18 +458,44 @@ impl Campaign {
         slot: usize,
         gear: crate::equipment::Gear,
     ) -> Result<String, String> {
+        let mut next = self.clone();
+        let message = next.workshop_inner(team, slot, gear)?;
+        *self = next;
+        Ok(message)
+    }
+    fn workshop_inner(
+        &mut self,
+        team: usize,
+        slot: usize,
+        gear: crate::equipment::Gear,
+    ) -> Result<String, String> {
         self.validate()?;
         let squad = self.teams.get_mut(team).ok_or("invalid squad")?;
         let fighter = squad.fighters.get_mut(slot).ok_or("invalid fighter")?;
         let equipment = &mut fighter.equipment;
+        equipment.migrate();
         if equipment.owns(gear) {
             let removing = equipment.has(gear);
-            equipment.slots[gear.slot()] = if removing { None } else { Some(gear) };
+            equipment.equipped[gear.slot()] = if removing {
+                None
+            } else {
+                equipment
+                    .items
+                    .iter()
+                    .position(|i| i.is_some_and(|i| i.gear == gear))
+            };
+            equipment.sync();
             return Ok(format!(
                 "{} {}",
                 if removing { "Unequipped" } else { "Equipped" },
                 gear.name()
             ));
+        }
+        if let Some(reason) = gear.locked_reason(fighter.mastery) {
+            return Err(reason);
+        }
+        if equipment.items.iter().all(Option::is_some) {
+            return Err("Personal inventory is full".into());
         }
         let (gold, salvage) = gear.cost();
         if squad.gold < gold || squad.salvage < salvage {
@@ -459,8 +508,9 @@ impl Campaign {
         }
         squad.gold -= gold;
         squad.salvage -= salvage;
-        equipment.owned |= 1 << gear.index();
-        equipment.slots[gear.slot()] = Some(gear);
+        let index = equipment.insert(crate::equipment::Item::new(gear))?;
+        equipment.equipped[gear.slot()] = Some(index);
+        equipment.sync();
         Ok(format!(
             "Crafted and equipped {}: {}",
             gear.name(),
@@ -515,6 +565,7 @@ impl Campaign {
             recruit.lost_limbs = 0;
             recruit.prosthetics = 0;
             recruit.equipment = Default::default();
+            recruit.skills = None;
             recruit.mastery = Default::default();
             recruit.appearance = Appearance::default();
             recruit.psyche = Psyche::default();
@@ -568,6 +619,9 @@ impl Campaign {
         }
         if squad.gold < 10 {
             return Err("Retraining costs 10 gold".into());
+        }
+        if let Some(skills) = &mut f.skills {
+            skills.retrain(class, f.mastery);
         }
         f.class = class;
         squad.gold -= 10;
@@ -650,6 +704,11 @@ impl Campaign {
                 + (u.damage_dealt / 20.0).clamp(0.0, 10.0) as u32;
             f.experience = f.experience.saturating_add(xp).min(1_000_000);
             f.mastery.train(u.class.unwrap_or(f.class), xp);
+            for weapon in crate::weapons::ProjectileWeapon::ALL {
+                if u.weapon_shots[weapon.index()] > 0 {
+                    f.mastery.train_weapon(weapon, xp);
+                }
+            }
             f.battles += 1;
             f.wins += u32::from(won);
             // Deterministic habits, not online PyTorch training or a promise of better tactics.
@@ -707,6 +766,20 @@ impl Campaign {
                             healing: u.healing_done,
                             xp: f.history.last().unwrap().experience_gained,
                             new_wounds: u.lost_limbs & !self.teams[team].fighters[slot].lost_limbs,
+                            weapon_training: std::array::from_fn(|i| {
+                                f.mastery.weapons[i].saturating_sub(u.mastery.weapons[i])
+                            }),
+                            discoveries: [
+                                crate::equipment::Gear::ThrowingSpear,
+                                crate::equipment::Gear::Atlatl,
+                                crate::equipment::Gear::Bow,
+                            ]
+                            .into_iter()
+                            .filter(|g| {
+                                g.locked_reason(u.mastery).is_some()
+                                    && g.locked_reason(f.mastery).is_none()
+                            })
+                            .collect(),
                         }
                     })
                     .collect()
@@ -736,6 +809,13 @@ impl Campaign {
         let mut c: Self = serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
             .map_err(|e| e.to_string())?;
         c.validate()?;
+        for team in c.teams.iter_mut().chain(c.rivals.iter_mut()) {
+            for fighter in &mut team.fighters {
+                if fighter.equipment.owned != 0 {
+                    fighter.equipment.migrate();
+                }
+            }
+        }
         crate::rivals::initialize(&mut c);
         c.validate()?;
         Ok(c)

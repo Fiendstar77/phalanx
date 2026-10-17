@@ -1,5 +1,6 @@
 //! Presentation only: character clips, bounded combat particles, arena dressing.
 //! Damage, pathfinding, terrain height and controller decisions remain in Battle.
+mod archery;
 mod barks;
 mod blood;
 use blood::{Fx, effects};
@@ -21,6 +22,7 @@ pub struct BattleVisuals;
 impl Plugin for BattleVisuals {
     fn build(&self, app: &mut App) {
         barks::install(app);
+        archery::install(app);
         blood::install(app);
         face::install(app);
         health::install(app);
@@ -73,7 +75,14 @@ fn death_clip(clip: usize) -> bool {
 }
 fn attack_clip(unit: &phalanx::Unit, ordinal: u32) -> usize {
     use phalanx::FighterClass as Class;
-    if unit.role == Role::RockThrower {
+    if unit.projectile_weapon() == Some(phalanx::weapons::ProjectileWeapon::Bow) && unit.is_ranged()
+    {
+        return 0;
+    }
+    if unit.is_ranged() || unit.windup.is_some() {
+        if unit.equipment.projectile_weapon().is_some() {
+            return 4;
+        }
         return if unit.mind.patience > 0.65 || ordinal.is_multiple_of(2) {
             4
         } else {
@@ -123,6 +132,8 @@ struct Actor {
     lock: f32,
     health: f32,
     cooldown: f32,
+    winding: bool,
+    shots: u32,
     position: Vec2,
     tick: u32,
     seed: u64,
@@ -135,16 +146,14 @@ pub(super) fn female(session: &Session, id: usize) -> bool {
         return choice;
     }
     session
-        .battle
-        .units
-        .get(id)
+        .visual_unit(id)
         .is_some_and(|u| match u.command_title {
             Some(CommandTitle::Queen) => true,
             Some(_) => false,
             None => id % 2 == 1,
         })
 }
-fn load_visuals(
+pub(crate) fn load_visuals(
     mut commands: Commands,
     server: Res<AssetServer>,
     mut graphs: ResMut<Assets<AnimationGraph>>,
@@ -180,7 +189,8 @@ fn load_visuals(
                 .observe(body::ready)
                 .observe(face::ready)
                 .observe(equipment::ready)
-                .observe(standards::ready);
+                .observe(standards::ready)
+                .observe(archery::ready);
             });
         }
     }
@@ -306,22 +316,18 @@ fn ready(
                     clip: 0,
                     clock: 0.0,
                     lock: 0.0,
-                    health: session.battle.units.get(model.id).map_or(0.0, |u| u.health),
+                    health: session.visual_unit(model.id).map_or(0.0, |u| u.health),
                     cooldown: 0.0,
+                    winding: false,
+                    shots: 0,
                     position: session
-                        .battle
-                        .units
-                        .get(model.id)
+                        .visual_unit(model.id)
                         .map_or(Vec2::ZERO, |u| Vec2::from_array(u.position)),
                     tick: session.battle.tick,
                     seed: session.battle.seed,
                     replays: 0,
                     attacks: 0,
-                    lost_limbs: session
-                        .battle
-                        .units
-                        .get(model.id)
-                        .map_or(0, |u| u.lost_limbs),
+                    lost_limbs: session.visual_unit(model.id).map_or(0, |u| u.lost_limbs),
                 },
             ));
         }
@@ -342,7 +348,7 @@ fn animate(
         0.0
     };
     for (model, mut visibility) in &mut models {
-        *visibility = if model.id < session.battle.units.len()
+        *visibility = if session.visual_unit(model.id).is_some()
             && model.female == female(&session, model.id)
         {
             Visibility::Inherited
@@ -351,7 +357,7 @@ fn animate(
         };
     }
     for (mut actor, mut player) in &mut actors {
-        let Some(unit) = session.battle.units.get(actor.id) else {
+        let Some(unit) = session.visual_unit(actor.id) else {
             continue;
         };
         if actor.female != female(&session, actor.id) {
@@ -367,6 +373,8 @@ fn animate(
             actor.lock = 0.0;
             actor.health = unit.health;
             actor.cooldown = unit.cooldown;
+            actor.winding = unit.windup.is_some();
+            actor.shots = unit.rocks_thrown;
             actor.attacks = 0;
             actor.lost_limbs = unit.lost_limbs;
             actor.position = p;
@@ -379,7 +387,18 @@ fn animate(
         actor.lock = (actor.lock - dt).max(0.0);
         let damage = (actor.health - unit.health).max(0.0);
         let limb_loss = unit.lost_limbs & !actor.lost_limbs != 0;
-        let attack = unit.cooldown > actor.cooldown + 0.15;
+        let bow = unit.projectile_weapon() == Some(phalanx::weapons::ProjectileWeapon::Bow);
+        let advanced = unit.equipment.projectile_weapon().is_some() || bow;
+        let release = advanced && unit.rocks_thrown > actor.shots;
+        let attack = if advanced {
+            unit.windup.is_some() && !actor.winding
+                || (unit.ammunition == 0 && !release && unit.cooldown > actor.cooldown + 0.15)
+        } else {
+            unit.cooldown > actor.cooldown + 0.15
+        };
+        if advanced && actor.winding && unit.windup.is_none() && !release {
+            actor.lock = 0.0;
+        }
         let mut retrigger = false;
         let mut clip = actor.clip;
         if unit.health <= 0.0 {
@@ -430,11 +449,32 @@ fn animate(
                 retrigger = false;
             }
         }
+        // Match the authored throw pose to simulation windup, then finish the follow-through.
+        if let Some(draw) = &unit.windup {
+            if !matches!(clip, 5 | 11 | 12) {
+                clip = if bow { 0 } else { 4 };
+                actor.clock = (1.0 - (draw.remaining - session.accumulator) / draw.weapon.windup())
+                    .clamp(0.0, 1.0)
+                    * 0.72;
+                actor.lock = draw.remaining + 0.35;
+            }
+        } else if release && unit.health > 0.0 && !matches!(clip, 5 | 11 | 12) {
+            clip = if bow { 0 } else { 4 };
+            actor.clock = 0.72;
+            actor.lock = 0.35;
+        }
         let node = assets.clips[usize::from(actor.female)][clip];
-        advance_clip(&mut actor, &mut player, clip, node, dt, retrigger);
+        let clip_dt = if actor.id == super::rpg::PREVIEW_ID {
+            time.delta_secs()
+        } else {
+            dt
+        };
+        advance_clip(&mut actor, &mut player, clip, node, clip_dt, retrigger);
         actor.health = unit.health;
         actor.lost_limbs = unit.lost_limbs;
         actor.cooldown = unit.cooldown;
+        actor.winding = unit.windup.is_some();
+        actor.shots = unit.rocks_thrown;
         actor.tick = session.battle.tick;
         actor.seed = session.battle.seed;
         if session.battle.tick != 0 {
@@ -563,10 +603,13 @@ struct PortraitPhoto(Handle<Image>);
 #[derive(Component)]
 pub(super) struct PortraitCamera;
 fn look(session: &Session, id: usize) -> phalanx::progression::Appearance {
+    let id = if id == super::rpg::PREVIEW_ID {
+        session.selected
+    } else {
+        id
+    };
     session
-        .battle
-        .units
-        .get(id)
+        .visual_unit(id)
         .filter(|_| session.battle.founders)
         .map(|u| {
             let slot = u.id % session.battle.team_size();
@@ -575,7 +618,7 @@ fn look(session: &Session, id: usize) -> phalanx::progression::Appearance {
                 .resolved(u.team, slot)
         })
         .unwrap_or_else(|| {
-            let team = session.battle.units.get(id).map_or(0, |u| u.team);
+            let team = session.visual_unit(id).map_or(0, |u| u.team);
             phalanx::progression::Appearance::default()
                 .resolved(team, id % session.battle.team_size())
         })
@@ -727,11 +770,7 @@ fn update_looks(
 ) {
     for (part, mut visible) in &mut hair {
         *visible = if look(&session, part.id).hair == part.style
-            && session
-                .battle
-                .units
-                .get(part.id)
-                .is_some_and(|u| u.health > 0.0)
+            && session.visual_unit(part.id).is_some_and(|u| u.health > 0.0)
         {
             Visibility::Inherited
         } else {
@@ -739,12 +778,7 @@ fn update_looks(
         };
     }
     for (part, mut visible) in &mut face {
-        *visible = if session
-            .battle
-            .units
-            .get(part.id)
-            .is_some_and(|u| u.health > 0.0)
-        {
+        *visible = if session.visual_unit(part.id).is_some_and(|u| u.health > 0.0) {
             Visibility::Inherited
         } else {
             Visibility::Hidden
@@ -773,7 +807,7 @@ fn portrait_camera(
     pawns: Query<(Entity, &Pawn, &Transform), Without<PortraitCamera>>,
     children: Query<&Children>,
     layers: Query<&RenderLayers>,
-    mut camera: Single<&mut Transform, With<PortraitCamera>>,
+    mut camera: Single<&mut Transform, (With<PortraitCamera>, Without<super::rpg::CampCamera>)>,
     mut commands: Commands,
     mut old: Local<Option<Entity>>,
 ) {
@@ -825,6 +859,9 @@ struct Witness {
     captured: bool,
     battle_captured: bool,
     refinement_captured: bool,
+    weapon_captured: bool,
+    winding_seen: bool,
+    shaft_seen: bool,
 }
 #[allow(clippy::too_many_arguments)]
 fn witness(
@@ -833,6 +870,7 @@ fn witness(
     actors: Query<&Actor>,
     joints: Query<(Entity, &JointWitness, &Transform)>,
     fx: Res<Fx>,
+    bow_audit: Res<archery::Audit>,
     mut witness: ResMut<Witness>,
     mut exit: MessageWriter<AppExit>,
     gibs: Query<&body::Gib>,
@@ -855,12 +893,39 @@ fn witness(
     if witness.seconds > 1.6 && !witness.captured && !actors.is_empty() {
         witness.captured = true;
         if session.menu
-            || std::env::args().any(|a| a == "--face-witness" || a == "--standard-witness")
+            || std::env::args().any(|a| {
+                a == "--face-witness"
+                    || a == "--standard-witness"
+                    || a == "--weapon-loadout-witness"
+                    || a == "--bow-draw-witness"
+            })
         {
             commands
                 .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
                 .observe(bevy::render::view::screenshot::save_to_disk(
-                    if std::env::args().any(|a| a == "--standard-witness") {
+                    if std::env::args().any(|a| a == "--bow-draw-witness") {
+                        if std::env::args().any(|a| a == "--male-bow-witness") {
+                            "outputs/bow-male-draw-witness.png"
+                        } else {
+                            "outputs/bow-draw-witness.png"
+                        }
+                    } else if std::env::args().any(|a| a == "--weapon-report-witness") {
+                        "outputs/weapon-report-witness.png"
+                    } else if std::env::args().any(|a| a == "--weapon-workshop-witness") {
+                        if std::env::args().any(|a| a == "--camp-scroll-witness") {
+                            "outputs/weapon-recipes-witness.png"
+                        } else {
+                            "outputs/weapon-workshop-witness.png"
+                        }
+                    } else if std::env::args()
+                        .any(|a| a == "--weapon-loadout-witness" || a == "--bow-draw-witness")
+                    {
+                        if std::env::args().any(|a| a == "--spear-witness") {
+                            "outputs/spear-loadout-witness.png"
+                        } else {
+                            "outputs/atlatl-loadout-witness.png"
+                        }
+                    } else if std::env::args().any(|a| a == "--standard-witness") {
                         if std::env::args().any(|a| a == "--standard-back-witness") {
                             "outputs/standard-back-witness.png"
                         } else {
@@ -904,6 +969,33 @@ fn witness(
         }
     }
     witness.blood |= fx.particles.iter().any(|p| p.life > 0.0);
+    witness.winding_seen |= session.battle.units.iter().any(|u| u.windup.is_some());
+    let airborne = session
+        .battle
+        .rocks
+        .iter()
+        .any(|p| p.weapon != phalanx::weapons::ProjectileWeapon::Rock);
+    witness.shaft_seen |= airborne;
+    if std::env::args().any(|a| a == "--weapon-witness")
+        && airborne
+        && witness.seconds > 1.6
+        && !witness.weapon_captured
+        && !session.menu
+    {
+        witness.weapon_captured = true;
+        commands
+            .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
+            .observe(bevy::render::view::screenshot::save_to_disk(
+                if std::env::args().any(|a| a == "--bow-witness") {
+                    "outputs/bow-battle-witness.png"
+                } else if std::env::args().any(|a| a == "--spear-witness") {
+                    "outputs/spear-battle-witness.png"
+                } else {
+                    "outputs/atlatl-battle-witness.png"
+                },
+            ));
+    }
+
     witness.gibs |= !gibs.is_empty();
     witness.wounded |= session
         .battle
@@ -943,19 +1035,29 @@ fn witness(
             ));
     }
     if witness.finished
-        > if std::env::args().any(|a| a == "--camp-witness") {
+        > if std::env::args().any(|a| a == "--camp-witness" || a == "--weapon-report-witness") {
             3.0
         } else {
             1.5
         }
         || witness.seconds > 40.0
         || (((session.menu && !session.battle.finished)
-            || std::env::args().any(|a| a == "--face-witness" || a == "--standard-witness"))
-            && witness.seconds > 3.0)
+            || std::env::args().any(|a| {
+                a == "--face-witness"
+                    || a == "--standard-witness"
+                    || a == "--weapon-loadout-witness"
+                    || a == "--bow-draw-witness"
+            }))
+            && witness.seconds
+                > if std::env::args().any(|a| a == "--rpg-witness") {
+                    9.0
+                } else {
+                    3.0
+                })
     {
         println!(
             "VISUAL_WITNESS {}",
-            serde_json::json!({"clip_names":CLIP_NAMES,"clips":witness.seen,"blood":witness.blood,"actors":actors.iter().count(),"finished":session.battle.finished,"seconds":witness.seconds,"particle_capacity":fx.particles.len(),"stained_pixels":fx.stained_pixels(),"detached_limbs":witness.gibs,"surviving_wounded":witness.wounded,"face_expressions":face_audit.seen,"eye_rotation":face_audit.eye_rotation,"face_morph_meshes":face_audit.meshes,"repeated_gestures":actors.iter().map(|a|a.replays).sum::<u32>(),"skeleton_motion":witness.skeleton_motion,"male_female_motion":witness.model_motion,"sound_effects":audio_audit.emitted})
+            serde_json::json!({"clip_names":CLIP_NAMES,"clips":witness.seen,"blood":witness.blood,"actors":actors.iter().count(),"finished":session.battle.finished,"seconds":witness.seconds,"bow_poses":bow_audit.poses,"bow_grip_error":bow_audit.max_grip_error,"bow_string_error":bow_audit.max_string_error,"bow_draw":bow_audit.max_draw,"arrows_blocked":session.battle.units.iter().map(|u|u.arrow_blocks).sum::<u32>(),"weapon_windup":witness.winding_seen,"shaft_projectile":witness.shaft_seen,"selected_weapon":session.battle.units[session.selected].weapon_status(),"selected_shots":session.battle.units[session.selected].weapon_shots,"selected_healing":session.battle.units[session.selected].healing_done,"particle_capacity":fx.particles.len(),"stained_pixels":fx.stained_pixels(),"detached_limbs":witness.gibs,"surviving_wounded":witness.wounded,"face_expressions":face_audit.seen,"eye_rotation":face_audit.eye_rotation,"face_morph_meshes":face_audit.meshes,"repeated_gestures":actors.iter().map(|a|a.replays).sum::<u32>(),"skeleton_motion":witness.skeleton_motion,"male_female_motion":witness.model_motion,"sound_effects":audio_audit.emitted})
         );
         exit.write(AppExit::Success);
     }

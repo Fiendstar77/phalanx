@@ -108,6 +108,7 @@ fn impact_can_miss_and_cover_reduces_damage() {
         b.units[5].health = 100.0;
         b.units[5].position = [-4.5, 5.0];
         b.rocks.push(Rock {
+            weapon: phalanx::weapons::ProjectileWeapon::Rock,
             shooter: 0,
             team: 0,
             from: [-8.0, 5.0],
@@ -124,7 +125,7 @@ fn impact_can_miss_and_cover_reduces_damage() {
 fn live_units_stay_outside_walls_in_all_arenas() {
     for arena in [Arena::Ridge, Arena::Choke, Arena::OpenField] {
         let mut b = Battle::with_arena(7, false, arena);
-        for _ in 0..1200 {
+        for _ in 0..phalanx::BATTLE_TICK_LIMIT {
             b.step();
             for unit in &b.units {
                 assert!(
@@ -165,6 +166,7 @@ fn a_thrown_rock_can_survive_its_thrower_and_force_a_draw() {
     b.units[5].health = 5.0;
     b.units[5].position = [3.0, 0.0];
     b.rocks.push(Rock {
+        weapon: phalanx::weapons::ProjectileWeapon::Rock,
         shooter: 0,
         team: 0,
         from: [0.0, 0.0],

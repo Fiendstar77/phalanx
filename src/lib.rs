@@ -1,9 +1,11 @@
 //! Fixed-step combat model, independent of rendering and wall-clock time.
 use serde::{Deserialize, Serialize};
+pub mod archery;
 pub mod cognition;
 pub mod collision;
 pub mod equipment;
 pub mod heraldry;
+pub mod inventory;
 pub mod learned;
 pub mod mastery;
 pub mod navigation;
@@ -13,13 +15,16 @@ pub mod procedural;
 pub mod progression;
 pub mod psyche;
 pub mod rivals;
+pub mod skills;
 pub mod telemetry;
 pub mod terrain;
+pub mod weapons;
 use learned::{Comparison, ComparisonSummary, Controller, LearnedPolicy};
 use navigation::{Route, plan_known};
 use perception::{COMMUNICATION_RANGE, Contact, can_see, cooperative, threats};
 use std::sync::Arc;
 use terrain::Arena;
+use weapons::{ProjectileWeapon, Windup};
 
 pub const ACTION_COUNT: usize = 9;
 
@@ -179,9 +184,11 @@ impl FighterClass {
         match self {
             Self::Warrior => "Balanced frontline fighter; steady damage.",
             Self::Guardian => "35% damage resistance; slow and durable.",
-            Self::Ranger => "Ranged attacks; faster shots than rock throwers.",
+            Self::Ranger => {
+                "Bow, 12 arrows; finds firing lanes, keeps distance and draws a sidearm when rushed."
+            }
             Self::Scout => "45% faster movement; fragile flanker.",
-            Self::Healer => "Heals a wounded nearby ally instead of attacking.",
+            Self::Healer => "Heals nearby wounded allies; can combine healing with ranged gear.",
             Self::Berserker => "Damage rises as health falls; vulnerable to hits.",
             Self::Hexer => "Ranged hex weakens nearby enemies' damage.",
             Self::BannerBearer => "Nearby allies move faster and strike harder.",
@@ -198,6 +205,7 @@ impl FighterClass {
     }
 }
 pub const PALADIN_AURA_RADIUS: f32 = 4.0;
+pub const BATTLE_TICK_LIMIT: u32 = 3600;
 fn is_zero(v: &u32) -> bool {
     *v == 0
 }
@@ -212,6 +220,7 @@ fn is_zero_f32(v: &f32) -> bool {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Rock {
+    pub weapon: ProjectileWeapon,
     pub shooter: usize,
     pub team: usize,
     pub from: [f32; 2],
@@ -222,6 +231,7 @@ pub struct Rock {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Unit {
+    pub skills: Option<skills::SkillLoadout>,
     pub id: usize,
     pub team: usize,
     pub role: Role,
@@ -246,6 +256,15 @@ pub struct Unit {
     pub carries_standard: bool,
     pub heal_cooldown: f32,
     pub impact_cooldown: f32,
+    pub ammunition: u8,
+    pub windup: Option<Windup>,
+    pub weapon_shots: [u32; 4],
+    pub bow_melee: bool,
+    pub last_shot_target: Option<[f32; 2]>,
+    pub bow_release: f32,
+    pub arrow_blocks: u32,
+    pub archery_retreat_until: u32,
+    pub archery_retreat_after: u32,
     pub position: [f32; 2],
     pub health: f32,
     pub mind: Mind,
@@ -298,21 +317,141 @@ pub struct Unit {
 }
 impl Unit {
     pub fn has_skill(&self, class: FighterClass) -> bool {
-        self.class == Some(class) || self.mastery.retained(class)
+        use skills::Skill as S;
+        let skill = match class {
+            FighterClass::Healer => S::Heal,
+            FighterClass::Paladin => S::Bless,
+            FighterClass::BannerBearer => S::Rally,
+            FighterClass::Hexer => S::Hex,
+            FighterClass::RockThrower => S::Stonecast,
+            FighterClass::Ranger => S::Archery,
+            FighterClass::Guardian => S::Bulwark,
+            FighterClass::Scout => S::Fleetfoot,
+            FighterClass::Berserker => S::Bloodrage,
+            FighterClass::Warrior => S::WeaponDrill,
+        };
+        self.equipped_skill(skill)
+    }
+    pub fn equipped_skill(&self, skill: skills::Skill) -> bool {
+        self.skills
+            .unwrap_or_else(|| {
+                skills::SkillLoadout::defaults(
+                    self.class.unwrap_or(FighterClass::Warrior),
+                    self.mastery,
+                )
+            })
+            .has(skill)
     }
     pub fn trained_role(&self) -> Role {
-        if self.class.is_some_and(|c| c.role() == Role::RockThrower)
+        if self.equipment.projectile_weapon().is_some()
+            || self.class.is_some_and(|_| {
+                [
+                    FighterClass::RockThrower,
+                    FighterClass::Ranger,
+                    FighterClass::Hexer,
+                ]
+                .into_iter()
+                .any(|c| self.has_skill(c))
+            })
             || [
                 FighterClass::RockThrower,
                 FighterClass::Ranger,
                 FighterClass::Hexer,
             ]
             .into_iter()
-            .any(|c| self.mastery.retained(c))
+            .any(|c| self.has_skill(c))
         {
             Role::RockThrower
         } else {
             Role::Fighter
+        }
+    }
+    pub fn projectile_weapon(&self) -> Option<ProjectileWeapon> {
+        self.equipment.projectile_weapon().or_else(|| {
+            (self.role == Role::RockThrower || self.trained_role() == Role::RockThrower).then_some(
+                if self.has_skill(FighterClass::Ranger) {
+                    ProjectileWeapon::Bow
+                } else {
+                    ProjectileWeapon::Rock
+                },
+            )
+        })
+    }
+    pub fn bow_available(&self) -> bool {
+        self.projectile_weapon() == Some(ProjectileWeapon::Bow)
+            && self.ammunition > 0
+            && self.lost_limbs & !self.prosthetics & 3 == 0
+    }
+    pub fn bow_follow_through(&self) -> bool {
+        self.projectile_weapon() == Some(ProjectileWeapon::Bow)
+            && self.bow_release > 0.0
+            && self.lost_limbs & !self.prosthetics & 3 == 0
+    }
+    pub fn bow_aim(&self) -> [f32; 2] {
+        if self.windup.is_some() {
+            self.target
+        } else if self.bow_follow_through() {
+            self.last_shot_target.unwrap_or(self.target)
+        } else {
+            self.target
+        }
+    }
+    pub fn is_ranged(&self) -> bool {
+        self.projectile_weapon().is_some()
+            && self.ammunition > 0
+            && !self.bow_melee
+            && (self.projectile_weapon() != Some(ProjectileWeapon::Bow) || self.bow_available())
+    }
+    pub fn attack_range(&self) -> f32 {
+        self.projectile_weapon()
+            .filter(|_| self.is_ranged())
+            .map(ProjectileWeapon::range)
+            .unwrap_or(1.5)
+    }
+    pub fn reset_weapon(&mut self) {
+        self.role = self.trained_role();
+        self.ammunition = self
+            .projectile_weapon()
+            .map(|w| w.ammunition())
+            .unwrap_or(0);
+        self.windup = None;
+        self.bow_melee = false;
+        self.bow_release = 0.0;
+        self.last_shot_target = None;
+    }
+    pub fn weapon_status(&self) -> String {
+        match self.projectile_weapon() {
+            None => "Melee weapon".into(),
+            Some(w) => format!(
+                "{} | {} | {}",
+                w.name(),
+                if w == ProjectileWeapon::Rock {
+                    "unlimited".into()
+                } else {
+                    format!("{}/{} ammunition", self.ammunition, w.ammunition())
+                },
+                if w == ProjectileWeapon::Bow && self.lost_limbs & !self.prosthetics & 3 != 0 {
+                    "Arm wound: sidearm until a prosthetic is fitted".into()
+                } else if self.ammunition == 0 || self.bow_melee {
+                    if self.bow_melee {
+                        "sidearm; rushed at close range".into()
+                    } else {
+                        "sidearm; closing to melee".into()
+                    }
+                } else if let Some(draw) = &self.windup {
+                    format!(
+                        "{} {:.1}s",
+                        if draw.weapon == ProjectileWeapon::Bow {
+                            "drawing"
+                        } else {
+                            "winding up"
+                        },
+                        draw.remaining
+                    )
+                } else {
+                    format!("{:.1} range", self.attack_range())
+                }
+            ),
         }
     }
     pub fn displays_standard(&self) -> bool {
@@ -355,7 +494,7 @@ impl Unit {
             }
     }
     pub fn max_health(&self) -> f32 {
-        (if self.command_title.is_some_and(CommandTitle::royal) {
+        3.0 * ((if self.command_title.is_some_and(CommandTitle::royal) {
             110.0
         } else {
             100.0
@@ -370,7 +509,7 @@ impl Unit {
                 15.0
             } else {
                 0.0
-            }
+            })
     }
     pub fn health_fraction(&self) -> f32 {
         self.health / self.max_health()
@@ -412,7 +551,9 @@ impl Unit {
             } else {
                 1.0
             }
-            * if self.mastery.retained(FighterClass::Warrior) {
+            * if self.mastery.retained(FighterClass::Warrior)
+                && self.equipped_skill(skills::Skill::WeaponDrill)
+            {
                 1.05
             } else {
                 1.0
@@ -594,6 +735,7 @@ impl Battle {
                         None
                     },
                     fighter_id: None,
+                    skills: None,
                     experience: 0,
                     battle_count: 0,
                     blessed: false,
@@ -604,6 +746,15 @@ impl Battle {
                     carries_standard: false,
                     heal_cooldown: 0.0,
                     impact_cooldown: 0.0,
+                    ammunition: u8::MAX,
+                    windup: None,
+                    weapon_shots: [0; 4],
+                    bow_melee: false,
+                    last_shot_target: None,
+                    bow_release: 0.0,
+                    arrow_blocks: 0,
+                    archery_retreat_until: 0,
+                    archery_retreat_after: 0,
                     role: if (founders && id % team_size == 1)
                         || (!founders && id % team_size >= arena.fighters())
                     {
@@ -613,9 +764,9 @@ impl Battle {
                     },
                     position,
                     health: if founders && id % team_size < 2 {
-                        110.0
+                        330.0
                     } else {
-                        100.0
+                        300.0
                     },
                     mind: if aggressive {
                         Mind::aggressive()
@@ -757,7 +908,7 @@ impl Battle {
         let mut landed = Vec::new();
         for rock in &mut self.rocks {
             rock.age += 1;
-            if rock.age >= rock.flight_ticks {
+            if rock.weapon == ProjectileWeapon::Rock && rock.age >= rock.flight_ticks {
                 for target in &snapshot {
                     if target.team != rock.team
                         && target.health > 0.0
@@ -773,7 +924,8 @@ impl Battle {
                 }
             }
         }
-        self.rocks.retain(|r| r.age < r.flight_ticks);
+        self.rocks
+            .retain(|r| r.weapon != ProjectileWeapon::Rock || r.age < r.flight_ticks);
         for (id, dealt) in landed {
             self.units[id].damage_dealt += dealt;
             self.units[id].rocks_hit += 1;
@@ -787,6 +939,7 @@ impl Battle {
             unit.cover_ticks += u32::from(arena.cover(unit.position) > 0.0);
             unit.rough_ticks += u32::from(arena.roughness(unit.position) > 0.0);
             unit.cooldown = (unit.cooldown - DT).max(0.0);
+            unit.bow_release = (unit.bow_release - DT).max(0.0);
             unit.impact_cooldown = (unit.impact_cooldown - DT).max(0.0);
             unit.heal_cooldown = (unit.heal_cooldown - DT).max(0.0);
             let allies: Vec<_> = snapshot
@@ -800,7 +953,46 @@ impl Battle {
                             || (cooperative(unit.mind) && cooperative(a.mind)))
                 })
                 .collect();
-            let enemy = cognition::focus_target(unit, &allies, self.tick);
+            let mut enemy = cognition::focus_target(unit, &allies, self.tick);
+            let bow = unit.bow_available();
+            if bow {
+                let nearest = unit
+                    .contacts
+                    .iter()
+                    .filter(|c| c.visible)
+                    .min_by(|a, b| {
+                        distance(unit.position, a.position)
+                            .total_cmp(&distance(unit.position, b.position))
+                    })
+                    .cloned();
+                let close = nearest
+                    .as_ref()
+                    .map(|c| distance(unit.position, c.position))
+                    .unwrap_or(f32::INFINITY);
+                unit.bow_melee = if unit.bow_melee {
+                    close < archery::REOPEN_RANGE
+                } else {
+                    close < archery::MIN_RANGE
+                };
+                if close < 4.0 && self.tick >= unit.archery_retreat_after {
+                    unit.archery_retreat_until = self.tick + 12;
+                    unit.archery_retreat_after = self.tick + 36;
+                }
+                if unit.bow_melee {
+                    enemy = nearest;
+                    unit.windup = None;
+                }
+            } else {
+                unit.bow_melee = false;
+            }
+            let bow_plan = if bow {
+                enemy
+                    .as_ref()
+                    .and_then(|e| archery::plan(arena, unit, &allies, e, self.tick))
+            } else {
+                None
+            };
+
             // Enemy deployment zones are authored objectives, not live enemy positions.
             let search_goal = |leg: u32| {
                 if self.founders && leg.is_multiple_of(5) {
@@ -827,12 +1019,23 @@ impl Battle {
                 .as_ref()
                 .map(|e| distance(unit.position, e.position))
                 .unwrap_or(f32::INFINITY);
+            let shot_clear = if bow && !unit.bow_melee {
+                d >= archery::MIN_RANGE
+                    && archery::clear_shot(
+                        arena,
+                        archery::muzzle(unit.position, enemy_position),
+                        enemy_position,
+                        &allies,
+                    )
+            } else {
+                arena.clear_segment(unit.position, enemy_position)
+            };
             let known_threats = threats(unit, self.tick);
             let wounded = if unit.has_skill(FighterClass::Healer) {
                 allies
                     .iter()
                     .copied()
-                    .filter(|a| a.health_fraction() < 0.98)
+                    .filter(|a| a.health < a.max_health() - 0.01)
                     .min_by(|a, b| a.health_fraction().total_cmp(&b.health_fraction()))
             } else {
                 None
@@ -909,10 +1112,10 @@ impl Battle {
                     m.courage = (m.courage + 0.10).min(1.0);
                     m.discipline = (m.discipline + 0.10).min(1.0);
                 }
-                let ranged = unit.role == Role::RockThrower;
+                let ranged = unit.is_ranged();
                 let in_range = enemy.as_ref().is_some_and(|e| e.visible)
-                    && d < unit.role.range()
-                    && arena.clear_segment(unit.position, enemy_position);
+                    && d < unit.attack_range()
+                    && shot_clear;
                 let arrived = distance(unit.position, ridge) < 0.9;
                 let previous_action = unit.action;
                 unit.scores = [
@@ -1092,7 +1295,12 @@ impl Battle {
                     if !ridge_hold && (!flinch || in_range) {
                         unit.scores[6] = -1.0;
                     }
-                    if injury < 0.55 && !(ranged && d < 2.7) && !flinch {
+                    if (injury < 0.55
+                        || enemy.is_none()
+                        || (self.tick + unit.id as u32 * 11) % 80 >= 24)
+                        && !(ranged && d < 2.7)
+                        && !flinch
+                    {
                         unit.scores[5] = -1.0;
                     }
                     // The attack objective survives fear penalties. Cautious
@@ -1146,7 +1354,7 @@ impl Battle {
                     m.self_preservation,
                     m.discipline,
                     unit.health_fraction(),
-                    f32::from(unit.role == Role::RockThrower),
+                    f32::from(unit.is_ranged()),
                     unit.position[0] / arena.half_size()[0],
                     unit.position[1] / arena.half_size()[1],
                     arena.elevation(unit.position) / if arena.large() { 3.8 } else { 1.7 },
@@ -1175,6 +1383,9 @@ impl Battle {
                         .map(|p| (distance(unit.position, p) / 10.0).min(1.0))
                         .unwrap_or(1.0),
                 ];
+                if let Some(plan) = &bow_plan {
+                    unit.scores[plan.action] = unit.scores[plan.action].max(4.0);
+                }
                 let utility_action = unit
                     .scores
                     .iter()
@@ -1312,6 +1523,12 @@ impl Battle {
                     .unwrap_or(unit.position),
                 _ => enemy_position,
             };
+            if let Some(plan) = &bow_plan
+                && plan.action == unit.action
+            {
+                unit.target = plan.goal;
+                unit.decision_reason = plan.reason.into();
+            }
             if self.tick.is_multiple_of(5)
                 && let Some(sink) = records.as_deref_mut()
             {
@@ -1321,13 +1538,24 @@ impl Battle {
                     decision_features.clone(),
                 ));
             }
-            let banner = snapshot.iter().any(|a| {
-                a.team == unit.team
-                    && a.health > 0.0
-                    && a.banner_active()
-                    && distance(unit.position, a.position) < 5.0
-                    && arena.clear_segment(unit.position, a.position)
-            });
+            let banner = snapshot
+                .iter()
+                .filter(|a| {
+                    a.team == unit.team
+                        && a.health > 0.0
+                        && a.banner_active()
+                        && distance(unit.position, a.position) < 5.0
+                        && arena.clear_segment(unit.position, a.position)
+                })
+                .map(|a| {
+                    1.0 + 0.15
+                        * if a.equipment.has(equipment::Gear::WarBanner) {
+                            a.equipment.power(2)
+                        } else {
+                            1.0
+                        }
+                })
+                .fold(1.0_f32, f32::max);
             let hexed = snapshot.iter().any(|a| {
                 a.team != unit.team
                     && a.health > 0.0
@@ -1335,13 +1563,13 @@ impl Battle {
                     && distance(unit.position, a.position) < 5.0
                     && arena.clear_segment(unit.position, a.position)
             });
-            let class_power = (if banner { 1.15 } else { 1.0 }) * (if hexed { 0.75 } else { 1.0 });
+            let class_power = banner * (if hexed { 0.75 } else { 1.0 });
             if unit.has_skill(FighterClass::Healer)
                 && unit.heal_cooldown <= 0.0
                 && let Some(ally) = allies
                     .iter()
                     .filter(|a| {
-                        a.health_fraction() < 0.98
+                        a.health < a.max_health() - 0.01
                             && distance(unit.position, a.position) < 5.0
                             && arena.clear_segment(unit.position, a.position)
                     })
@@ -1351,41 +1579,73 @@ impl Battle {
                 healing[ally.id] += power;
                 casts.push((unit.id, ally.id, power));
                 unit.heal_cooldown = 1.2;
-                if unit.class == Some(FighterClass::Healer) {
+                if unit.class == Some(FighterClass::Healer) && !unit.is_ranged() {
                     unit.cooldown = unit.cooldown.max(1.2);
                 }
                 unit.support_target = Some(ally.id);
                 unit.decision_reason = "Healer restores a wounded ally".into();
             }
+            // Windups use only a current, visible observation, never an unseen transform.
+            let mut release = None;
+            if let Some(mut draw) = unit.windup.take() {
+                if unit.ammunition > 0
+                    && (draw.weapon != ProjectileWeapon::Bow || unit.bow_available())
+                    && enemy
+                        .as_ref()
+                        .is_some_and(|e| e.visible && e.enemy == draw.target)
+                    && d < draw.weapon.range()
+                    && shot_clear
+                {
+                    draw.remaining -= DT;
+                    if draw.remaining <= 0.0001 {
+                        release = Some(draw.weapon);
+                    } else {
+                        unit.windup = Some(draw);
+                    }
+                } else {
+                    unit.cooldown = unit.cooldown.max(0.3);
+                    unit.decision_reason = if draw.weapon == ProjectileWeapon::Bow {
+                        "Bow draw cancelled: firing lane or range changed"
+                    } else {
+                        "Throw cancelled: target left sight or weapon range"
+                    }
+                    .into();
+                }
+            }
             if unit.action == 1
                 && enemy.as_ref().is_some_and(|e| e.visible)
-                && d < unit.role.range()
-                && arena.clear_segment(unit.position, enemy_position)
+                && d < unit.attack_range()
+                && shot_clear
                 && unit.cooldown <= 0.0
+                && unit.windup.is_none()
+                && release.is_none()
             {
                 let advantage = 1.0
                     + 0.1
                         * (arena.elevation(unit.position) - arena.elevation(enemy_position))
                             .max(0.0);
-                if unit.role == Role::RockThrower {
-                    self.rocks.push(Rock {
-                        shooter: unit.id,
-                        team: unit.team,
-                        from: unit.position,
-                        to: enemy_position,
-                        age: 0,
-                        flight_ticks: (d / 10.0 / DT).ceil().max(1.0) as u32,
-                        damage: 7.0 * unit.damage_multiplier() * class_power * advantage,
-                    });
-                    unit.rocks_thrown += 1;
-                    unit.cooldown = if unit.has_skill(FighterClass::Ranger) {
-                        1.0
+                if unit.is_ranged() {
+                    let weapon = unit.projectile_weapon().unwrap();
+                    if weapon.windup() > 0.0 {
+                        unit.windup = Some(Windup {
+                            weapon,
+                            target: enemy.as_ref().unwrap().enemy,
+                            remaining: weapon.windup(),
+                        });
+                        unit.decision_reason = if weapon == ProjectileWeapon::Bow {
+                            "Drawing and aiming the bow".into()
+                        } else {
+                            format!("Planting feet to launch {}", weapon.name())
+                        };
                     } else {
-                        1.6
-                    };
+                        release = Some(weapon);
+                    }
                 } else {
-                    let dealt = 10.0
-                        * unit.damage_multiplier()
+                    let dealt = (if unit.projectile_weapon().is_some() {
+                        8.0
+                    } else {
+                        10.0
+                    }) * unit.damage_multiplier()
                         * class_power
                         * snapshot[enemy.as_ref().unwrap().enemy].incoming_multiplier()
                         * advantage
@@ -1404,7 +1664,64 @@ impl Battle {
                     ));
                     unit.damage_dealt += dealt;
                     unit.cooldown = 0.8;
+                    if unit.projectile_weapon().is_some() {
+                        unit.decision_reason = if unit.projectile_weapon()
+                            == Some(ProjectileWeapon::Bow)
+                            && unit.ammunition > 0
+                            && !unit.bow_available()
+                        {
+                            "Arm wound prevents drawing; using a sidearm"
+                        } else if unit.bow_melee {
+                            "Rushed archer fights with a sidearm"
+                        } else {
+                            "Ammunition spent: fighting with sidearm"
+                        }
+                        .into();
+                    }
                 }
+            }
+            let released = release.is_some();
+            if let Some(weapon) = release {
+                let advantage = 1.0
+                    + 0.1
+                        * (arena.elevation(unit.position) - arena.elevation(enemy_position))
+                            .max(0.0);
+                let from = if weapon == ProjectileWeapon::Bow {
+                    archery::arrow_origin(unit.position, enemy_position)
+                } else {
+                    unit.position
+                };
+                self.rocks.push(Rock {
+                    weapon,
+                    shooter: unit.id,
+                    team: unit.team,
+                    from,
+                    to: enemy_position,
+                    age: 0,
+                    flight_ticks: (distance(from, enemy_position) / weapon.speed() / DT)
+                        .ceil()
+                        .max(1.0) as u32,
+                    damage: weapon.damage() * unit.damage_multiplier() * class_power * advantage,
+                });
+                unit.last_shot_target = Some(enemy_position);
+                if weapon == ProjectileWeapon::Bow {
+                    unit.bow_release = 0.2;
+                }
+                unit.rocks_thrown += 1;
+                unit.weapon_shots[weapon.index()] += 1;
+                if weapon != ProjectileWeapon::Rock {
+                    unit.ammunition = unit.ammunition.saturating_sub(1);
+                }
+                unit.cooldown = weapon.recovery()
+                    * if unit.equipped_skill(skills::Skill::Quickdraw) {
+                        0.625
+                    } else {
+                        1.0
+                    };
+                unit.decision_reason = format!("Released {}", weapon.name());
+            }
+            if bow && (unit.windup.is_some() || released) {
+                unit.target = enemy_position;
             }
             if let Arena::Pressure(field) = arena
                 && field.layout > 0
@@ -1431,11 +1748,14 @@ impl Battle {
                         "Breaking a nearby barricade to open the engagement".into();
                 }
             }
-            let stationary = unit.action == 6
+            let stationary = (bow && unit.action == 1 && !unit.bow_melee && !shot_clear)
+                || unit.windup.is_some()
+                || released
+                || unit.action == 6
                 || (unit.action == 1
                     && enemy.as_ref().is_some_and(|e| e.visible)
-                    && d < unit.role.range()
-                    && arena.clear_segment(unit.position, enemy_position));
+                    && d < unit.attack_range()
+                    && shot_clear);
             if stationary {
                 unit.route = Route::default();
                 unit.path_cursor = 0;
@@ -1464,9 +1784,11 @@ impl Battle {
                     if remaining > 0.001 {
                         let uphill =
                             (arena.elevation(waypoint) - arena.elevation(unit.position)).max(0.0);
-                        let speed =
-                            2.2 * unit.movement_multiplier() * if banner { 1.15 } else { 1.0 }
-                                / (1.0 + uphill * 0.35 + arena.roughness(unit.position) * 1.0);
+                        let speed = 2.2
+                            * unit.movement_multiplier()
+                            * if bow { 0.82 } else { 1.0 }
+                            * banner
+                            / (1.0 + uphill * 0.35 + arena.roughness(unit.position) * 1.0);
                         let amount = (speed * DT).min(remaining);
                         let mut next = [
                             unit.position[0]
@@ -1487,6 +1809,89 @@ impl Battle {
             }
         }
         self.motion = collision::resolve(arena, &mut self.units, &snapshot);
+        // Spear/dart interception uses accepted body motion, including collision stops.
+        for projectile in &mut self.rocks {
+            if projectile.weapon == ProjectileWeapon::Rock || projectile.age == 0 {
+                continue;
+            }
+            let at = |age: u32| {
+                let t = (age as f32 / projectile.flight_ticks as f32).min(1.0);
+                [
+                    projectile.from[0] + (projectile.to[0] - projectile.from[0]) * t,
+                    projectile.from[1] + (projectile.to[1] - projectile.from[1]) * t,
+                ]
+            };
+            let (from, to) = (at(projectile.age - 1), at(projectile.age));
+            let hit = self
+                .units
+                .iter()
+                .filter(|u| {
+                    u.id != projectile.shooter
+                        && (u.team != projectile.team || projectile.weapon == ProjectileWeapon::Bow)
+                        && snapshot[u.id].health > 0.0
+                })
+                .filter_map(|u| {
+                    self.motion
+                        .frames
+                        .windows(2)
+                        .filter_map(|frames| {
+                            let (a, b) = (&frames[0], &frames[1]);
+                            let point = |t: f32| {
+                                [
+                                    from[0] + (to[0] - from[0]) * t,
+                                    from[1] + (to[1] - from[1]) * t,
+                                ]
+                            };
+                            weapons::intercept(
+                                point(a.time),
+                                point(b.time),
+                                a.positions[u.id],
+                                b.positions[u.id],
+                                collision::BODY_RADIUS,
+                            )
+                            .map(|t| (u.id, a.time + (b.time - a.time) * t))
+                        })
+                        .min_by(|a, b| a.1.total_cmp(&b.1))
+                })
+                .min_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)));
+            if let Some((id, time)) = hit {
+                if self.units[id].team == projectile.team {
+                    self.units[projectile.shooter].arrow_blocks += 1;
+                    projectile.age = projectile.flight_ticks;
+                    continue;
+                }
+
+                let point = [
+                    from[0] + (to[0] - from[0]) * time,
+                    from[1] + (to[1] - from[1]) * time,
+                ];
+                let len = distance(projectile.from, projectile.to).max(0.001);
+                let velocity = [
+                    (projectile.to[0] - projectile.from[0]) / len * projectile.weapon.speed(),
+                    (projectile.to[1] - projectile.from[1]) / len * projectile.weapon.speed(),
+                ];
+                let velocity = std::array::from_fn(|axis| {
+                    velocity[axis]
+                        - (self.units[id].position[axis] - snapshot[id].position[axis]) / DT
+                });
+                let dealt = projectile.damage
+                    * self.units[id].incoming_multiplier()
+                    * (1.0 - 0.3 * arena.cover(point));
+                damage[id] += dealt;
+                self.units[projectile.shooter].damage_dealt += dealt;
+                self.units[projectile.shooter].rocks_hit += 1;
+                impacts.push((
+                    projectile.shooter,
+                    id,
+                    dealt,
+                    false,
+                    projectile.weapon.speed(),
+                    Some((point, velocity)),
+                ));
+                projectile.age = projectile.flight_ticks;
+            }
+        }
+        self.rocks.retain(|r| r.age < r.flight_ticks);
         for contact in &self.motion.impacts {
             let (a, b) = (contact.a, contact.b);
             if self.units[a].team == self.units[b].team || contact.speed < 3.2 {
@@ -1518,7 +1923,7 @@ impl Battle {
                     [contact.velocity[0] * sign, contact.velocity[1] * sign],
                 )),
             ));
-            if self.units[defender].has_skill(FighterClass::Guardian) {
+            if self.units[defender].equipped_skill(skills::Skill::ShieldBash) {
                 let recoil = dealt * 0.6 * self.units[attacker].incoming_multiplier();
                 damage[attacker] += recoil;
                 impacts.push((
@@ -1536,6 +1941,10 @@ impl Battle {
         }
         // Simultaneous damage avoids giving the first team update-order immunity.
         for unit in &mut self.units {
+            if damage[unit.id] >= 12.0 && unit.windup.take().is_some() {
+                unit.cooldown = unit.cooldown.max(0.35);
+                unit.decision_reason = "Heavy impact interrupted the throw".into();
+            }
             let before = unit.health;
             unit.health = (unit.health - damage[unit.id]).max(0.0);
             if unit.health > 0.0 {
@@ -1568,6 +1977,7 @@ impl Battle {
                 }
             }
             if unit.health <= 0.0 {
+                unit.windup = None;
                 unit.visible_enemies = 0;
                 for c in &mut unit.contacts {
                     c.visible = false;
@@ -1651,7 +2061,7 @@ impl Battle {
         self.tick += 1;
         let a = self.survivors(0);
         let b = self.survivors(1);
-        if ((a == 0 || b == 0) && self.rocks.is_empty()) || self.tick >= 1200 {
+        if ((a == 0 || b == 0) && self.rocks.is_empty()) || self.tick >= BATTLE_TICK_LIMIT {
             self.finished = true;
             self.result = if a == 0 && b == 0 {
                 "Draw"

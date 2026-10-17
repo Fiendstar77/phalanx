@@ -74,6 +74,7 @@ pub fn initialize(c: &mut Campaign) {
         team.color = PALETTE[(index + 2) % PALETTE.len()];
         team.gold = 100;
         team.salvage = 0;
+        team.inventory.clear();
         team.heraldry.emblem = Emblem::ALL[index];
         for (slot, f) in team.fighters.iter_mut().enumerate() {
             let identity = template.fighters[slot]
@@ -97,6 +98,7 @@ pub fn initialize(c: &mut Campaign) {
             f.lost_limbs = 0;
             f.prosthetics = 0;
             f.mastery = Default::default();
+            f.skills = None;
             f.equipment = Default::default();
             f.psyche = Default::default();
             f.appearance = Default::default();
@@ -122,15 +124,34 @@ pub fn evolve(team: &mut Phalanx, player: &Phalanx, last_healing: f32) {
     let Some(style) = team.rival_style else {
         return;
     };
+    let loadout = |f: &crate::progression::Fighter| {
+        f.skills
+            .unwrap_or_else(|| crate::skills::SkillLoadout::defaults(f.class, f.mastery))
+    };
     let ranged = player
         .fighters
         .iter()
-        .filter(|f| f.class.role() == crate::Role::RockThrower)
+        .filter(|f| {
+            use crate::weapons::ProjectileWeapon as W;
+            let weapon = f.equipment.projectile_weapon().or_else(|| {
+                use crate::skills::Skill as S;
+                let selected = loadout(f);
+                [S::Stonecast, S::Archery, S::Hex]
+                    .into_iter()
+                    .any(|s| selected.has(s))
+                    .then_some(if selected.has(S::Archery) {
+                        W::Bow
+                    } else {
+                        W::Rock
+                    })
+            });
+            weapon.is_some_and(|w| w != W::Bow || f.lost_limbs & !f.prosthetics & 3 == 0)
+        })
         .count();
     let quick = player
         .fighters
         .iter()
-        .filter(|f| f.class == C::Scout || f.mastery.retained(C::Scout))
+        .filter(|f| loadout(f).has(crate::skills::Skill::Fleetfoot))
         .count();
     for (slot, f) in team.fighters.iter_mut().enumerate() {
         let primary = style.primary()[slot % 3];
@@ -151,6 +172,9 @@ pub fn evolve(team: &mut Phalanx, player: &Phalanx, last_healing: f32) {
             primary
         };
         if f.class != target && team.gold >= 10 {
+            if let Some(skills) = &mut f.skills {
+                skills.retrain(target, f.mastery);
+            }
             f.class = target;
             team.gold -= 10;
         }
@@ -165,7 +189,19 @@ pub fn evolve(team: &mut Phalanx, player: &Phalanx, last_healing: f32) {
         } else {
             Gear::IronArmor
         };
-        for gear in [armor, Gear::BalancedWeapon, Gear::WarBanner] {
+        use crate::weapons::ProjectileWeapon as W;
+        let weapon = if f.class == C::Ranger || f.mastery.retained(C::Ranger) {
+            Gear::BalancedWeapon
+        } else if f.mastery.weapon_points(W::Atlatl) >= 100 {
+            Gear::Bow
+        } else if f.mastery.weapon_points(W::Spear) >= 100 {
+            Gear::Atlatl
+        } else if f.mastery.weapon_points(W::Rock) >= 100 {
+            Gear::ThrowingSpear
+        } else {
+            Gear::BalancedWeapon
+        };
+        for gear in [armor, weapon, Gear::WarBanner] {
             if gear == Gear::WarBanner
                 && (!f.mastery.retained(C::BannerBearer) || slot == team.standard_bearer)
             {
@@ -178,9 +214,17 @@ pub fn evolve(team: &mut Phalanx, player: &Phalanx, last_healing: f32) {
                 }
                 team.gold -= gold;
                 team.salvage -= salvage;
-                f.equipment.owned |= 1 << gear.index();
+                f.equipment
+                    .insert(crate::equipment::Item::new(gear))
+                    .expect("bounded rival recipes fit inventory");
             }
-            f.equipment.slots[gear.slot()] = Some(gear);
+            f.equipment.migrate();
+            f.equipment.equipped[gear.slot()] = f
+                .equipment
+                .items
+                .iter()
+                .position(|i| i.is_some_and(|i| i.gear == gear));
+            f.equipment.sync();
         }
     }
 }

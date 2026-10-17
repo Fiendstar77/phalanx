@@ -5,6 +5,9 @@ use phalanx::equipment::Gear;
 pub enum Page {
     Report,
     Workshop,
+    Skills,
+    Forge,
+    Training,
     Rivals,
 }
 pub struct Camp;
@@ -47,7 +50,7 @@ fn label(p: &mut ChildSpawnerCommands, kind: Label, size: f32) {
     ));
 }
 fn setup_camp(mut commands: Commands) {
-    for page in [Page::Report, Page::Workshop, Page::Rivals] {
+    for page in [Page::Report, Page::Training, Page::Rivals] {
         commands.spawn((Panel(page), GlobalZIndex(105), Interaction::default(), Node {
             position_type: PositionType::Absolute, width: percent(100), height: percent(100),
             align_items: AlignItems::Center, justify_content: JustifyContent::Center, display: Display::None, ..default()
@@ -58,7 +61,10 @@ fn setup_camp(mut commands: Commands) {
                 p.spawn((Text::new(if page == Page::Report { "BRING THEM HOME | BATTLE REPORT" } else if page == Page::Rivals { "THE RIVAL PHALANXES" } else { "SQUAD WORKSHOP" }), font(28.), TextColor(Color::srgb(1.,0.72,0.08))));
                 p.spawn(Node { flex_wrap: FlexWrap::Wrap, ..default() }).with_children(|row| {
                     button(row, "Battle report", Control::Camp(Page::Report));
-                    button(row, "Squad & equipment", Control::Camp(Page::Workshop));
+                    button(row, "Character", Control::Camp(Page::Workshop));
+                    button(row, "Skills", Control::Camp(Page::Skills));
+                    button(row, "Forge", Control::Camp(Page::Forge));
+                    button(row, "Training & titles", Control::Camp(Page::Training));
                     button(row, "Rival phalanxes", Control::Camp(Page::Rivals));
                     button(row, "Return to arena", Control::Continue);
                     button(row, "Main menu", Control::Menu);
@@ -100,7 +106,7 @@ fn setup_camp(mut commands: Commands) {
                                     for class in FighterClass::ALL { button(row, class.name(), Control::Class(class)); }
                                 });
                                 button(details, "Fit Iron I limb | 15 gold + 5 salvage", Control::Prosthetic);
-                                for gear in Gear::ALL {
+                                for gear in [Gear::ThrowingSpear,Gear::Atlatl,Gear::Bow].into_iter().chain(Gear::ALL.into_iter().filter(|g|!matches!(g,Gear::ThrowingSpear|Gear::Atlatl|Gear::Bow))) {
                                     details.spawn((Node { padding: UiRect::all(px(10)), flex_direction: FlexDirection::Column, flex_shrink: 0., row_gap: px(4), ..default() }, BackgroundColor(Color::srgb(0.055,0.08,0.105))))
                                     .with_children(|recipe| {
                                         button(recipe, gear.name(), Control::Workshop(gear));
@@ -122,30 +128,43 @@ fn setup_camp(mut commands: Commands) {
 }
 /// Derive a fresh-battle preview from saved identity, class, XP, wounds and gear.
 /// Never mutate the live combat snapshot or write a preview to disk.
-fn prepared(session: &Session, id: usize) -> phalanx::Unit {
+pub(crate) fn prepared(session: &Session, id: usize) -> phalanx::Unit {
     let mut unit = session.battle.units[id].clone();
     let fighter = &session.campaign.teams[unit.team].fighters[id % session.battle.team_size()];
     unit.command_title = Some(fighter.title);
     unit.mastery = fighter.mastery;
+    unit.skills = fighter.skills;
     unit.carries_standard =
         id % session.battle.team_size() == session.campaign.teams[unit.team].standard_bearer;
     unit.class = Some(fighter.class);
-    unit.role = unit.trained_role();
     unit.experience = fighter.experience;
     unit.lost_limbs = fighter.lost_limbs;
     unit.prosthetics = fighter.prosthetics;
     unit.equipment = fighter.equipment;
+    unit.equipment.migrate();
+    unit.role = unit.trained_role();
+    unit.ammunition = unit
+        .projectile_weapon()
+        .map(|w| w.ammunition())
+        .unwrap_or(0);
+    unit.reset_weapon();
+    unit.cooldown = 0.;
+    unit.action = 6;
+    unit.bow_melee = false;
+    unit.bow_release = 0.;
+    unit.last_shot_target = None;
     unit.blessed = false;
     unit.health = unit.max_health();
     unit
 }
 fn stats(u: &phalanx::Unit) -> String {
     format!(
-        "HP {:.0} | Damage x{:.2} | Move x{:.2} | Incoming x{:.2}",
+        "HP {:.0} | Damage x{:.2} | Move x{:.2} | Incoming x{:.2}\n{}",
         u.max_health(),
         u.damage_multiplier(),
         u.movement_multiplier(),
-        u.incoming_multiplier()
+        u.incoming_multiplier(),
+        u.weapon_status()
     )
 }
 fn report(session: &Session) -> String {
@@ -183,6 +202,18 @@ fn report(session: &Session) -> String {
         ));
         for f in &r.fighters[team] {
             text.push_str(&format!("{} [{}] / {} | {} ({:.0}/{:.0} HP)\n  Damage {:.0} | Healing {:.0} | +{} XP | New wounds: {}\n", f.name, f.title.map(CommandTitle::name).unwrap_or("title not recorded"), f.class.name(), if f.health > 0. { "Survived" } else { "Downed" }, f.health, f.max_health, f.damage, f.healing, f.xp, limb_names(f.new_wounds)));
+            for weapon in phalanx::weapons::ProjectileWeapon::ALL {
+                let gained = f.weapon_training[weapon.index()];
+                if gained > 0 {
+                    text.push_str(&format!("  {} practice +{gained}\n", weapon.name()));
+                }
+            }
+            for gear in &f.discoveries {
+                text.push_str(&format!(
+                    "  DISCOVERED {}: craft it in the squad workshop\n",
+                    gear.name()
+                ));
+            }
         }
         text.push('\n');
     }
@@ -283,7 +314,11 @@ fn refresh(
                 team.gold,
                 team.salvage,
                 stats(&unit),
-                fighter.mastery.summary(fighter.class),
+                format!(
+                    "{}\n{}",
+                    fighter.mastery.summary(fighter.class),
+                    fighter.mastery.weapon_summary()
+                ),
                 fighter.equipment.summary(),
                 limb_names(fighter.lost_limbs),
                 limb_names(fighter.prosthetics)
@@ -315,6 +350,7 @@ fn refresh(
                 } else {
                     Some(*gear)
                 };
+                preview.reset_weapon();
                 preview.health = preview.max_health();
                 let (gold, salvage) = gear.cost();
                 format!(
@@ -322,6 +358,8 @@ fn refresh(
                     gear.effect(),
                     if unit.equipment.owns(*gear) {
                         "OWNED | free to equip or remove".into()
+                    } else if let Some(reason) = gear.locked_reason(fighter.mastery) {
+                        format!("LOCKED | {reason}")
                     } else if team.gold >= gold && team.salvage >= salvage {
                         format!("AVAILABLE | {gold} gold + {salvage} salvage")
                     } else {
@@ -400,6 +438,7 @@ mod tests {
             for gear in Gear::ALL {
                 let mut preview = u.clone();
                 preview.equipment.slots[gear.slot()] = Some(gear);
+                preview.reset_weapon();
                 preview.health = preview.max_health();
                 assert!(preview.damage_multiplier().is_finite());
             }
@@ -493,7 +532,10 @@ fn unavailable(session: &Session, control: Control) -> bool {
     match control {
         Control::Workshop(gear) => {
             let (gold, salvage) = gear.cost();
-            !fighter.equipment.owns(gear) && (team.gold < gold || team.salvage < salvage)
+            !fighter.equipment.owns(gear)
+                && (gear.locked_reason(fighter.mastery).is_some()
+                    || team.gold < gold
+                    || team.salvage < salvage)
         }
         Control::Class(class) => team.gold < 10 || fighter.class == class,
         Control::Title(title) => fighter.title == title,

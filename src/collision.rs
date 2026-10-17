@@ -219,7 +219,12 @@ pub fn resolve(arena: Arena, units: &mut [Unit], before: &[Unit]) -> Motion {
             intended[i],
             mul(sideways, attempted[i] * 0.8 * turn.clamp(-1.0, 1.0)),
         );
-        intended[i] = mul(steered, attempted[i] / length(steered).max(1e-7));
+        let candidate = mul(steered, attempted[i] / length(steered).max(1e-7));
+        // Steering must not turn a valid ramp route into a permanent push against its ledge.
+        // Keep the original path direction when the lateral detour loses terrain clearance.
+        if arena.walk_segment(p[i], add(p[i], candidate)) {
+            intended[i] = candidate;
+        }
     }
     let steps = (attempted.iter().copied().fold(0.0_f32, f32::max) / 0.15)
         .ceil()

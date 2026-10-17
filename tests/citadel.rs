@@ -49,9 +49,12 @@ fn twenty_agent_battles_respect_walls_and_finish_in_both_controller_modes() {
                 }
             }
         }
-        assert!(b.tick <= 1200);
+        assert!(b.tick <= phalanx::BATTLE_TICK_LIMIT);
         if controller == Controller::Utility {
-            assert!(b.tick < 1200, "seed-42 search must not stall until timeout");
+            assert!(
+                b.tick < phalanx::BATTLE_TICK_LIMIT,
+                "seed-42 search must not stall until timeout"
+            );
         }
         assert_eq!(b.learned_fallbacks, 0);
     }

@@ -2,6 +2,7 @@ mod audio;
 mod camp;
 mod front;
 mod presentation;
+mod rpg;
 mod visuals;
 use bevy::{
     asset::RenderAssetUsages,
@@ -32,6 +33,7 @@ fn frame_zoom(arena: Arena) -> f32 {
 
 #[derive(Resource)]
 struct Session {
+    preview: Option<phalanx::Unit>,
     battle: Battle,
     menu: bool,
     ladder: bool,
@@ -118,6 +120,7 @@ impl Session {
         let zoom = frame_zoom(battle.arena);
         let mut session = Self {
             battle,
+            preview: None,
             menu: true,
             ladder: false,
             running: false,
@@ -146,7 +149,22 @@ impl Session {
         if session.battle.founders && session.autosave {
             session.save_campaign();
         }
+        session.refresh_preview();
         session
+    }
+    fn visual_unit(&self, id: usize) -> Option<&phalanx::Unit> {
+        if id == rpg::PREVIEW_ID {
+            self.preview.as_ref()
+        } else {
+            self.battle.units.get(id)
+        }
+    }
+    fn refresh_preview(&mut self) {
+        self.preview = if self.battle.founders {
+            Some(camp::prepared(self, self.selected))
+        } else {
+            None
+        };
     }
     fn team_color(&self, team: usize) -> Color {
         if self.battle.founders {
@@ -274,7 +292,10 @@ impl Session {
 #[derive(Component)]
 struct Pawn(usize);
 #[derive(Component)]
-struct RockVisual(usize);
+struct RockVisual {
+    slot: usize,
+    weapon: phalanx::weapons::ProjectileWeapon,
+}
 #[derive(Component)]
 struct GroundArena(Arena);
 #[derive(Component)]
@@ -405,6 +426,106 @@ fn main() {
         session.menu = false;
         session.running = true;
         session.speed = 4.0;
+        if args.iter().any(|a| a == "--weapon-witness") {
+            use phalanx::equipment::Gear;
+            use phalanx::weapons::ProjectileWeapon as W;
+            session.autosave = false;
+            session.campaign = Campaign::new();
+            session.campaign.teams[0].gold = 1000;
+            session.campaign.teams[0].salvage = 1000;
+            let spear = args.iter().any(|a| a == "--spear-witness");
+            let bow = args.iter().any(|a| a == "--bow-witness");
+            if bow {
+                session.campaign.teams[0].fighters[0].class = FighterClass::Ranger;
+            }
+
+            let f = &mut session.campaign.teams[0].fighters[1];
+            f.class = if bow && !args.iter().any(|a| a == "--hybrid-bow-witness") {
+                FighterClass::Ranger
+            } else {
+                FighterClass::Warrior
+            };
+            if bow {
+                f.mastery.train_weapon(W::Atlatl, 100);
+            }
+            f.mastery.train(FighterClass::Healer, 100);
+            f.mastery.train(FighterClass::BannerBearer, 100);
+            f.mastery.train_weapon(W::Rock, 100);
+            if !spear {
+                f.mastery.train_weapon(W::Spear, 100);
+            }
+            if args.iter().any(|a| a == "--weapon-report-witness") {
+                f.mastery.train_weapon(W::Spear, 90);
+            }
+            session
+                .campaign
+                .workshop(
+                    0,
+                    1,
+                    if bow {
+                        Gear::Bow
+                    } else if spear {
+                        Gear::ThrowingSpear
+                    } else {
+                        Gear::Atlatl
+                    },
+                )
+                .unwrap();
+            session.campaign.workshop(0, 1, Gear::WarBanner).unwrap();
+            session.restart_founders(seed, Arena::OpenField, Controller::Utility);
+            session.selected = if args.iter().any(|a| a == "--male-bow-witness") {
+                0
+            } else {
+                1
+            };
+            session.speed = 1.0;
+            session.zoom = 17.0;
+            for u in &mut session.battle.units {
+                u.position = [
+                    if u.team == 0 { -2.5 } else { 2.5 },
+                    (u.id % 3) as f32 * 1.3 - 1.3,
+                ];
+                u.target = [if u.team == 0 { 2.5 } else { -2.5 }, u.position[1]];
+            }
+            session.battle.units[0].health = 25.;
+            session.remember_positions();
+            if args.iter().any(|a| a == "--bow-draw-witness") {
+                for _ in 0..100 {
+                    session.battle.step();
+                    if session.battle.units[session.selected]
+                        .windup
+                        .as_ref()
+                        .is_some_and(|w| w.weapon == W::Bow && w.remaining < 0.3)
+                    {
+                        break;
+                    }
+                }
+                session.remember_positions();
+            }
+            if args
+                .iter()
+                .any(|a| a == "--weapon-loadout-witness" || a == "--bow-draw-witness")
+            {
+                session.running = false;
+                session.camera_follow = true;
+                session.zoom = if bow { 3.8 } else { 4.8 };
+                session.orbit = 1.1;
+                session.pitch = 0.18;
+            }
+            if args.iter().any(|a| a == "--weapon-workshop-witness") {
+                apply(Control::Camp(camp::Page::Workshop), &mut session);
+            }
+            if args.iter().any(|a| a == "--weapon-report-witness") {
+                while !session.battle.finished {
+                    session.battle.step();
+                }
+                session.settle_finished();
+                session.save_notice =
+                    "Staged QA match: weapon practice and recipe discovery verified.".into();
+                apply(Control::Camp(camp::Page::Report), &mut session);
+            }
+        }
+
         if args.iter().any(|a| a == "--refinement-witness") {
             let field = phalanx::pressure::generate(&session.campaign.teams, seed);
             session.restart_founders(seed, field, Controller::Utility);
@@ -529,6 +650,50 @@ fn main() {
             session.running = false;
         }
     }
+    if args.iter().any(|a| a == "--rpg-witness") {
+        use phalanx::equipment::{Gear, Item};
+        session.autosave = false;
+        session.campaign = Campaign::new();
+        session.campaign.teams[0].gold = 8000;
+        session.campaign.teams[0].salvage = 4000;
+        let f = &mut session.campaign.teams[0].fighters[1];
+        f.class = FighterClass::Warrior;
+        f.mastery.train(FighterClass::Healer, 300);
+        f.mastery.train(FighterClass::BannerBearer, 100);
+        f.mastery.train(FighterClass::Ranger, 100);
+        f.lost_limbs = 1 | 8;
+        f.prosthetics = 8;
+        for gear in [Gear::Bow, Gear::TrailArmor, Gear::WarBanner] {
+            session.campaign.workshop(0, 1, gear).unwrap();
+        }
+        session
+            .campaign
+            .craft_item(0, 1, Gear::TemperedWeapon)
+            .unwrap();
+        session.campaign.teams[0].inventory =
+            vec![Item::new(Gear::IronArmor), Item::new(Gear::VitalityCharm)];
+        session.campaign.teams[0].fighters[1].equipment.items[3]
+            .as_mut()
+            .unwrap()
+            .level = 5;
+        session.restart_founders(seed, Arena::OpenField, Controller::Utility);
+        session.selected = args
+            .windows(2)
+            .find(|w| w[0] == "--rpg-member-witness")
+            .and_then(|w| w[1].parse::<usize>().ok())
+            .unwrap_or(1)
+            .min(session.battle.units.len() - 1);
+        session.menu = true;
+        session.running = false;
+        session.camp_page = Some(if args.iter().any(|a| a == "--skills-witness") {
+            camp::Page::Skills
+        } else if args.iter().any(|a| a == "--forge-witness") {
+            camp::Page::Forge
+        } else {
+            camp::Page::Workshop
+        });
+        session.refresh_preview();
+    }
     std::fs::create_dir_all("outputs").expect("create log directory");
     let log_path = format!(
         "outputs/disagreements-{}.jsonl",
@@ -597,7 +762,7 @@ fn main() {
     )
     .insert_resource(ClearColor(Color::srgb(0.025, 0.035, 0.055)))
     .insert_resource(session)
-    .add_plugins(camp::Camp)
+    .add_plugins((camp::Camp, rpg::Rpg))
     .add_systems(Startup, setup)
     .add_systems(
         Update,
@@ -736,16 +901,79 @@ fn setup(
             ));
         }
     }
-    let rock_mesh = meshes.add(Sphere::new(0.16));
-    let rock_material = materials.add(Color::srgb(0.85, 0.8, 0.65));
-    for i in 0..20 {
-        commands.spawn((
-            RockVisual(i),
-            Mesh3d(rock_mesh.clone()),
-            MeshMaterial3d(rock_material.clone()),
-            Transform::default(),
-            Visibility::Hidden,
-        ));
+    let stone = meshes.add(Sphere::new(0.16));
+    let shaft = meshes.add(Cuboid::new(0.035, 0.035, 1.15));
+    let point = meshes.add(Cone::new(0.07, 0.22));
+    let feather = meshes.add(Cuboid::new(0.16, 0.015, 0.18));
+    let arrow_shaft = meshes.add(Cuboid::new(0.018, 0.018, 1.0));
+    let arrow_tip = meshes.add(Cone::new(0.035, 0.10));
+    let arrow_feather = meshes.add(Cuboid::new(0.09, 0.01, 0.15));
+    let arrow_color = materials.add(Color::srgb(0.18, 0.65, 0.25));
+    let stone_mat = materials.add(Color::srgb(0.70, 0.68, 0.60));
+    let wood_mat = materials.add(Color::srgb(0.38, 0.18, 0.06));
+    let steel_mat = materials.add(Color::srgb(0.72, 0.78, 0.82));
+    let feather_mat = materials.add(Color::srgb(0.75, 0.16, 0.06));
+    for weapon in phalanx::weapons::ProjectileWeapon::ALL {
+        for slot in 0..32 {
+            let mut entity = commands.spawn((
+                RockVisual { slot, weapon },
+                Transform::default(),
+                Visibility::Hidden,
+            ));
+            if weapon == phalanx::weapons::ProjectileWeapon::Rock {
+                entity.insert((Mesh3d(stone.clone()), MeshMaterial3d(stone_mat.clone())));
+            } else if weapon == phalanx::weapons::ProjectileWeapon::Bow {
+                entity.with_children(|p| {
+                    p.spawn((
+                        Mesh3d(arrow_shaft.clone()),
+                        MeshMaterial3d(wood_mat.clone()),
+                        Transform::default(),
+                    ));
+                    p.spawn((
+                        Mesh3d(arrow_tip.clone()),
+                        MeshMaterial3d(steel_mat.clone()),
+                        Transform::from_xyz(0., 0., 0.53)
+                            .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+                    ));
+                    for angle in [0., std::f32::consts::FRAC_PI_2] {
+                        p.spawn((
+                            Mesh3d(arrow_feather.clone()),
+                            MeshMaterial3d(arrow_color.clone()),
+                            Transform::from_xyz(0., 0., -0.4)
+                                .with_rotation(Quat::from_rotation_z(angle)),
+                        ));
+                    }
+                });
+            } else {
+                entity.with_children(|p| {
+                    p.spawn((
+                        Mesh3d(shaft.clone()),
+                        MeshMaterial3d(wood_mat.clone()),
+                        Transform::default(),
+                    ));
+                    p.spawn((
+                        Mesh3d(point.clone()),
+                        MeshMaterial3d(steel_mat.clone()),
+                        Transform::from_xyz(0., 0., 0.68)
+                            .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+                    ));
+                    if matches!(
+                        weapon,
+                        phalanx::weapons::ProjectileWeapon::Atlatl
+                            | phalanx::weapons::ProjectileWeapon::Bow
+                    ) {
+                        for angle in [0., std::f32::consts::FRAC_PI_2] {
+                            p.spawn((
+                                Mesh3d(feather.clone()),
+                                MeshMaterial3d(feather_mat.clone()),
+                                Transform::from_xyz(0., 0., -0.48)
+                                    .with_rotation(Quat::from_rotation_z(angle)),
+                            ));
+                        }
+                    }
+                });
+            }
+        }
     }
     commands.spawn((
         Slab,
@@ -1205,7 +1433,8 @@ fn apply(control: Control, session: &mut Session) {
                     if session.battle.tick == 0 {
                         let u = &mut session.battle.units[session.selected];
                         u.class = Some(class);
-                        u.role = u.trained_role();
+                        u.skills = session.campaign.teams[team].fighters[slot].skills;
+                        u.reset_weapon();
                         u.health = u.max_health();
                     }
                     if session.autosave {
@@ -1227,6 +1456,7 @@ fn apply(control: Control, session: &mut Session) {
                             let equipment = session.campaign.teams[team].fighters[slot].equipment;
                             let u = &mut session.battle.units[session.selected];
                             u.equipment = equipment;
+                            u.reset_weapon();
                             u.health = u.max_health();
                         }
                         if session.autosave {
@@ -1663,7 +1893,9 @@ fn sync_pawns(
 ) {
     for (pawn, mut transform, mut visible) in &mut pawns {
         let Some(unit) = session.battle.units.get(pawn.0) else {
-            *visible = Visibility::Hidden;
+            if pawn.0 != rpg::PREVIEW_ID {
+                *visible = Visibility::Hidden;
+            }
             continue;
         };
         let p = session.presented(unit.id);
@@ -1671,12 +1903,27 @@ fn sync_pawns(
         if transform.translation != next {
             transform.translation = next;
         }
-        let direction = Vec3::new(unit.target[0] - p[0], 0.0, unit.target[1] - p[1]);
+        let facing_target =
+            if unit.projectile_weapon() == Some(phalanx::weapons::ProjectileWeapon::Bow) {
+                unit.bow_aim()
+            } else {
+                unit.target
+            };
+        let direction = Vec3::new(facing_target[0] - p[0], 0.0, facing_target[1] - p[1]);
         if direction.length_squared() > 0.01 && unit.health > 0.0 {
             let facing = Transform::IDENTITY
                 .looking_to(-direction.normalize(), Vec3::Y)
                 .rotation;
-            transform.rotation = transform.rotation.slerp(facing, 0.18);
+            transform.rotation = if unit.bow_follow_through()
+                || unit
+                    .windup
+                    .as_ref()
+                    .is_some_and(|w| w.weapon == phalanx::weapons::ProjectileWeapon::Bow)
+            {
+                facing
+            } else {
+                transform.rotation.slerp(facing, 0.18)
+            };
         }
         // Corpses remain visible so the death clip can finish.
         *visible = Visibility::Inherited;
@@ -1712,16 +1959,8 @@ fn sync_insignia(
     )>,
 ) {
     for (piece, mut visible, mut material) in &mut pieces {
-        let title = session
-            .battle
-            .units
-            .get(piece.0)
-            .and_then(|u| u.command_title);
-        let alive = session
-            .battle
-            .units
-            .get(piece.0)
-            .is_some_and(|u| u.health > 0.0);
+        let title = session.visual_unit(piece.0).and_then(|u| u.command_title);
+        let alive = session.visual_unit(piece.0).is_some_and(|u| u.health > 0.0);
         let show = alive
             && if piece.1 {
                 title.is_some_and(CommandTitle::royal)
@@ -1903,13 +2142,13 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
             0.65,
             Color::srgb(1.0, 0.85, 0.35),
         );
-        if u.role == Role::RockThrower {
+        if u.is_ranged() {
             gizmos.circle(
                 Isometry3d::new(
                     Vec3::new(rendered[0], arena.elevation(rendered) + 0.12, rendered[1]),
                     Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
                 ),
-                u.role.range(),
+                u.attack_range(),
                 Color::srgba(1.0, 0.8, 0.35, 0.4),
             );
         }
@@ -2132,11 +2371,11 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
         .unwrap_or_else(|| "Comparison awaits first decision".into());
     for mut t in &mut text {
         let content = format!(
-            "{}  HP {:.0}/{:.0}\n{} | {}{}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n{}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nRocks thrown {} / hits {}\nWhy (last decision):\n{}",
+            "{}  HP {:.0}/{:.0}\n{} | {}{}\nSurface: cover {:.0}% / rough {:.0}%\nVisible {} / known {} / reports {}\n{}\n{}\n{}\n\nLAST DECISION SCORES\n{}\nRoute cost {:.1} | {} waypoints\nExposure {:.1} / threat {:.1}\nProjectiles thrown {} / hits {} / ally blocks {}\nWhy (last decision):\n{}",
             format_args!(
                 "{}
 Missing {} / Iron I {} | Salvage {}
-Damage x{:.2} / Movement x{:.2} / Incoming x{:.2}\nGear: {}\nWorkshop: craft once; click owned recipe to equip/remove free.",
+Damage x{:.2} / Movement x{:.2} / Incoming x{:.2}\nGear: {}\nWeapon: {}\nWorkshop: craft once; click owned recipe to equip/remove free.",
                 session.unit_label(u.id),
                 limb_names(u.lost_limbs),
                 limb_names(u.prosthetics),
@@ -2148,7 +2387,8 @@ Damage x{:.2} / Movement x{:.2} / Incoming x{:.2}\nGear: {}\nWorkshop: craft onc
                 u.damage_multiplier(),
                 u.movement_multiplier(),
                 u.incoming_multiplier(),
-                if session.battle.founders { session.campaign.teams[u.team].fighters[u.id % session.battle.team_size()].equipment.summary() } else { u.equipment.summary() }
+                if session.battle.founders { session.campaign.teams[u.team].fighters[u.id % session.battle.team_size()].equipment.summary() } else { u.equipment.summary() },
+                u.weapon_status()
             ),
             u.health,
             u.max_health(),
@@ -2203,6 +2443,7 @@ Damage x{:.2} / Movement x{:.2} / Incoming x{:.2}\nGear: {}\nWorkshop: craft onc
             u.route.cost.threat,
             u.rocks_thrown,
             u.rocks_hit,
+            u.arrow_blocks,
             u.decision_reason
         );
         if t.0 != content {
@@ -2436,7 +2677,12 @@ fn sync_rocks(
 ) {
     let arena = session.battle.arena;
     for (visual, mut transform, mut visibility) in &mut visuals {
-        if let Some(rock) = session.battle.rocks.get(visual.0) {
+        if let Some(rock) = session
+            .battle
+            .rocks
+            .get(visual.slot)
+            .filter(|p| p.weapon == visual.weapon)
+        {
             *visibility = Visibility::Inherited;
             let fraction = if session.running {
                 session.accumulator / DT
@@ -2448,9 +2694,27 @@ fn sync_rocks(
             let z = rock.from[1] + (rock.to[1] - rock.from[1]) * t;
             let y = arena.elevation(rock.from)
                 + (arena.elevation(rock.to) - arena.elevation(rock.from)) * t
-                + 0.9
-                + (t * std::f32::consts::PI).sin() * 1.4;
+                + if rock.weapon == phalanx::weapons::ProjectileWeapon::Bow {
+                    phalanx::archery::GRIP_HEIGHT
+                } else {
+                    0.9
+                }
+                + (t * std::f32::consts::PI).sin() * rock.weapon.arc();
             transform.translation = Vec3::new(x, y, z);
+            let dy = arena.elevation(rock.to) - arena.elevation(rock.from)
+                + std::f32::consts::PI * rock.weapon.arc() * (t * std::f32::consts::PI).cos();
+            let direction = Vec3::new(rock.to[0] - rock.from[0], dy, rock.to[1] - rock.from[1])
+                .normalize_or_zero();
+            transform.rotation = Quat::from_rotation_arc(Vec3::Z, direction);
+            transform.scale = Vec3::splat(
+                if rock.weapon == phalanx::weapons::ProjectileWeapon::Atlatl {
+                    1.2
+                } else if rock.weapon == phalanx::weapons::ProjectileWeapon::Bow {
+                    0.70
+                } else {
+                    1.0
+                },
+            );
         } else {
             *visibility = Visibility::Hidden;
         }
@@ -2548,8 +2812,9 @@ fn update_workshop(
             continue;
         };
         let label = if session.battle.founders {
-            let kit = session.campaign.teams[u.team].fighters[u.id % session.battle.team_size()]
-                .equipment;
+            let fighter =
+                &session.campaign.teams[u.team].fighters[u.id % session.battle.team_size()];
+            let kit = fighter.equipment;
             if kit.owns(gear) {
                 format!(
                     "{} {} | {}",
@@ -2557,6 +2822,8 @@ fn update_workshop(
                     gear.name(),
                     gear.effect()
                 )
+            } else if let Some(reason) = gear.locked_reason(fighter.mastery) {
+                format!("Locked {} | {reason}", gear.name())
             } else {
                 let (gold, salvage) = gear.cost();
                 format!(
@@ -2600,10 +2867,10 @@ mod workshop_regressions {
         );
         let gear = phalanx::equipment::Gear::VitalityCharm;
         apply(Control::Workshop(gear), &mut session);
-        assert_eq!(session.battle.units[1].health, 130.0);
+        assert_eq!(session.battle.units[1].health, 390.0);
         assert!(session.battle.units[1].equipment.has(gear));
         apply(Control::Workshop(gear), &mut session);
-        assert_eq!(session.battle.units[1].health, 110.0);
+        assert_eq!(session.battle.units[1].health, 330.0);
         let gold = session.campaign.teams[0].gold;
         session.battle.tick = 1;
         apply(Control::Workshop(gear), &mut session);
@@ -2617,7 +2884,7 @@ mod workshop_regressions {
             .campaign
             .begin_battle(43, Arena::OpenField, Controller::Utility)
             .unwrap();
-        assert_eq!(next.units[1].health, 130.0);
+        assert_eq!(next.units[1].health, 390.0);
     }
     #[test]
     fn rival_selection_control_preserves_squads_and_rejects_mid_battle_swaps() {
@@ -2637,5 +2904,58 @@ mod workshop_regressions {
         session.battle.step();
         apply(Control::ChooseRival(1), &mut session);
         assert_eq!(session.campaign.teams[1].name, challenger);
+    }
+    #[test]
+    fn weapon_controls_refresh_prebattle_ammo_and_preserve_postbattle_snapshots() {
+        use phalanx::equipment::Gear;
+        use phalanx::weapons::ProjectileWeapon as W;
+        let mut session = Session::new(Battle::new(42, false));
+        session.autosave = false;
+        session.campaign = Campaign::new();
+        session.campaign.teams[0].salvage = 100;
+        session.campaign.teams[0].fighters[0]
+            .mastery
+            .train_weapon(W::Rock, 100);
+        session.campaign.teams[0].fighters[0]
+            .mastery
+            .train_weapon(W::Spear, 100);
+        let (_, battle) = session
+            .campaign
+            .begin_battle(42, Arena::OpenField, Controller::Utility)
+            .unwrap();
+        session.battle = battle;
+        session.selected = 0;
+        assert_eq!(session.battle.units[0].role, Role::Fighter);
+        apply(Control::Workshop(Gear::ThrowingSpear), &mut session);
+        assert_eq!(session.battle.units[0].role, Role::RockThrower);
+        assert_eq!(session.battle.units[0].ammunition, 6);
+        apply(Control::Workshop(Gear::ThrowingSpear), &mut session);
+        assert_eq!(session.battle.units[0].role, Role::Fighter);
+        assert_eq!(session.battle.units[0].ammunition, 0);
+        apply(Control::Class(FighterClass::RockThrower), &mut session);
+        assert_eq!(session.battle.units[0].ammunition, u8::MAX);
+        apply(Control::Class(FighterClass::Ranger), &mut session);
+        assert_eq!(session.battle.units[0].projectile_weapon(), Some(W::Bow));
+        assert_eq!(session.battle.units[0].ammunition, 12);
+        session.battle.tick = 1;
+        apply(Control::Workshop(Gear::Atlatl), &mut session);
+        assert!(
+            !session.campaign.teams[0].fighters[0]
+                .equipment
+                .owns(Gear::Atlatl)
+        );
+        session.battle.finished = true;
+        apply(Control::Workshop(Gear::Atlatl), &mut session);
+        assert!(
+            session.campaign.teams[0].fighters[0]
+                .equipment
+                .has(Gear::Atlatl)
+        );
+        assert!(!session.battle.units[0].equipment.has(Gear::Atlatl));
+        let (_, next) = session
+            .campaign
+            .begin_battle(43, Arena::OpenField, Controller::Utility)
+            .unwrap();
+        assert_eq!(next.units[0].ammunition, 4);
     }
 }

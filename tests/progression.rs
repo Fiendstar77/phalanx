@@ -136,7 +136,7 @@ fn veteran_power_and_battle_conditioned_habits_are_bounded() {
         .begin_battle(42, Arena::OpenField, Controller::Utility)
         .unwrap();
     assert_eq!(b.units[0].level(), 10);
-    assert_eq!(b.units[0].max_health(), 128.0);
+    assert_eq!(b.units[0].max_health(), 384.0);
     let old = c.teams[0].fighters[0].mind.self_preservation;
     while !b.finished {
         b.step();
@@ -228,7 +228,7 @@ fn appearance_is_backward_compatible_persistent_and_cannot_change_combat() {
     );
     assert_eq!(
         phalanx::progression::limb_stand_in(0b0101, 0b0001, 4),
-        phalanx::progression::LimbStandIn::Wood
+        phalanx::progression::LimbStandIn::None
     );
     assert_eq!(
         phalanx::progression::limb_stand_in(0b0101, 0b0001, 2),
@@ -242,7 +242,7 @@ fn severe_wounds_are_nonfatal_and_prosthetics_are_a_real_tradeoff() {
     for u in &mut b.units {
         u.health = 0.0;
     }
-    b.units[0].health = 56.0;
+    b.units[0].health = b.units[0].max_health() * 0.5 + 1.0;
     b.units[0].position = [0.0, 0.0];
     b.units[3].health = 110.0;
     b.units[3].position = [1.0, 0.0];
@@ -255,7 +255,7 @@ fn severe_wounds_are_nonfatal_and_prosthetics_are_a_real_tradeoff() {
     );
     let natural = 1.1;
     assert!((b.units[0].damage_multiplier() - natural * 0.8).abs() < 0.0001);
-    b.units[0].health = 28.0;
+    b.units[0].health = b.units[0].max_health() * 0.25 + 0.5;
     b.units[3].cooldown = 0.0;
     b.step();
     assert!(b.units[0].health > 0.0);

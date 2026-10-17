@@ -78,7 +78,7 @@ pub(super) fn ready(
     };
     // Models are pooled for future roster slots too. Bind every loaded head;
     // an unused slot starts animating as soon as the campaign recruits it.
-    let unit = session.battle.units.get(part.id);
+    let unit = session.visual_unit(part.id);
     commands.entity(event.entity).insert(FaceState {
         id: part.id,
         health: unit.map_or(0.0, |unit| unit.health),
@@ -164,7 +164,7 @@ fn drive(
         0.0
     };
     for mut state in &mut states {
-        let Some(unit) = session.battle.units.get(state.id) else {
+        let Some(unit) = session.visual_unit(state.id) else {
             continue;
         };
         if state.run != session.run_id {

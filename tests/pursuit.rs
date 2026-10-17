@@ -43,7 +43,23 @@ fn saturated_scars_do_not_freeze_healthy_veterans_or_produce_endless_flight() {
         while !battle.finished {
             battle.step();
         }
-        assert!(battle.tick < 1200, "Veterans stalled in {arena:?}");
+        assert!(
+            battle.tick < phalanx::BATTLE_TICK_LIMIT,
+            "Veterans stalled in {arena:?}: {:?}",
+            battle
+                .units
+                .iter()
+                .filter(|u| u.health > 0.)
+                .map(|u| (
+                    u.id,
+                    u.health,
+                    u.position,
+                    u.action,
+                    u.decision_reason.clone(),
+                    u.damage_dealt
+                ))
+                .collect::<Vec<_>>()
+        );
         for team in 0..2 {
             assert!(
                 battle

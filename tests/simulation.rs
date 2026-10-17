@@ -4,7 +4,7 @@ use phalanx::{Battle, Mind};
 fn fixed_seed_replays_identically() {
     let mut a = Battle::new(42, false);
     let mut b = Battle::new(42, false);
-    for _ in 0..1200 {
+    for _ in 0..phalanx::BATTLE_TICK_LIMIT {
         a.step();
         b.step();
     }
@@ -51,12 +51,12 @@ fn runs_remain_finite_and_finished_battles_do_not_change() {
     for seed in 0..20 {
         for swapped in [false, true] {
             let mut battle = Battle::new(seed, swapped);
-            for _ in 0..1200 {
+            for _ in 0..phalanx::BATTLE_TICK_LIMIT {
                 battle.step();
             }
             assert!(battle.finished);
             for u in &battle.units {
-                assert!((0.0..=100.0).contains(&u.health));
+                assert!((0.0..=u.max_health()).contains(&u.health));
                 assert!(u.position.iter().all(|p| p.is_finite()));
                 assert!(u.scores.iter().all(|s| s.is_finite()));
             }

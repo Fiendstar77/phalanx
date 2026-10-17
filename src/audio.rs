@@ -5,7 +5,7 @@ use bevy::{
     audio::{AudioSinkPlayback, Volume},
     prelude::*,
 };
-use phalanx::{FighterClass, Role};
+use phalanx::FighterClass;
 use serde::{Deserialize, Serialize};
 
 pub struct GameAudio;
@@ -42,6 +42,8 @@ struct Previous {
     limbs: u8,
     cooldown: f32,
     hits: u32,
+    shots: u32,
+    healing_cooldown: f32,
     action: usize,
 }
 #[derive(Resource, Default)]
@@ -198,6 +200,8 @@ fn combat(
                 limbs: u.lost_limbs,
                 cooldown: u.cooldown,
                 hits: u.rocks_hit,
+                shots: u.rocks_thrown,
+                healing_cooldown: u.heal_cooldown,
                 action: u.action,
             })
             .collect()
@@ -248,21 +252,29 @@ fn combat(
         if unit.rocks_hit > before.hits {
             pending.push((2, 10));
         }
-        if unit.cooldown > before.cooldown && unit.health > 0.0 {
-            pending.push((
-                3,
-                if unit.class == Some(FighterClass::Healer) {
-                    11
-                } else if unit.role == Role::RockThrower {
-                    9
-                } else if unit.class == Some(FighterClass::Berserker) {
-                    1
-                } else {
-                    0
-                },
-            ));
+        if unit.health > 0.0 {
+            if unit.heal_cooldown > before.healing_cooldown {
+                pending.push((3, 11));
+            }
+            if unit.rocks_thrown > before.shots {
+                pending.push((3, 9));
+            } else if unit.cooldown > before.cooldown
+                && !unit.is_ranged()
+                && unit.action == 1
+                && unit.heal_cooldown <= before.healing_cooldown
+            {
+                pending.push((
+                    3,
+                    if unit.class == Some(FighterClass::Berserker) {
+                        1
+                    } else {
+                        0
+                    },
+                ));
+            }
         }
     }
+
     events.units = snapshot();
     events.finished = session.battle.finished;
     if !settings.effects || silent_witness() || session.menu {

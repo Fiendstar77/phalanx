@@ -74,11 +74,11 @@ fn classes_have_real_tradeoffs_and_default_general_starts_paladin() {
         assert_eq!(b.units[2].class, Some(FighterClass::Paladin));
         if class == FighterClass::Guardian {
             assert!(b.units[0].incoming_multiplier() < 0.7);
-            assert!(b.units[0].max_health() > 130.);
+            assert!(b.units[0].max_health() > 390.);
         }
         if class == FighterClass::Scout {
             assert!(b.units[0].movement_multiplier() > 1.4);
-            assert!(b.units[0].max_health() < 110.);
+            assert!(b.units[0].max_health() < 330.);
         }
     }
 }

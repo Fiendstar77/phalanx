@@ -42,7 +42,7 @@ fn persistent_loadouts_change_actual_combat_stats() {
     assert!((b.damage_multiplier() / a.damage_multiplier() - 1.20).abs() < 0.001);
     assert!((b.movement_multiplier() / a.movement_multiplier() - 0.92 * 0.85).abs() < 0.001);
     assert!((b.incoming_multiplier() / a.incoming_multiplier() - 0.80).abs() < 0.001);
-    assert_eq!(b.health, a.health + 20.0);
+    assert_eq!(b.health, a.health + 60.0);
     assert_eq!(b.health, b.max_health());
 }
 
@@ -64,8 +64,9 @@ fn legacy_saves_default_and_invalid_loadouts_are_rejected() {
     restored.teams[0].fighters[0].equipment.slots[0] = Some(Gear::IronArmor);
     assert!(restored.validate().is_err());
     restored.teams[0].fighters[0].equipment = Equipment {
-        owned: 128,
+        owned: 1024,
         slots: [None; 3],
+        ..Default::default()
     };
     assert!(restored.validate().is_err());
 }
