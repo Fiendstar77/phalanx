@@ -1728,8 +1728,7 @@ impl Battle {
                 && enemy.is_some()
                 && unit.cooldown <= 0.0
                 && !arena.clear_segment(unit.position, enemy_position)
-            {
-                if let Some((index, _)) = crate::procedural::original_walls(field)
+                && let Some((index, _)) = crate::procedural::original_walls(field)
                     .iter()
                     .enumerate()
                     .filter(|(index, _)| field.destroyed & (1 << index) == 0)
@@ -1741,12 +1740,10 @@ impl Battle {
                     .min_by(|(_, (a, _)), (_, (b, _))| {
                         distance(unit.position, *a).total_cmp(&distance(unit.position, *b))
                     })
-                {
-                    barrier_damage[index] += 10.0 * unit.damage_multiplier();
-                    unit.cooldown = 0.8;
-                    unit.decision_reason =
-                        "Breaking a nearby barricade to open the engagement".into();
-                }
+            {
+                barrier_damage[index] += 10.0 * unit.damage_multiplier();
+                unit.cooldown = 0.8;
+                unit.decision_reason = "Breaking a nearby barricade to open the engagement".into();
             }
             let stationary = (bow && unit.action == 1 && !unit.bow_melee && !shot_clear)
                 || unit.windup.is_some()
@@ -2020,8 +2017,8 @@ impl Battle {
             && field.layout > 0
         {
             let old = field.destroyed;
-            for i in 0..4 {
-                self.barricade_health[i] = (self.barricade_health[i] - barrier_damage[i]).max(0.0);
+            for (i, damage) in barrier_damage.iter().enumerate() {
+                self.barricade_health[i] = (self.barricade_health[i] - damage).max(0.0);
                 if self.barricade_health[i] <= 0.0 {
                     field.destroyed |= 1 << i;
                 }

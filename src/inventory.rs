@@ -63,10 +63,10 @@ impl Campaign {
             .equipment
             .migrate();
         let object = item(&squad, fighter, source)?;
-        if let Destination::Equipped(slot) = destination {
-            if object.gear.slot() != slot {
-                return Err("That item does not fit this equipment slot".into());
-            }
+        if let Destination::Equipped(slot) = destination
+            && object.gear.slot() != slot
+        {
+            return Err("That item does not fit this equipment slot".into());
         }
         let e = &mut squad.fighters[fighter].equipment;
         let source_index = match source {

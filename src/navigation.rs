@@ -47,8 +47,8 @@ fn build_graph(arena: Arena) -> Vec<Vec<usize>> {
         .collect()
 }
 fn pressure_graph(field: crate::pressure::PressureField) -> Arc<Vec<Vec<usize>>> {
-    static CACHE: OnceLock<Mutex<HashMap<crate::pressure::PressureField, Arc<Vec<Vec<usize>>>>>> =
-        OnceLock::new();
+    type GraphCache = HashMap<crate::pressure::PressureField, Arc<Vec<Vec<usize>>>>;
+    static CACHE: OnceLock<Mutex<GraphCache>> = OnceLock::new();
     let key = crate::pressure::PressureField {
         seed: 0,
         cover_extra: 0,

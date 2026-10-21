@@ -143,7 +143,7 @@ fn contact(p: [f32; 2], q: [f32; 2], v: [f32; 2], w: [f32; 2]) -> Option<f32> {
         return None;
     }
     let t = (-b - discriminant.sqrt()) / a;
-    (t >= 0.0 && t < 1.0).then_some(t)
+    (0.0..1.0).contains(&t).then_some(t)
 }
 fn candidate_pairs(
     p: &[[f32; 2]],
