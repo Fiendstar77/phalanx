@@ -110,7 +110,9 @@ PHALANX is designed to connect game-design questions to measurable system behavi
 
 ## Running the project
 
-Install a current stable Rust toolchain, then:
+Install a current stable Rust toolchain. Builds default to one Cargo job to keep Bevy dependency rebuilds within workstation memory.
+
+Start the game with:
 
 ```bash
 cargo run --locked --bin phalanx
@@ -183,3 +185,5 @@ Living fighters now show overhead HP bars. Healers—including a Queen retrained
 **Proper archers:** Rangers now draw real bows, fire arrows and carry visible quivers. Bow users seek clear lanes behind allies, make short retreats, and switch to sidearms when rushed or out of arrows. Other classes can craft bows through weapon progression. [Archery behavior](docs/weapons.md#proper-archery).
 
 The [RPG workshop](docs/rpg-workshop.md) gives every member a full-body character sheet, drag-and-drop inventories, ten active and three passive skill slots, and an animated forge with item levels and alloy reforging. All fighters now have triple HP, with tenfold blood bursts.
+
+**Local snapshot challenges:** export your Phalanx, import another player's frozen team, fight a generated pressure arena, and return a battle packet that the other installation can replay and verify. Open **Snapshot challenges / exchange teams** from the menu. These exhibition matches preserve both campaigns and their progression. [File exchange, headless tool and verification limits](docs/snapshot-challenges.md).

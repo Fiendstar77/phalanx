@@ -1,5 +1,6 @@
 mod audio;
 mod camp;
+mod exchange;
 mod front;
 mod presentation;
 mod rpg;
@@ -33,6 +34,7 @@ fn frame_zoom(arena: Arena) -> f32 {
 
 #[derive(Resource)]
 struct Session {
+    exchange: exchange::State,
     preview: Option<phalanx::Unit>,
     battle: Battle,
     menu: bool,
@@ -119,6 +121,7 @@ impl Session {
         let paths = if battle.arena.large() { 1 } else { 0 };
         let zoom = frame_zoom(battle.arena);
         let mut session = Self {
+            exchange: exchange::State::default(),
             battle,
             preview: None,
             menu: true,
@@ -198,6 +201,10 @@ impl Session {
         }
     }
     fn save_campaign(&mut self) -> bool {
+        if self.exchange.live.is_some() {
+            self.save_notice = "Frozen challenge: return to your campaign to save squads".into();
+            return false;
+        }
         if !self.battle.founders {
             self.save_notice = "Switch to Founders to save progression".into();
             return false;
@@ -222,6 +229,10 @@ impl Session {
         }
     }
     fn settle_finished(&mut self) {
+        if self.exchange.live.is_some() {
+            exchange::finish(self);
+            return;
+        }
         if self.battle.founders
             && self.battle.finished
             && !self.rewarded
@@ -338,6 +349,13 @@ enum Control {
     Ladder,
     Recruit,
     ChooseRival(usize),
+    ExportSnapshot,
+    RefreshSnapshots,
+    ImportSnapshot(usize),
+    StartChallenge,
+    ChallengeSeed,
+    ExportChallengeResult,
+    LeaveChallenge,
     Continue,
     Quit,
     Class(FighterClass),
@@ -694,6 +712,34 @@ fn main() {
         });
         session.refresh_preview();
     }
+    if let Some(path) = args
+        .windows(2)
+        .find(|w| w[0] == "--snapshot")
+        .map(|w| &w[1])
+    {
+        apply(Control::Camp(camp::Page::Challenges), &mut session);
+        exchange::import_file(&mut session, std::path::Path::new(path));
+    }
+    if args.iter().any(|a| a == "--snapshot-witness") {
+        session.autosave = false;
+        session.campaign = Campaign::new();
+        session.campaign.teams[1].name = "The Visiting Phalanx".into();
+        session.restart_founders(seed, Arena::OpenField, Controller::Utility);
+        let packet =
+            phalanx::challenges::TeamSnapshot::from_campaign(&session.campaign, 1).unwrap();
+        let path = std::path::Path::new("outputs/challenges/inbox/visiting-team.json");
+        packet.save(path).unwrap();
+        apply(Control::Camp(camp::Page::Challenges), &mut session);
+        apply(Control::ImportSnapshot(0), &mut session);
+        if args.iter().any(|a| a == "--snapshot-report-witness") {
+            apply(Control::StartChallenge, &mut session);
+            while !session.battle.finished {
+                session.battle.step();
+            }
+            session.settle_finished();
+            apply(Control::ExportChallengeResult, &mut session);
+        }
+    }
     std::fs::create_dir_all("outputs").expect("create log directory");
     let log_path = format!(
         "outputs/disagreements-{}.jsonl",
@@ -762,7 +808,7 @@ fn main() {
     )
     .insert_resource(ClearColor(Color::srgb(0.025, 0.035, 0.055)))
     .insert_resource(session)
-    .add_plugins((camp::Camp, rpg::Rpg))
+    .add_plugins((camp::Camp, rpg::Rpg, exchange::Exchange))
     .add_systems(Startup, setup)
     .add_systems(
         Update,
@@ -1256,6 +1302,34 @@ fn setup(
 fn apply(control: Control, session: &mut Session) {
     debug!(?control, "Battle control");
     session.settle_finished();
+    if session.exchange.live.is_some() {
+        if matches!(control, Control::Reset) {
+            exchange::reset(session);
+            return;
+        }
+        if !matches!(
+            control,
+            Control::Menu
+                | Control::Camp(_)
+                | Control::SelectFighter(_)
+                | Control::Continue
+                | Control::Quit
+                | Control::Run
+                | Control::Pause
+                | Control::Step
+                | Control::Speed
+                | Control::Paths
+                | Control::Overlay
+                | Control::Pair(..)
+                | Control::ClearPair
+                | Control::NextMatch
+                | Control::ExportChallengeResult
+                | Control::LeaveChallenge
+        ) {
+            session.save_notice = "Challenge teams are frozen. Return to your campaign to prepare fighters or choose another match.".into();
+            return;
+        }
+    }
     let controller = session.battle.controller;
     let was_founders = session.battle.founders;
     if matches!(
@@ -1272,6 +1346,9 @@ fn apply(control: Control, session: &mut Session) {
                 session.running = false;
                 session.ladder = false;
                 session.camp_page = Some(page);
+                if page == camp::Page::Challenges {
+                    exchange::refresh_files(session);
+                }
             } else {
                 session.save_notice =
                     "Squad workshop and reports belong to Founders campaigns".into();
@@ -1282,6 +1359,17 @@ fn apply(control: Control, session: &mut Session) {
                 session.selected = id;
             }
         }
+        Control::ExportSnapshot => exchange::export_team(session),
+        Control::RefreshSnapshots => exchange::refresh_files(session),
+        Control::ImportSnapshot(index) => {
+            if let Some(path) = session.exchange.files.get(index).cloned() {
+                exchange::import_file(session, &path);
+            }
+        }
+        Control::StartChallenge => exchange::start(session),
+        Control::ChallengeSeed => session.exchange.seed = session.exchange.seed.wrapping_add(1),
+        Control::ExportChallengeResult => exchange::export_result(session),
+        Control::LeaveChallenge => exchange::leave(session),
         Control::ChooseRival(index) => {
             if !session.battle.founders || (session.battle.tick > 0 && !session.battle.finished) {
                 session.save_notice = "Finish the battle before choosing a rival".into();
@@ -1788,6 +1876,13 @@ fn controls(
                         | Control::Ladder
                         | Control::Recruit
                         | Control::ChooseRival(_)
+                        | Control::ExportSnapshot
+                        | Control::RefreshSnapshots
+                        | Control::ImportSnapshot(_)
+                        | Control::StartChallenge
+                        | Control::ChallengeSeed
+                        | Control::ExportChallengeResult
+                        | Control::LeaveChallenge
                         | Control::Quit
                         | Control::Arena
                         | Control::Save

@@ -16,6 +16,12 @@ pub enum Action {
     Skill(bool, usize, Option<Skill>),
 }
 pub fn apply(action: Action, session: &mut Session) {
+    if session.exchange.live.is_some() {
+        session.save_notice =
+            "Challenge teams are frozen. Return to your campaign to change equipment or skills."
+                .into();
+        return;
+    }
     if !session.battle.founders || (session.battle.tick > 0 && !session.battle.finished) {
         session.save_notice = "Prepare equipment and skills before or after battle".into();
         return;

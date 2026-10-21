@@ -945,6 +945,12 @@ fn witness(
                         }
                     } else if std::env::args().any(|a| a == "--face-witness") {
                         "outputs/face-witness.png"
+                    } else if std::env::args().any(|a| a == "--snapshot-witness") {
+                        if session.battle.finished {
+                            "outputs/snapshot-report-witness.png"
+                        } else {
+                            "outputs/snapshot-witness.png"
+                        }
                     } else if session.ladder {
                         "outputs/ladder-witness.png"
                     } else {

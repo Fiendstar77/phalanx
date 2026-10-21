@@ -1,0 +1,3 @@
+# Bevy's optimized dependencies can exhaust workstation RAM in parallel builds.
+[build]
+jobs = 1

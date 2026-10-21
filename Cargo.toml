@@ -18,10 +18,14 @@ required-features = ["graphics"]
 name = "phalanx-batch"
 path = "src/batch.rs"
 
+[[bin]]
+name = "phalanx-challenge"
+path = "src/challenge_cli.rs"
+
 [dependencies]
 bevy = { version = "=0.19.1", optional = true, default-features = false, features = ["3d", "ui", "bevy_audio", "wav"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["float_roundtrip"] }
 
 [profile.dev]
 opt-level = 2

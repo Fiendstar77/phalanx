@@ -160,3 +160,7 @@ Generated campaign fields store their seed and layout in the battle snapshot. Ei
 The **Rival phalanxes** tab selects Obsidian Coven, Iron Sentinel, Bloodhound Syndicate, Vanguard of the Sun or Null Collective. Moonward remains available when swapped into the reserve list. All rosters, offices, standards, equipment, practice, wounds and resources persist. Only the rival actually fought earns progress. Rivals spend earned currencies on gear, prosthetics and cross-training, and can unlock spears/atlatls/bows through their own earned weapon practice; Null uses observed player composition and the last match's healing to choose counters. This is deterministic adaptation, not a trained online model. Guns, life leech and new stun abilities remain future class content.
 
 Weapon practice and technology details: [Rock → spear → atlatl](weapons.md).
+
+## Local snapshot exchange
+
+Phase L now has an isolated exhibition workflow: export a published team, import an opponent, fight a frozen challenge and export its complete reproducible result. Both playable leagues are supported. A recipient replays the packet to check the recorded battle. Original campaigns, rivals, rewards and injuries remain unchanged; importing a result never settles progression. [Controls, headless exchange and current verification limits](snapshot-challenges.md).

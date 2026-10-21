@@ -9,6 +9,7 @@ pub enum Page {
     Forge,
     Training,
     Rivals,
+    Challenges,
 }
 pub struct Camp;
 #[derive(Component)]
@@ -22,6 +23,8 @@ enum Label {
     Heraldry,
     Rivals,
     Rival(usize),
+    Exchange,
+    ExchangeFile(usize),
     Recipe(Gear),
     Roster(usize),
     Notice,
@@ -50,7 +53,7 @@ fn label(p: &mut ChildSpawnerCommands, kind: Label, size: f32) {
     ));
 }
 fn setup_camp(mut commands: Commands) {
-    for page in [Page::Report, Page::Training, Page::Rivals] {
+    for page in [Page::Report, Page::Training, Page::Rivals, Page::Challenges] {
         commands.spawn((Panel(page), GlobalZIndex(105), Interaction::default(), Node {
             position_type: PositionType::Absolute, width: percent(100), height: percent(100),
             align_items: AlignItems::Center, justify_content: JustifyContent::Center, display: Display::None, ..default()
@@ -58,7 +61,7 @@ fn setup_camp(mut commands: Commands) {
         .with_children(|root| {
             root.spawn((Node { width: px(1180), max_width: vw(94), height: vh(92), padding: UiRect::all(px(24)), flex_direction: FlexDirection::Column, row_gap: px(12), ..default() }, BackgroundColor(Color::srgb(0.035, 0.055, 0.075))))
             .with_children(|p| {
-                p.spawn((Text::new(if page == Page::Report { "BRING THEM HOME | BATTLE REPORT" } else if page == Page::Rivals { "THE RIVAL PHALANXES" } else { "SQUAD WORKSHOP" }), font(28.), TextColor(Color::srgb(1.,0.72,0.08))));
+                p.spawn((Text::new(if page == Page::Report { "BRING THEM HOME | BATTLE REPORT" } else if page == Page::Rivals { "THE RIVAL PHALANXES" } else if page == Page::Challenges { "PHALANX EXCHANGE | SNAPSHOT CHALLENGES" } else { "SQUAD WORKSHOP" }), font(28.), TextColor(Color::srgb(1.,0.72,0.08))));
                 p.spawn(Node { flex_wrap: FlexWrap::Wrap, ..default() }).with_children(|row| {
                     button(row, "Battle report", Control::Camp(Page::Report));
                     button(row, "Character", Control::Camp(Page::Workshop));
@@ -66,6 +69,7 @@ fn setup_camp(mut commands: Commands) {
                     button(row, "Forge", Control::Camp(Page::Forge));
                     button(row, "Training & titles", Control::Camp(Page::Training));
                     button(row, "Rival phalanxes", Control::Camp(Page::Rivals));
+                    button(row, "Snapshot challenges", Control::Camp(Page::Challenges));
                     button(row, "Return to arena", Control::Continue);
                     button(row, "Main menu", Control::Menu);
                 });
@@ -74,6 +78,20 @@ fn setup_camp(mut commands: Commands) {
                 })).with_children(|body| {
                     if page == Page::Report {
                         label(body, Label::Report, 17.);
+                    } else if page == Page::Challenges {
+                        label(body, Label::Exchange, 16.);
+                        body.spawn(Node { flex_wrap: FlexWrap::Wrap, ..default() }).with_children(|row| {
+                            button(row, "Export my Phalanx", Control::ExportSnapshot);
+                            button(row, "Refresh inbox", Control::RefreshSnapshots);
+                            button(row, "Next seed", Control::ChallengeSeed);
+                            button(row, "Fight imported Phalanx", Control::StartChallenge);
+                            button(row, "Export battle result", Control::ExportChallengeResult);
+                            button(row, "Return to my campaign", Control::LeaveChallenge);
+                        });
+                        body.spawn((Text::new("IMPORT | Drop a team or result JSON file onto this page, or put files in outputs/challenges/inbox and refresh.\nExports appear in outputs/challenges/outbox. Send a team file to another player running the same game build.\nSnapshot matches are exhibitions: your campaign, rivals, gold, XP and injuries stay as they were."),font(14.)));
+                        for index in 0..12 {
+                            body.spawn((Button, Control::ImportSnapshot(index), PressLatch::default(), BackgroundColor(Color::srgb(0.12,0.18,0.25)), Node { padding:UiRect::all(px(10)), flex_shrink:0., ..default() })).with_children(|p|label(p, Label::ExchangeFile(index),14.));
+                        }
                     } else if page == Page::Rivals {
                         label(body, Label::Rivals, 17.);
                         for index in 0..5 {
@@ -119,8 +137,10 @@ fn setup_camp(mut commands: Commands) {
                 });
                 label(p, Label::Notice, 14.);
                 p.spawn(Node { flex_wrap: FlexWrap::Wrap, flex_shrink: 0., ..default() }).with_children(|row| {
-                    button(row, "Next battle", Control::NextBattle);
-                    button(row, "Save squads", Control::Save);
+                    if page != Page::Challenges {
+                        button(row, "Next battle", Control::NextBattle);
+                        button(row, "Save squads", Control::Save);
+                    }
                 });
             });
         });
@@ -168,6 +188,9 @@ fn stats(u: &phalanx::Unit) -> String {
     )
 }
 fn report(session: &Session) -> String {
+    if session.exchange.live.is_some() {
+        return exchange::summary(session);
+    }
     let Some(r) = &session.campaign.last_report else {
         return "No completed battle yet.\n\nFight a Founders battle to earn gold, salvage and XP.\nYour results will appear here after rewards are settled.".into();
     };
@@ -247,10 +270,50 @@ fn refresh(
             } else {
                 Display::None
             };
+        } else if let Control::ImportSnapshot(index) = *control {
+            node.display =
+                if session.exchange.live.is_none() && index < session.exchange.files.len() {
+                    Display::Flex
+                } else {
+                    Display::None
+                };
+        } else if matches!(
+            control,
+            Control::ExportSnapshot
+                | Control::RefreshSnapshots
+                | Control::ChallengeSeed
+                | Control::StartChallenge
+        ) {
+            node.display = if session.exchange.live.is_none() {
+                Display::Flex
+            } else {
+                Display::None
+            };
+        } else if matches!(
+            control,
+            Control::ExportChallengeResult | Control::LeaveChallenge
+        ) {
+            node.display = if session.exchange.live.is_some() {
+                Display::Flex
+            } else {
+                Display::None
+            };
         }
     }
     for (kind, mut text) in &mut texts {
         let value = match kind {
+            Label::Exchange => exchange::summary(&session),
+            Label::ExchangeFile(index) => session
+                .exchange
+                .files
+                .get(*index)
+                .map(|path| {
+                    format!(
+                        "Import / verify {}",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                })
+                .unwrap_or_default(),
             Label::Report => report(&session),
             Label::Rivals => format!(
                 "Current opponent: {}\n{}\nRivals earn XP, retain mastery, carry wounds and buy gear with earned gold/salvage.\nThey progress when fought. Choose a challenger before or after battle.\nYour previous battle report stays unchanged.",
@@ -289,7 +352,9 @@ fn refresh(
                 .unwrap_or_default(),
             Label::Notice => format!(
                 "{}\n{}",
-                if locked {
+                if session.exchange.live.is_some() {
+                    "Frozen exhibition match. Return to your campaign for preparation and progression."
+                } else if locked {
                     "Battle in progress: equipment and retraining locked. Return to arena to finish."
                 } else {
                     "Ready for preparation. Owned gear switches free; purchases save with your squad."

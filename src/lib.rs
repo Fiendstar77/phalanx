@@ -1,6 +1,7 @@
 //! Fixed-step combat model, independent of rendering and wall-clock time.
 use serde::{Deserialize, Serialize};
 pub mod archery;
+pub mod challenges;
 pub mod cognition;
 pub mod collision;
 pub mod equipment;

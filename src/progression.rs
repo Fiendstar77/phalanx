@@ -148,6 +148,93 @@ pub struct Phalanx {
     #[serde(default = "starting_gold")]
     pub gold: u32,
 }
+impl Phalanx {
+    /// Validate one independently owned roster using its source battle sequence.
+    pub fn validate(&self, next_battle_id: u64) -> Result<(), String> {
+        if next_battle_id > 1_000_000 {
+            return Err("invalid source battle sequence".into());
+        }
+        let team = self;
+        let mut ids = BTreeSet::new();
+        let valid_name =
+            |s: &str| !s.is_empty() && s.chars().count() <= 64 && !s.chars().any(char::is_control);
+        if team.inventory.len() > 128
+            || team.inventory.iter().any(|i| !i.valid())
+            || !team.heraldry.valid()
+            || team.standard_bearer >= team.fighters.len()
+            || !valid_name(&team.name)
+            || team.salvage > 1_000_000
+            || team.gold > 1_000_000
+            || !(3..=4).contains(&team.fighters.len())
+            || team
+                .color
+                .iter()
+                .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
+        {
+            return Err("invalid squad or color".into());
+        }
+        let mut titles = BTreeSet::new();
+        for f in &team.fighters {
+            if f.title != CommandTitle::Member && !titles.insert(f.title) {
+                return Err("duplicate squad title".into());
+            }
+            let m = f.mind;
+            if f.skills.is_some_and(|s| !s.valid(f.class, f.mastery))
+                || !f.equipment.valid()
+                || !valid_name(&f.name)
+                || f.fighter_id.is_empty()
+                || f.fighter_id.len() > 128
+                || !ids.insert(&f.fighter_id)
+                || !f.mastery.valid()
+                || [
+                    m.aggression,
+                    m.caution,
+                    m.courage,
+                    m.teamwork,
+                    m.patience,
+                    m.self_preservation,
+                    m.discipline,
+                ]
+                .iter()
+                .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
+                || f.wounds.len() > 4
+                || f.wounds
+                    .iter()
+                    .any(|w| ![1, 2, 4, 8].contains(&w.limb) || w.battle_id >= next_battle_id)
+                || f.wounds
+                    .iter()
+                    .map(|w| w.limb)
+                    .collect::<BTreeSet<_>>()
+                    .len()
+                    != f.wounds.len()
+                || f.lost_limbs > 15
+                || f.prosthetics & !f.lost_limbs != 0
+                || f.appearance.hair > 6
+                || f.appearance.face > 16
+                || f.appearance.eyes > 15
+                || f.appearance.nose > 16
+                || f.appearance.skin > 7
+                || f.appearance.hair_color > 6
+                || !f.psyche.valid()
+                || f.experience > 1_000_000
+                || f.battles > 1_000_000
+                || f.wins > f.battles
+                || f.history.len() > 20
+                || f.history.iter().any(|h| {
+                    h.lost_limbs > 15
+                        || h.prosthetics & !h.lost_limbs != 0
+                        || !h.damage.is_finite()
+                        || h.damage < 0.0
+                        || h.battle_id >= next_battle_id
+                        || h.experience_gained > 55
+                })
+            {
+                return Err("invalid persistent fighter".into());
+            }
+        }
+        Ok(())
+    }
+}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FighterResult {
     #[serde(default)]
@@ -321,82 +408,14 @@ impl Campaign {
             return Err("too many reserve rivals".into());
         }
         let mut ids = BTreeSet::new();
-        let valid_name =
-            |s: &str| !s.is_empty() && s.chars().count() <= 64 && !s.chars().any(char::is_control);
         for team in self.teams.iter().chain(self.rivals.iter()) {
-            if team.inventory.len() > 128
-                || team.inventory.iter().any(|i| !i.valid())
-                || !team.heraldry.valid()
-                || team.standard_bearer >= team.fighters.len()
-                || !valid_name(&team.name)
-                || team.salvage > 1_000_000
-                || team.gold > 1_000_000
-                || !(3..=4).contains(&team.fighters.len())
-                || team.fighters.len() != self.teams[0].fighters.len()
-                || team
-                    .color
-                    .iter()
-                    .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
-            {
-                return Err("invalid squad or color".into());
+            team.validate(self.next_battle_id)?;
+            if team.fighters.len() != self.teams[0].fighters.len() {
+                return Err("squad sizes must match".into());
             }
-            let mut titles = BTreeSet::new();
-            for f in &team.fighters {
-                if f.title != CommandTitle::Member && !titles.insert(f.title) {
-                    return Err("duplicate squad title".into());
-                }
-                let m = f.mind;
-                if f.skills.is_some_and(|s| !s.valid(f.class, f.mastery))
-                    || !f.equipment.valid()
-                    || !valid_name(&f.name)
-                    || f.fighter_id.is_empty()
-                    || f.fighter_id.len() > 128
-                    || !ids.insert(&f.fighter_id)
-                    || !f.mastery.valid()
-                    || [
-                        m.aggression,
-                        m.caution,
-                        m.courage,
-                        m.teamwork,
-                        m.patience,
-                        m.self_preservation,
-                        m.discipline,
-                    ]
-                    .iter()
-                    .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
-                    || f.wounds.len() > 4
-                    || f.wounds.iter().any(|w| {
-                        ![1, 2, 4, 8].contains(&w.limb) || w.battle_id >= self.next_battle_id
-                    })
-                    || f.wounds
-                        .iter()
-                        .map(|w| w.limb)
-                        .collect::<BTreeSet<_>>()
-                        .len()
-                        != f.wounds.len()
-                    || f.lost_limbs > 15
-                    || f.prosthetics & !f.lost_limbs != 0
-                    || f.appearance.hair > 6
-                    || f.appearance.face > 16
-                    || f.appearance.eyes > 15
-                    || f.appearance.nose > 16
-                    || f.appearance.skin > 7
-                    || f.appearance.hair_color > 6
-                    || !f.psyche.valid()
-                    || f.experience > 1_000_000
-                    || f.battles > 1_000_000
-                    || f.wins > f.battles
-                    || f.history.len() > 20
-                    || f.history.iter().any(|h| {
-                        h.lost_limbs > 15
-                            || h.prosthetics & !h.lost_limbs != 0
-                            || !h.damage.is_finite()
-                            || h.damage < 0.0
-                            || h.battle_id >= self.next_battle_id
-                            || h.experience_gained > 55
-                    })
-                {
-                    return Err("invalid persistent fighter".into());
+            for fighter in &team.fighters {
+                if !ids.insert(&fighter.fighter_id) {
+                    return Err("duplicate persistent fighter identity".into());
                 }
             }
         }

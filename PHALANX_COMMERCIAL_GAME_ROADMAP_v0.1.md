@@ -941,6 +941,8 @@ The generator produces tactical problems that expose team weaknesses without arb
 
 ## PHASE L — Asynchronous Snapshots
 
+Current local implementation: [snapshot exchange and reproducible exhibition challenges](docs/snapshot-challenges.md). Team import/export, generated matches, result export and replay verification work for leagues 3 and 4. This is a local exhibition workflow; remote campaign progression, online ownership and cross-platform replay guarantees remain outside this slice.
+
 Add local snapshot workflow first:
 
 ```text
