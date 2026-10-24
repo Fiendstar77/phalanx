@@ -1,4 +1,4 @@
-"""Bake fifteen combat clips on the new artist-rigged, eye-equipped bases.
+"""Bake seventeen combat clips on the artist-rigged, eye-equipped bases.
 Run with blender -b --python tools/prepare_combat_characters.py.
 Original source models and editable eyed Blends are preserved.
 """
@@ -7,7 +7,7 @@ from pathlib import Path
 from mathutils import Vector, Quaternion, Matrix
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'assets/characters';OUT.mkdir(exist_ok=True)
-CLIPS=[('Idle',1.6),('Walk',.9),('Run',.6),('Attack',.65),('Throw',1.1),('Hit',.38),('Death',1.1),('AttackQuick',.42),('AttackHeavy',.95),('AttackDesperate',.60),('ThrowUnderhand',.85),('HitHeavy',.70),('LimbRecoil',.85),('DeathBackward',1.35),('DeathDelayed',1.90)]
+CLIPS=[('Idle',1.6),('Walk',.9),('Run',.6),('Attack',.65),('Throw',1.1),('Hit',.38),('Death',1.1),('AttackQuick',.42),('AttackHeavy',.95),('AttackDesperate',.60),('ThrowUnderhand',.85),('HitHeavy',.70),('LimbRecoil',.85),('DeathBackward',1.35),('DeathDelayed',1.90),('NearDeathPanic',1.4),('WoundedStagger',1.1)]
 def clean():bpy.ops.wm.read_factory_settings(use_empty=True)
 def rot(rig,name,axis,angle):
  b=rig.pose.bones.get('mixamorig'+name)
@@ -70,6 +70,21 @@ def varied_pose(rig,name,u):
   rot(rig,'Hips',(1,0,0),-.70*fall);rot(rig,'Hips',(0,1,0),1.2*fall)
   hips.location.y=-.64*fall
   rot(rig,'RightForeArm',(1,0,0),-.6*(1-fall)*math.sin(math.pi*u))
+ elif name in ['NearDeathPanic','WoundedStagger']:
+  wave=math.sin(u*math.tau);shake=math.sin(u*math.tau*5)
+  moving=name=='WoundedStagger'
+  # Crouch, clutch the abdomen and look frantically for help. No root travel:
+  # locomotion and collision remain owned by the authoritative simulation.
+  rot(rig,'Spine',(1,0,0),-.24-.05*wave)
+  rot(rig,'Spine2',(0,0,1),.045*shake)
+  rot(rig,'Head',(0,0,1),.30*math.sin(u*math.tau*2))
+  rot(rig,'Head',(1,0,0),-.10+.035*shake)
+  for side,sign in [('Left',1),('Right',-1)]:
+   rot(rig,side+'Arm',(1,0,0),-.65+sign*.12*wave)
+   rot(rig,side+'ForeArm',(1,0,0),-1.1+sign*.10*shake)
+   rot(rig,side+'UpLeg',(1,0,0),(.24*wave*sign if moving else .04*wave))
+   rot(rig,side+'Leg',(1,0,0),.24+(.25*max(0,-wave*sign) if moving else .035*shake))
+  hips.location.y=-.09+.025*wave
 
 def bake(rig):
  rig.data.pose_position="POSE"

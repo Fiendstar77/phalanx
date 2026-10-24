@@ -68,12 +68,39 @@ pub(super) fn bubbles(
         let new_wound = u.lost_limbs != v.limbs;
         let mut line = None;
         if u.health <= 0. && v.health > 0. {
-            line = Some("I'LL BE BACK!");
+            line = Some(
+                [
+                    "I'M CALLING IN SICK!",
+                    "A MINOR STAFFING ISSUE!",
+                    "I DEMAND A RECOUNT!",
+                    "WELL. THAT ESCALATED.",
+                ][(b.seed as usize + u.id) % 4],
+            );
+        } else if u.health > 0.
+            && u.health_fraction() <= 0.30
+            && (v.health / u.max_health() > 0.30 || (pain && b.tick.saturating_sub(v.last) > 45))
+        {
+            line = Some(
+                [
+                    "OH GOD! I'M GONNA FUCKING DIE!",
+                    "MEDIC! THAT'S A LOT OF ME!",
+                    "SOMEONE PUT IT BACK IN!",
+                    "I CAN SEE MY INSIDES!",
+                ][(b.seed as usize + u.id + b.tick as usize / 45) % 4],
+            );
         } else if new_wound {
             line = Some(if u.lost_limbs & 3 != v.limbs & 3 {
-                "THAT WAS MY ARM!"
+                [
+                    "GIVE ME A HAND!",
+                    "THAT'S MY GOOD ARM!",
+                    "KEEP IT. I'VE GOT ANOTHER!",
+                ][(b.seed as usize + u.id) % 3]
             } else {
-                "I NEEDED THAT LEG!"
+                [
+                    "I'M STILL STANDING. ISH.",
+                    "WALK IT OFF? REALLY?",
+                    "THAT WAS MY RUNNING LEG!",
+                ][(b.seed as usize + u.id) % 3]
             });
         } else if pain && b.tick.saturating_sub(v.last) > 35 {
             line = Some(if u.mind.courage > 0.75 {
@@ -131,6 +158,7 @@ pub(super) fn bubbles(
         )
     });
     active.truncate(4);
+    let mut placed: Vec<Vec2> = Vec::new();
     for (bubble, mut node, mut text) in &mut bubbles {
         node.display = Display::None;
         if session.menu || !active.iter().any(|(i, _)| *i == bubble.0) {
@@ -151,7 +179,18 @@ pub(super) fn bubbles(
         {
             node.display = Display::Flex;
             node.left = px(screen.x - 55.);
-            node.top = px(screen.y - 30.);
+            let mut y = screen.y - 30.;
+            for _ in 0..4 {
+                if placed
+                    .iter()
+                    .any(|p| (p.x - screen.x).abs() < 190. && (p.y - y).abs() < 32.)
+                {
+                    y -= 34.;
+                }
+            }
+            y = y.max(125.);
+            placed.push(Vec2::new(screen.x, y));
+            node.top = px(y);
             let label = &voices.units[bubble.0].text;
             if &text.0 != label {
                 text.0 = label.clone();

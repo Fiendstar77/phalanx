@@ -1,0 +1,85 @@
+{
+  "checked_on": "2026-10-23",
+  "local_validation": {
+    "tests": {
+      "headless": 140,
+      "graphics": 19
+    },
+    "total": 159,
+    "cargo_fmt_check": "passed",
+    "required_strict_clippy": "cargo clippy --offline --locked --no-default-features --all-targets -- -D warnings",
+    "required_strict_clippy_result": "passed",
+    "graphics_and_challenge_build": "passed",
+    "character_geometry_and_faces": "passed",
+    "hair_meshes": 10,
+    "hair_geometry": "finite positions and one hair mesh per GLB; front sheet inspected; all ten loaded by game"
+  },
+  "runtime": {
+    "controller": "Utility",
+    "fighters_per_side": 3,
+    "finished": true,
+    "fountains_started": 10,
+    "frames": 266,
+    "gold": 120,
+    "near_death_clips_seen": [
+      true,
+      false
+    ],
+    "peak_fountains": 4,
+    "salvage": 10,
+    "scripted_controls": true,
+    "seed": 6,
+    "stained_pixels": 10531,
+    "tick": 659,
+    "tutorial_attempts": [
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "tutorial_cleared": [
+      true,
+      false,
+      false,
+      false,
+      false
+    ],
+    "source_save_unchanged": true
+  },
+  "runtime_limits": [
+    "WoundedStagger is asset-validated and loop-tested; it did not occur naturally in this recorded match.",
+    "Blood volume is an artistic emission multiplier, not a physiological fluid model.",
+    "Hair meshes are first concepts awaiting player art review."
+  ],
+  "recording": {
+    "path": "docs/media/opening-campaign.mp4",
+    "seconds": 26.6,
+    "scripted_qa": true,
+    "silent": true
+  },
+  "async_cli": [
+    {
+      "command": "export",
+      "exit": 0,
+      "stdout": "Exported Sunward | League 3\nKING / KING / BERSERKER | level 6 | 11 battles, 11 wins\nQUEEN / QUEEN / RANGER | level 6 | 11 battles, 11 wins\nGENERAL / GENERAL / PALADIN | level 6 | 11 battles, 11 wins"
+    },
+    {
+      "command": "export",
+      "exit": 0,
+      "stdout": "Exported Moonward | League 3\nKING / KING / WARRIOR | level 3 | 11 battles, 0 wins\nQUEEN / QUEEN / ROCK THROWER | level 3 | 11 battles, 0 wins\nGENERAL / GENERAL / PALADIN | level 3 | 11 battles, 0 wins"
+    },
+    {
+      "command": "emulate",
+      "exit": 0,
+      "stdout": "Local asynchronous emulator: 2 publication(s) discovered; result replay-verified and delivered to 2 owner inbox(es). No accounts, networking or campaign rewards."
+    },
+    {
+      "command": "verify",
+      "exit": 0,
+      "stdout": "Verified: replay matches the complete recorded battle. Campaigns unchanged."
+    }
+  ],
+  "online_status": "local transport-independent emulator only; no hosted service, authenticated accounts, ranking, reward authority or campaign-end arena unlock",
+  "remote_ci": "not run for this local change"
+}

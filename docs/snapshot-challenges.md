@@ -53,6 +53,22 @@ The result embeds both frozen team packets, the seed, the generated initial aren
 
 Compatibility uses a source fingerprint covering the Rust sources, build script, manifest, lockfile and bundled policy. It is a build identifier, not a cryptographic signature. Replay consistency does not prove a team's ownership or that its statistics were earned legitimately. Online identity, trusted rewards and result delivery belong to Phase M. Exact cross-platform floating-point equivalence remains unproven; this slice is verified across separate directories and processes on the same platform and build.
 
+## Asynchronous service emulator
+
+```bash
+target/debug/phalanx-challenge emulate \
+  --home my-team.json --away opponent.json --seed 42 --output async-result.json
+target/debug/phalanx-challenge verify --result async-result.json
+```
+
+The opponent publishes a frozen team. The local service is serialized and restored while its owner is absent. A challenger then publishes, receives a ticket binding both exact publications and the seed, fights, and submits a result. Replay verification precedes delivery to both owner inboxes. Resubmitting the identical result is idempotent; changed teams, seeds or recorded combat are rejected. Newer publications do not rewrite an issued match.
+
+`src/async_exchange.rs` defines the `ChallengeService` boundary for publish, discovery, ticket issuance, submission and inbox retrieval. `LocalExchange` is its serializable, in-process implementation. A future network adapter can use this boundary without coupling combat or the UI to HTTP. The CLI demonstrates the whole local lifecycle; it does not start a server or persist a network mailbox. Local owner labels are fixtures, not authenticated accounts. A production implementation still needs identity, access control, trusted progression, storage validation, limits and hosted delivery. Exact replay establishes consistency, not legitimate ownership or earned statistics. Campaign rewards remain untouched.
+
+The intended release keeps most play offline against NPCs, then reveals the asynchronous arena at the end of the larger campaign. That campaign gate and the online service remain future work. The five tutorial teams are the opening chapter, not the arena-unlock condition.
+
+`tests/async_exchange.rs` verifies owner absence, service restoration, frozen tickets, duplicate submission, tampering rejection, both inboxes and unchanged source campaigns.
+
 ## Validation
 
 [Rendered import screen](images/snapshot-import-witness.png) · [Completed challenge and result export](images/snapshot-result-witness.png). These captures use staged QA teams. The result exported by the rendered game was successfully verified by the headless tool, and the real campaign save retained its original checksum.

@@ -2,7 +2,9 @@
 
 ## Project Identity
 
-**PHALANX** is an asynchronous competitive game about building a persistent fighting team, shaping its minds, equipping it, letting it learn through battle, and sending a snapshot of that team into other players' games.
+**PHALANX** is a darkly comic autonomous combat game about building a persistent fighting team, shaping its minds, equipping it, and developing it through battle. Most of the intended game is an offline NPC campaign. At its end, the arena opens to asynchronous competition against other players' published teams.
+
+**Direction clarified October 23, 2026:** the five NPC tutorial teams form the opening chapter. The wider offline campaign should build attachment to veterans, scars and strategic combinations before the late arena reveal. The campaign ending becomes a graduation: "You've conquered the trials. The arena gates are open." Online battles never require both owners to be present together. The larger campaign, its final unlock and hosted online play remain future work; the prototype currently provides the tutorial sequence, manual snapshot exhibitions and a local asynchronous service emulator.
 
 The player does not directly command fighters during combat.
 

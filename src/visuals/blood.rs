@@ -7,11 +7,62 @@ use bevy::{
 };
 const COUNT: usize = 8192;
 const INTENSITY: usize = 10;
+const MAX_FOUNTAINS: usize = 5;
+const BLOOD_VOLUME: usize = 8;
+const EMISSION_STEP: f32 = 0.025;
 const SIZE: usize = 512;
 #[derive(Component)]
 pub(super) struct Particle(usize);
 #[derive(Component)]
 pub(super) struct StainSurface;
+#[derive(Clone)]
+struct Fountain {
+    unit: usize,
+    height: f32,
+    side: f32,
+    life: f32,
+    duration: f32,
+    sample: f32,
+    period: f32,
+    phase: f32,
+    angle: f32,
+    pitch: f32,
+    seed: u64,
+}
+impl Fountain {
+    fn new(event: &phalanx::DamageEvent, seed: u64) -> Self {
+        let wound = phalanx::procedural::hash(seed ^ event.sequence.wrapping_mul(131));
+        let heart = phalanx::procedural::hash(seed ^ event.defender as u64);
+        let variation = (wound & 65535) as f32 / 65535.;
+        let duration = 8.0 + variation * 2.0;
+        let period = 0.62 + (heart & 65535) as f32 / 65535. * 0.16;
+        let side = if event.severed.trailing_zeros() % 2 == 0 {
+            -1.
+        } else {
+            1.
+        };
+        Self {
+            unit: event.defender,
+            height: if event.severed & 12 != 0 { 0.30 } else { 0.90 },
+            side,
+            life: duration,
+            duration,
+            sample: 0.,
+            period,
+            // Two wounds on one fighter share a heart, but not a direction.
+            phase: event.tick as f32 * phalanx::DT + ((heart >> 16) & 255) as f32 / 255.,
+            angle: side * std::f32::consts::FRAC_PI_2 + (variation - 0.5) * 0.9,
+            pitch: -0.18 + ((wound >> 16) & 255) as f32 / 255. * 0.65,
+            seed: wound,
+        }
+    }
+    fn pressure(&self, age: f32) -> f32 {
+        let phase = ((age + self.phase) / self.period).fract();
+        // Fast systolic surge, falling tail, then a visibly quiet diastolic gap.
+        let beat = (phase / 0.065).min(1.) * ((0.42 - phase) / 0.355).clamp(0., 1.).powf(1.5);
+        beat * (1. - age / self.duration).clamp(0., 1.).sqrt()
+    }
+}
 #[derive(Clone, Default)]
 pub(super) struct Droplet {
     p: Vec3,
@@ -20,7 +71,7 @@ pub(super) struct Droplet {
     pub(super) life: f32,
 }
 #[derive(Resource)]
-pub(super) struct Fx {
+pub(crate) struct Fx {
     pub(super) particles: Vec<Droplet>,
     cursor: usize,
     run: Option<u32>,
@@ -30,6 +81,9 @@ pub(super) struct Fx {
     image: Handle<Image>,
     pixels: Vec<u8>,
     dirty: bool,
+    fountains: Vec<Fountain>,
+    pub(crate) streams_started: u32,
+    pub(crate) peak_streams: usize,
 }
 pub(super) fn install(app: &mut App) {
     app.add_systems(Startup, setup.after(super::load_visuals));
@@ -130,10 +184,13 @@ fn setup(
         image,
         pixels: vec![0; SIZE * SIZE * 4],
         dirty: false,
+        fountains: Vec::new(),
+        streams_started: 0,
+        peak_streams: 0,
     });
 }
 impl Fx {
-    pub(super) fn stained_pixels(&self) -> usize {
+    pub(crate) fn stained_pixels(&self) -> usize {
         self.pixels.chunks_exact(4).filter(|p| p[3] != 0).count()
     }
     fn stamp(
@@ -185,7 +242,9 @@ impl Fx {
         for j in 0..count {
             let index = self.cursor % COUNT;
             self.cursor += 1;
-            let n = ((self.cursor * 73 + j * 131) % 997) as f32 / 997.0;
+            let n = (phalanx::procedural::hash(self.cursor as u64 ^ (j as u64).wrapping_mul(131))
+                & 65535) as f32
+                / 65535.;
             let fan = if severe {
                 1.2
             } else if blunt {
@@ -201,7 +260,9 @@ impl Fx {
             } else {
                 2.0 + n * 2.5
             };
-            let radius = if blunt {
+            let radius = if severe {
+                0.02 + n * 0.035
+            } else if blunt {
                 0.035 + n * 0.035
             } else {
                 0.018 + n * 0.028
@@ -212,6 +273,35 @@ impl Fx {
                     + Vec3::Y * (0.5 + n * if severe { 1.6 } else { 2.0 }),
                 scale: Vec3::new(radius, radius * if blunt { 1.2 } else { 2.5 }, radius),
                 life: 3.0,
+            };
+        }
+    }
+    fn spurt(&mut self, p: Vec3, angle: f32, pitch: f32, pressure: f32, motion: Vec3, seed: u64) {
+        for j in 0..6 * BLOOD_VOLUME {
+            let bits = phalanx::procedural::hash(self.cursor as u64 ^ seed);
+            let n = (bits & 65535) as f32 / 65535.;
+            let m = ((bits >> 16) & 65535) as f32 / 65535.;
+            let k = ((bits >> 32) & 65535) as f32 / 65535.;
+            let a = angle + (m - 0.5) * 0.20;
+            let elevation = pitch + (k - 0.5) * 0.22;
+            let speed = (4.8 + n * 2.8) * pressure;
+            let radius = if j % 11 == 0 {
+                0.035 + n * 0.025
+            } else {
+                0.008 + n * 0.02
+            };
+            let index = self.cursor % COUNT;
+            self.cursor += 1;
+            self.particles[index] = Droplet {
+                p: p + Vec3::new((m - 0.5) * 0.025, k * 0.025, (n - 0.5) * 0.025),
+                v: Vec3::new(
+                    a.cos() * elevation.cos(),
+                    elevation.sin(),
+                    a.sin() * elevation.cos(),
+                ) * speed
+                    + motion,
+                scale: Vec3::new(radius, radius * (1.3 + m), radius),
+                life: 1.8 + n,
             };
         }
     }
@@ -230,6 +320,9 @@ pub(super) fn effects(
     if fx.run != Some(session.run_id) {
         fx.run = Some(session.run_id);
         fx.last_event = None;
+        fx.fountains.clear();
+        fx.streams_started = 0;
+        fx.peak_streams = 0;
         fx.pixels.fill(0);
         fx.dirty = true;
         for p in &mut fx.particles {
@@ -256,12 +349,24 @@ pub(super) fn effects(
             event.severed != 0 || event.amount >= 25.0,
             event.blunt,
         );
+        if event.severed != 0 {
+            let same = fx
+                .fountains
+                .iter()
+                .filter(|j| j.unit == event.defender)
+                .count();
+            if same < 2 && fx.fountains.len() < MAX_FOUNTAINS {
+                fx.fountains.push(Fountain::new(event, session.battle.seed));
+                fx.streams_started += 1;
+                fx.peak_streams = fx.peak_streams.max(fx.fountains.len());
+            }
+        }
         if event.severed != 0 || session.battle.units[event.defender].health <= 0.0 {
             fx.stamp(
                 arena,
                 pos,
-                0.65,
-                1.7,
+                0.85,
+                1.5,
                 event.velocity[1].atan2(event.velocity[0]),
                 0.65,
             );
@@ -275,6 +380,61 @@ pub(super) fn effects(
     } else {
         0.0
     };
+    let mut fountains = std::mem::take(&mut fx.fountains);
+    for jet in &mut fountains {
+        jet.life -= dt;
+        let p = session.presented(jet.unit);
+        let unit = &session.battle.units[jet.unit];
+        let facing = Vec2::from_array(unit.target) - Vec2::from_array(unit.position);
+        let heading = if facing.length_squared() > 0.001 {
+            facing.y.atan2(facing.x)
+        } else if unit.team == 0 {
+            0.
+        } else {
+            std::f32::consts::PI
+        };
+        let lateral = Vec3::new(-heading.sin(), 0., heading.cos())
+            * jet.side
+            * if jet.height < 0.5 { 0.13 } else { 0.26 };
+        let collapsed = unit.health <= 0.;
+        let origin = Vec3::new(
+            p[0],
+            arena.elevation(p) + jet.height * if collapsed { 0.25 } else { 1. },
+            p[1],
+        ) + lateral;
+        let motion = if session.running && !collapsed {
+            session
+                .battle
+                .motion
+                .position(jet.unit, 0.)
+                .zip(session.battle.motion.position(jet.unit, 1.))
+                .map_or(Vec3::ZERO, |(a, b)| {
+                    Vec3::new(b[0] - a[0], 0., b[1] - a[1]) / phalanx::DT
+                })
+        } else {
+            Vec3::ZERO
+        };
+        // Fixed emission intervals preserve the heartbeat at low frame rates / high game speeds.
+        while jet.sample <= (jet.duration - jet.life).min(jet.duration) {
+            let pressure = jet.pressure(jet.sample);
+            if pressure > 0.05 {
+                let beat = ((jet.sample + jet.phase) / jet.period).floor() as u64;
+                let sway =
+                    (phalanx::procedural::hash(jet.seed ^ beat) & 65535) as f32 / 65535. - 0.5;
+                fx.spurt(
+                    origin,
+                    heading + jet.angle + sway * 0.5,
+                    jet.pitch + sway * 0.18 - if collapsed { 0.12 } else { 0. },
+                    pressure,
+                    motion,
+                    jet.seed ^ beat,
+                );
+            }
+            jet.sample += EMISSION_STEP;
+        }
+    }
+    fountains.retain(|j| j.life > 0.);
+    fx.fountains = fountains;
     fx.drip += dt;
     if fx.drip >= 0.10 {
         fx.drip = 0.;
@@ -359,5 +519,48 @@ pub(super) fn effects(
             transform.scale = p.scale;
             transform.rotation = Quat::from_rotation_arc(Vec3::Y, p.v.normalize_or_zero());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn wounds_share_a_heart_but_have_distinct_sources_and_quiet_intervals() {
+        let mut event = phalanx::DamageEvent {
+            sequence: 1,
+            tick: 40,
+            attacker: 0,
+            defender: 3,
+            amount: 25.,
+            velocity: [1., 0.],
+            position: [0., 0.],
+            severed: 1,
+            blunt: false,
+        };
+        let a = Fountain::new(&event, 42);
+        event.sequence = 2;
+        event.severed = 2;
+        let b = Fountain::new(&event, 42);
+        assert_eq!(a.period, b.period);
+        assert_eq!(a.phase, b.phase);
+        assert_ne!(a.side, b.side);
+        assert!((a.angle - b.angle).abs() > 2.);
+        let mut bursts = 0;
+        let mut quiet = 0;
+        let mut was_active = false;
+        for i in 0..800 {
+            let pressure = a.pressure(i as f32 * 0.01);
+            let active = pressure > 0.05;
+            bursts += usize::from(active && !was_active);
+            quiet += usize::from(!active);
+            was_active = active;
+        }
+        assert!(bursts >= 10, "prolonged flow must contain individual beats");
+        assert!(quiet > 400, "blood must visibly stop between beats");
+        assert_eq!(a.pressure(a.duration), 0.);
+        let age = (a.period - a.phase.rem_euclid(a.period)) + a.period * 0.065;
+        assert!(a.pressure(age) > 0.8);
+        assert!(a.pressure(age + a.period * 5.) < a.pressure(age));
     }
 }

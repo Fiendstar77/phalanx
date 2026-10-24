@@ -2,7 +2,9 @@ mod audio;
 mod battlefield;
 mod camp;
 mod exchange;
+mod founding;
 mod front;
+mod player;
 mod presentation;
 mod rpg;
 mod visuals;
@@ -35,6 +37,8 @@ fn frame_zoom(arena: Arena) -> f32 {
 
 #[derive(Resource)]
 struct Session {
+    founding: founding::Draft,
+    player: player::View,
     map_briefing: bool,
     exchange: exchange::State,
     preview: Option<phalanx::Unit>,
@@ -122,7 +126,11 @@ impl Session {
         let previous_positions = battle.units.iter().map(|u| u.position).collect();
         let paths = if battle.arena.large() { 1 } else { 0 };
         let zoom = frame_zoom(battle.arena);
+        let founding =
+            founding::Draft::new(&campaign, battle.founders && !campaign.founders_prepared);
         let mut session = Self {
+            founding,
+            player: player::View::default(),
             map_briefing: true,
             exchange: exchange::State::default(),
             battle,
@@ -258,7 +266,7 @@ impl Session {
                         }
                     } else {
                         self.save_notice =
-                            "XP earned in memory; original unreadable save untouched.".into();
+                            "XP earned in memory; campaign autosaving is disabled.".into();
                     }
                 }
                 Err(e) => {
@@ -377,6 +385,17 @@ enum Control {
     Arena,
     GenerateArena,
     BattlefieldBriefing,
+    ResearchView,
+    TogglePlay,
+    NextTutorial,
+    StarterClass(usize, FighterClass),
+    ClearPhalanxName,
+    ConfirmFounders,
+    RosterSide(usize),
+    RosterPage(i32),
+    BattleStyle(phalanx::styles::BattleStyle),
+    FollowFighter,
+    FrameBattle,
     Overlay,
     Controller,
     Pair(usize, usize),
@@ -446,6 +465,7 @@ fn main() {
     let mut session = Session::new(battle);
     let visual_witness = args.iter().any(|a| a == "--visual-witness");
     if visual_witness {
+        session.founding.open = false;
         session.menu = false;
         session.running = true;
         session.speed = 4.0;
@@ -755,6 +775,15 @@ fn main() {
         session.restart_founders(seed.wrapping_sub(1), Arena::OpenField, Controller::Utility);
         apply(Control::GenerateArena, &mut session);
     }
+    if args.iter().any(|a| a == "--player-demo") {
+        session.autosave = false;
+        session.campaign = Campaign::new();
+        session.restart_founders(seed.wrapping_sub(1), Arena::OpenField, Controller::Utility);
+        session.founding = founding::Draft::new(&session.campaign, true);
+        session.menu = true;
+        session.running = false;
+        session.speed = 1.;
+    }
     std::fs::create_dir_all("outputs").expect("create log directory");
     let log_path = format!(
         "outputs/disagreements-{}.jsonl",
@@ -828,6 +857,8 @@ fn main() {
         rpg::Rpg,
         exchange::Exchange,
         battlefield::Battlefield,
+        player::Player,
+        founding::Founding,
     ))
     .add_systems(Startup, setup)
     .add_systems(
@@ -1141,14 +1172,17 @@ fn setup(
         Transform::from_xyz(0.0, 21.0, 24.0).looking_at(Vec3::new(3.5, 0.0, 0.0), Vec3::Y),
     ));
     commands
-        .spawn(Node {
-            position_type: PositionType::Absolute,
-            top: px(22),
-            left: px(26),
-            right: px(370),
-            flex_direction: FlexDirection::Column,
-            ..default()
-        })
+        .spawn((
+            player::ResearchHud,
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(22),
+                left: px(26),
+                right: px(370),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+        ))
         .with_children(|p| {
             p.spawn((
                 Text::new("PHALANX"),
@@ -1185,6 +1219,7 @@ fn setup(
             },
             BackgroundColor(Color::srgba(0.035, 0.055, 0.085, 0.97)),
             InspectorPanel,
+            player::ResearchHud,
             ScrollPosition::default(),
         ))
         .with_children(|p| {
@@ -1279,14 +1314,17 @@ fn setup(
             }
         });
     commands
-        .spawn(Node {
-            position_type: PositionType::Absolute,
-            left: px(26),
-            top: px(230),
-            flex_direction: FlexDirection::Column,
-            align_items: AlignItems::Start,
-            ..default()
-        })
+        .spawn((
+            player::ResearchHud,
+            Node {
+                position_type: PositionType::Absolute,
+                left: px(26),
+                top: px(230),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Start,
+                ..default()
+            },
+        ))
         .with_children(|p| {
             p.spawn((
                 DivergenceSummary,
@@ -1317,15 +1355,26 @@ fn setup(
                 });
             }
         });
-    commands.spawn(Node { position_type: PositionType::Absolute, left: px(20), bottom: px(18), flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
+    commands.spawn((player::ResearchHud, Node { position_type: PositionType::Absolute, left: px(20), bottom: px(18), flex_direction: FlexDirection::Column, ..default() })).with_children(|p| {
         p.spawn((Text::new("WASD move | RMB orbit | MMB pan | Wheel zoom | Shift faster | F follow | Home arena | Space pause/run"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
         p.spawn(Node { margin: UiRect::top(px(8)),flex_wrap:FlexWrap::Wrap,width:vw(95.0), ..default() }).with_children(|row| {
-            button(row,"Menu",Control::Menu);button(row,"Squad workshop",Control::Camp(camp::Page::Workshop));button(row,"Battle report",Control::Camp(camp::Page::Report));button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Map briefing",Control::BattlefieldBriefing); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup); button(row,"Next battle",Control::NextBattle);button(row,"Save",Control::Save);button(row,"Load",Control::Load);
+            button(row,"Player view [I]",Control::ResearchView);button(row,"Menu",Control::Menu);button(row,"Squad workshop",Control::Camp(camp::Page::Workshop));button(row,"Battle report",Control::Camp(camp::Page::Report));button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Map briefing",Control::BattlefieldBriefing); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup); button(row,"Next battle",Control::NextBattle);button(row,"Save",Control::Save);button(row,"Load",Control::Load);
             for (i,name) in ["Amber","Teal","Violet","Coral","Azure","Lime","Pink","Ivory"].iter().enumerate() {button(row,name,Control::TeamColor(i));}
         });
     });
 }
 fn apply(control: Control, session: &mut Session) {
+    if session.founding.open
+        && !matches!(
+            control,
+            Control::StarterClass(..)
+                | Control::ClearPhalanxName
+                | Control::ConfirmFounders
+                | Control::Quit
+        )
+    {
+        return;
+    }
     debug!(?control, "Battle control");
     session.settle_finished();
     if session.exchange.live.is_some() {
@@ -1347,6 +1396,12 @@ fn apply(control: Control, session: &mut Session) {
                 | Control::Paths
                 | Control::Overlay
                 | Control::BattlefieldBriefing
+                | Control::ResearchView
+                | Control::TogglePlay
+                | Control::RosterSide(_)
+                | Control::RosterPage(_)
+                | Control::FollowFighter
+                | Control::FrameBattle
                 | Control::Pair(..)
                 | Control::ClearPair
                 | Control::NextMatch
@@ -1367,6 +1422,99 @@ fn apply(control: Control, session: &mut Session) {
         let _ = session.campaign.capture_minds(&session.battle);
     }
     match control {
+        Control::StarterClass(slot, class) => {
+            if session.founding.open && slot < 3 {
+                session.founding.classes[slot] = class;
+            }
+        }
+        Control::ClearPhalanxName => {
+            if session.founding.open {
+                session.founding.name.clear();
+            }
+        }
+        Control::ConfirmFounders => {
+            if !session.founding.open {
+                return;
+            }
+            match session
+                .campaign
+                .choose_founders(&session.founding.name, session.founding.classes)
+            {
+                Ok(()) => {
+                    session.founding.open = false;
+                    // Refresh the staged snapshot before the ordinary tutorial flow captures minds.
+                    session.restart_founders(session.battle.seed, session.battle.arena, controller);
+                    apply(Control::NextTutorial, session);
+                }
+                Err(e) => session.save_notice = e,
+            }
+        }
+        Control::NextTutorial => {
+            if !session.battle.founders || (session.battle.tick > 0 && !session.battle.finished) {
+                session.save_notice = "Finish this battle before starting another tutorial".into();
+                return;
+            }
+            if session.battle.tick == 0 {
+                let _ = session.campaign.capture_minds(&session.battle);
+            }
+            match phalanx::tutorial::prepare_next(&mut session.campaign) {
+                Ok(lesson) => {
+                    let seed = session.battle.seed.wrapping_add(1);
+                    let arena = phalanx::pressure::generate(&session.campaign.teams, seed);
+                    session.restart_founders(seed, arena, controller);
+                    session.running = false;
+                    session.accumulator = 0.;
+                    session.menu = false;
+                    session.camp_page = None;
+                    session.map_briefing = false;
+                    session.paths = 2;
+                    session.save_notice = format!("{}: {}", lesson.title, lesson.advice);
+                    if session.autosave {
+                        session.save_campaign();
+                    }
+                }
+                Err(e) => session.save_notice = e,
+            }
+        }
+        Control::TogglePlay => session.running = !session.running && !session.battle.finished,
+        Control::ResearchView => session.player.research = !session.player.research,
+        Control::RosterSide(side) => {
+            session.player.side = side.min(1);
+            session.player.page = 0;
+        }
+        Control::RosterPage(delta) => {
+            let pages = player::page_count(session.battle.team_size());
+            session.player.page =
+                (session.player.page as i32 + delta).clamp(0, pages as i32 - 1) as usize;
+        }
+        Control::FollowFighter => {
+            session.camera_follow = true;
+            session.zoom = 12.;
+            session.pitch = 0.7;
+        }
+        Control::FrameBattle => {
+            session.camera_follow = false;
+            session.camera_target = Vec3::new(3.5, 0., 0.);
+            session.zoom = frame_zoom(session.battle.arena);
+            session.pitch = 0.72;
+        }
+        Control::BattleStyle(style) => {
+            if !session.battle.founders || (session.battle.tick > 0 && !session.battle.finished) {
+                session.save_notice = "Choose a fighting style before or after a battle".into();
+                return;
+            }
+            let u = &session.battle.units[session.selected];
+            let (team, slot) = (u.team, u.id % session.battle.team_size());
+            session.campaign.teams[team].fighters[slot].mind = style.mind();
+            if session.battle.tick == 0 {
+                session.battle.units[session.selected].mind = style.mind();
+            }
+            session.refresh_preview();
+            if session.autosave {
+                session.save_campaign();
+            }
+            session.save_notice = format!("{}: {}", style.name(), style.description());
+        }
         Control::Camp(page) => {
             if session.battle.founders {
                 session.menu = true;
@@ -1384,6 +1532,9 @@ fn apply(control: Control, session: &mut Session) {
         Control::SelectFighter(id) => {
             if id < session.battle.units.len() {
                 session.selected = id;
+                session.map_briefing = false;
+                session.player.side = session.battle.units[id].team;
+                session.player.page = (id % session.battle.team_size()) / player::CARDS_PER_PAGE;
             }
         }
         Control::ExportSnapshot => exchange::export_team(session),
@@ -1622,7 +1773,7 @@ fn apply(control: Control, session: &mut Session) {
                                 .unwrap_or(u.command_title == Some(CommandTitle::Queen)),
                         )
                     }
-                    1 => look.hair = (look.hair + 1) % 7,
+                    1 => look.hair = (look.hair + 1) % 11,
                     2 => look.face = (look.face + 1) % 17,
                     3 => look.eyes = (look.eyes + 1) % 16,
                     4 => look.nose = (look.nose + 1) % 17,
@@ -1863,6 +2014,7 @@ fn apply(control: Control, session: &mut Session) {
             | Control::Arena
             | Control::Setup
             | Control::NextBattle
+            | Control::NextTutorial
             | Control::GenerateArena
             | Control::Load
             | Control::ChooseRival(_)
@@ -1911,8 +2063,13 @@ fn controls(
                 || matches!(
                     control,
                     Control::Continue
+                        | Control::StarterClass(..)
+                        | Control::ClearPhalanxName
+                        | Control::ConfirmFounders
                         | Control::Camp(_)
                         | Control::SelectFighter(_)
+                        | Control::BattleStyle(_)
+                        | Control::NextTutorial
                         | Control::Menu
                         | Control::Workshop(_)
                         | Control::Prosthetic
@@ -1947,6 +2104,9 @@ fn controls(
     }
 }
 fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
+    if session.founding.open {
+        return;
+    }
     if keys.just_pressed(KeyCode::Escape) {
         if session.camp_page.take().is_some() {
             session.menu = true;
@@ -1958,6 +2118,9 @@ fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
     }
     if session.menu {
         return;
+    }
+    if keys.just_pressed(KeyCode::KeyI) {
+        apply(Control::ResearchView, &mut session);
     }
     if keys.just_pressed(KeyCode::Space) {
         let c = if session.running {
@@ -1992,7 +2155,8 @@ fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
         apply(Control::NextMatch, &mut session);
     }
     if keys.just_pressed(KeyCode::Tab) {
-        session.selected = (session.selected + 1) % session.battle.units.len();
+        let next = (session.selected + 1) % session.battle.units.len();
+        apply(Control::SelectFighter(next), &mut session);
     }
 }
 fn simulate(time: Res<Time>, mut session: ResMut<Session>) {
@@ -2172,7 +2336,9 @@ fn pick(
             }
         }
     }
-    session.selected = best.1;
+    if session.selected != best.1 {
+        apply(Control::SelectFighter(best.1), &mut session);
+    }
     debug!(?cursor, selected = best.1, "Agent selection");
 }
 // Mouse/window/input are separate Bevy-injected parameters.

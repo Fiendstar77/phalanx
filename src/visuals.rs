@@ -3,7 +3,8 @@
 mod archery;
 mod barks;
 mod blood;
-use blood::{Fx, effects};
+pub(super) use blood::Fx;
+use blood::effects;
 mod body;
 mod equipment;
 mod face;
@@ -21,6 +22,7 @@ use phalanx::{CommandTitle, Role, terrain::Arena};
 pub struct BattleVisuals;
 impl Plugin for BattleVisuals {
     fn build(&self, app: &mut App) {
+        app.init_resource::<PanicAudit>();
         barks::install(app);
         archery::install(app);
         blood::install(app);
@@ -29,7 +31,9 @@ impl Plugin for BattleVisuals {
         standards::install(app);
         equipment::install(app);
         app.add_systems(Update, portrait_camera.after(super::camera_motion));
-        if std::env::args().any(|a| a == "--visual-witness") {
+        if std::env::args().any(|a| a == "--visual-witness")
+            && !std::env::args().any(|a| a == "--player-demo")
+        {
             app.init_resource::<Witness>()
                 .add_systems(Update, witness.after(animate).after(effects));
         }
@@ -50,7 +54,12 @@ impl Plugin for BattleVisuals {
             );
     }
 }
-const CLIP_NAMES: [&str; 15] = [
+#[derive(Resource, Default)]
+pub(super) struct PanicAudit {
+    run: Option<u32>,
+    pub(super) clips_seen: [bool; 2],
+}
+const CLIP_NAMES: [&str; 17] = [
     "Idle",
     "Walk",
     "Run",
@@ -66,10 +75,26 @@ const CLIP_NAMES: [&str; 15] = [
     "LimbRecoil",
     "DeathBackward",
     "DeathDelayed",
+    "NearDeathPanic",
+    "WoundedStagger",
 ];
-const CLIP_DURATIONS: [f32; 15] = [
-    1.6, 0.9, 0.6, 0.65, 1.1, 0.38, 1.1, 0.42, 0.95, 0.60, 0.85, 0.70, 0.85, 1.35, 1.90,
+const CLIP_DURATIONS: [f32; 17] = [
+    1.6, 0.9, 0.6, 0.65, 1.1, 0.38, 1.1, 0.42, 0.95, 0.60, 0.85, 0.70, 0.85, 1.35, 1.90, 1.4, 1.1,
 ];
+fn loop_clip(clip: usize) -> bool {
+    matches!(clip, 0..=2 | 15 | 16)
+}
+fn locomotion_clip(unit: &phalanx::Unit, moved: f32, finished: bool) -> usize {
+    if !finished && unit.health > 0. && unit.health_fraction() <= 0.30 {
+        if moved > 0.005 { 16 } else { 15 }
+    } else if moved > 0.13 {
+        2
+    } else if moved > 0.005 {
+        1
+    } else {
+        0
+    }
+}
 fn death_clip(clip: usize) -> bool {
     matches!(clip, 6 | 13 | 14)
 }
@@ -287,7 +312,7 @@ fn ready(
             .is_ok_and(|name| name.as_str() == "mixamorigHead")
         {
             commands.entity(entity).with_children(|p| {
-                for style in 0..6 {
+                for style in 0..10 {
                     p.spawn((
                         Hair {
                             id: model.id,
@@ -337,9 +362,14 @@ fn animate(
     session: Res<Session>,
     time: Res<Time>,
     assets: Res<CharacterAssets>,
+    mut audit: ResMut<PanicAudit>,
     mut models: Query<(&Model, &mut Visibility)>,
     mut actors: Query<(&mut Actor, &mut AnimationPlayer)>,
 ) {
+    if audit.run != Some(session.run_id) {
+        audit.run = Some(session.run_id);
+        audit.clips_seen = [false; 2];
+    }
     let dt = if session.running {
         time.delta_secs().min(0.1) * session.speed
     } else if session.battle.finished {
@@ -424,13 +454,7 @@ fn animate(
             let moved = p.distance(actor.position);
             // A simulation tick advances positions every 0.1 s; retain gait between ticks.
             if session.battle.tick != actor.tick || reset {
-                clip = if moved > 0.13 {
-                    2
-                } else if moved > 0.005 {
-                    1
-                } else {
-                    0
-                };
+                clip = locomotion_clip(unit, moved, session.battle.finished);
             }
         }
         if clip == usize::MAX {
@@ -462,6 +486,9 @@ fn animate(
             clip = if bow { 0 } else { 4 };
             actor.clock = 0.72;
             actor.lock = 0.35;
+        }
+        if matches!(clip, 15 | 16) {
+            audit.clips_seen[clip - 15] = true;
         }
         let node = assets.clips[usize::from(actor.female)][clip];
         let clip_dt = if actor.id == super::rpg::PREVIEW_ID {
@@ -498,7 +525,7 @@ fn advance_clip(
         actor.clock = 0.0;
         player.stop_all();
         let playing = player.play(node);
-        if clip <= 2 {
+        if loop_clip(clip) {
             playing.repeat();
         }
         playing.pause();
@@ -506,7 +533,7 @@ fn advance_clip(
         actor.clock += dt;
     }
     let duration = CLIP_DURATIONS[clip];
-    let clock = if clip <= 2 {
+    let clock = if loop_clip(clip) {
         actor.clock % duration
     } else {
         actor.clock.min(duration - 0.001)
@@ -594,7 +621,7 @@ fn scenery(
 }
 
 #[derive(Resource)]
-struct HairAssets([Handle<WorldAsset>; 6]);
+struct HairAssets([Handle<WorldAsset>; 10]);
 #[derive(Component)]
 struct FacePart {
     id: usize,
@@ -738,6 +765,7 @@ fn setup_looks(
     ));
     commands
         .spawn((
+            super::player::PortraitHud,
             Node {
                 position_type: PositionType::Absolute,
                 left: px(26),
@@ -855,7 +883,7 @@ struct JointWitness {
 }
 #[derive(Resource, Default)]
 struct Witness {
-    seen: [bool; 15],
+    seen: [bool; 17],
     joints: std::collections::BTreeMap<Entity, Quat>,
     skeleton_motion: bool,
     model_motion: [bool; 2],
@@ -1084,6 +1112,38 @@ fn witness(
 #[cfg(test)]
 mod animation_regressions {
     use super::*;
+    #[test]
+    fn critical_health_loops_panic_and_stagger_without_changing_tactics() {
+        let b = phalanx::Battle::with_founders(42, false, phalanx::terrain::Arena::OpenField);
+        let mut u = b.units[0].clone();
+        assert_eq!(locomotion_clip(&u, 0., false), 0);
+        u.health = u.max_health() * 0.25;
+        let before = serde_json::to_string(&u).unwrap();
+        assert_eq!(locomotion_clip(&u, 0., false), 15);
+        assert_eq!(locomotion_clip(&u, 0.1, false), 16);
+        assert_eq!(locomotion_clip(&u, 0., true), 0);
+        let (_, nodes) = AnimationGraph::from_clips(
+            (0..CLIP_NAMES.len()).map(|_| Handle::<AnimationClip>::default()),
+        );
+        for clip in [15, 16] {
+            let mut actor = Actor {
+                clip: usize::MAX,
+                ..default()
+            };
+            let mut player = AnimationPlayer::default();
+            advance_clip(&mut actor, &mut player, clip, nodes[clip], 0., false);
+            advance_clip(
+                &mut actor,
+                &mut player,
+                clip,
+                nodes[clip],
+                CLIP_DURATIONS[clip] + 0.3,
+                false,
+            );
+            assert!((player.animation(nodes[clip]).unwrap().seek_time() - 0.3).abs() < 0.001);
+        }
+        assert_eq!(serde_json::to_string(&u).unwrap(), before);
+    }
     #[test]
     fn injuries_and_class_change_gestures_without_mutating_combat() {
         let battle = phalanx::Battle::with_founders(42, false, phalanx::terrain::Arena::OpenField);

@@ -63,6 +63,7 @@ fn setup_camp(mut commands: Commands) {
             .with_children(|p| {
                 p.spawn((Text::new(if page == Page::Report { "BRING THEM HOME | BATTLE REPORT" } else if page == Page::Rivals { "THE RIVAL PHALANXES" } else if page == Page::Challenges { "PHALANX EXCHANGE | SNAPSHOT CHALLENGES" } else { "SQUAD WORKSHOP" }), font(28.), TextColor(Color::srgb(1.,0.72,0.08))));
                 p.spawn(Node { flex_wrap: FlexWrap::Wrap, ..default() }).with_children(|row| {
+                    button(row, "Next tutorial / rematch", Control::NextTutorial);
                     button(row, "Battle report", Control::Camp(Page::Report));
                     button(row, "Character", Control::Camp(Page::Workshop));
                     button(row, "Skills", Control::Camp(Page::Skills));
@@ -94,6 +95,7 @@ fn setup_camp(mut commands: Commands) {
                         }
                     } else if page == Page::Rivals {
                         label(body, Label::Rivals, 17.);
+                        button(body,"Fight the next tutorial team",Control::NextTutorial);
                         for index in 0..5 {
                             body.spawn((Button, Control::ChooseRival(index), PressLatch::default(), BackgroundColor(Color::srgb(0.12,0.18,0.25)), Node { padding:UiRect::all(px(12)), flex_shrink:0., ..default() })).with_children(|p|label(p, Label::Rival(index),15.));
                         }
@@ -206,8 +208,14 @@ fn report(session: &Session) -> String {
             )
         })
         .unwrap_or_else(|| "Draw".into());
+    let celebration = match r.winner {
+        Some(0) => "YOUR PHALANX KICKED ASS!",
+        Some(_) => "A STRATEGIC MISUNDERSTANDING.",
+        None => "EVERYONE DEMANDS A REMATCH.",
+    };
     let mut text = format!(
-        "{} | Battle {} | {} | Seed {}\n\n",
+        "{celebration}\n{} / 5 tutorial teams cleared\n\n{} | Battle {} | {} | Seed {}\n\n",
+        session.campaign.tutorial.completed(),
         outcome,
         r.battle_id + 1,
         r.arena.name(),
@@ -316,12 +324,16 @@ fn refresh(
                 .unwrap_or_default(),
             Label::Report => report(&session),
             Label::Rivals => format!(
-                "Current opponent: {}\n{}\nRivals earn XP, retain mastery, carry wounds and buy gear with earned gold/salvage.\nThey progress when fought. Choose a challenger before or after battle.\nYour previous battle report stays unchanged.",
-                session.campaign.teams[1].name,
-                session.campaign.teams[1]
-                    .rival_style
-                    .map(|s| s.doctrine())
-                    .unwrap_or("Original local opponent; preserved with its existing identity")
+                "{}\n{}",
+                phalanx::tutorial::summary(&session.campaign),
+                format!(
+                    "Current opponent: {}\n{}\nRivals earn XP, retain mastery, carry wounds and buy gear with earned gold/salvage.\nThey progress when fought. Choose a challenger before or after battle.\nYour previous battle report stays unchanged.",
+                    session.campaign.teams[1].name,
+                    session.campaign.teams[1]
+                        .rival_style
+                        .map(|s| s.doctrine())
+                        .unwrap_or("Original local opponent; preserved with its existing identity")
+                )
             ),
             Label::Rival(index) => session
                 .campaign

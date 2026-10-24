@@ -335,12 +335,12 @@ pub(super) fn update(
                     let transform = world.compute_transform();
                     let origin = world.transform_point(center);
                     let angle = u.id as f32 * 2.1 + bit as f32 * 0.7;
-                    let speed = if bit == 16 { 7.5 } else { 5.2 };
+                    let speed = if bit == 16 { 9.0 } else { 7.0 };
                     commands.spawn((
                         Gib {
                             velocity: Vec3::new(
                                 angle.cos() * speed,
-                                5.6 + bit as f32 * 0.08,
+                                7.0 + bit as f32 * 0.1,
                                 angle.sin() * speed,
                             ),
                             spin: Vec3::new(7., 4., 5.),
@@ -417,9 +417,11 @@ pub(super) fn physics(
                 + 0.13;
             if transform.translation.y <= floor {
                 transform.translation.y = floor;
-                gib.velocity *= 0.22;
-                gib.spin *= 0.35;
-                if gib.velocity.length() < 0.8 {
+                gib.velocity.x *= 0.6;
+                gib.velocity.z *= 0.6;
+                gib.velocity.y = gib.velocity.y.abs() * 0.42;
+                gib.spin *= 0.65;
+                if gib.velocity.y < 0.6 && gib.velocity.xz().length() < 0.8 {
                     gib.settled = true;
                 }
             }

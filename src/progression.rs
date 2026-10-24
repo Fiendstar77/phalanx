@@ -209,7 +209,7 @@ impl Phalanx {
                     != f.wounds.len()
                 || f.lost_limbs > 15
                 || f.prosthetics & !f.lost_limbs != 0
-                || f.appearance.hair > 6
+                || f.appearance.hair > 10
                 || f.appearance.face > 16
                 || f.appearance.eyes > 15
                 || f.appearance.nose > 16
@@ -299,6 +299,10 @@ impl BattleReport {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Campaign {
+    #[serde(default = "legacy_founders_prepared")]
+    pub founders_prepared: bool,
+    #[serde(default)]
+    pub tutorial: crate::tutorial::Progress,
     #[serde(default)]
     pub rivals: Vec<Phalanx>,
     #[serde(default)]
@@ -310,6 +314,9 @@ pub struct Campaign {
 }
 fn starting_gold() -> u32 {
     100
+}
+fn legacy_founders_prepared() -> bool {
+    true
 }
 impl Default for Campaign {
     fn default() -> Self {
@@ -323,6 +330,8 @@ impl Campaign {
             .unwrap_or_default()
             .as_nanos();
         let mut campaign = Self {
+            founders_prepared: false,
+            tutorial: Default::default(),
             rivals: Vec::new(),
             last_report: None,
             schema_version: 1,
@@ -388,7 +397,39 @@ impl Campaign {
         crate::rivals::initialize(&mut campaign);
         campaign
     }
+    /// Initial choices are free once. Existing and experienced squads cannot be rebuilt here.
+    pub fn choose_founders(
+        &mut self,
+        name: &str,
+        classes: [FighterClass; 3],
+    ) -> Result<(), String> {
+        let name = name.trim();
+        if self.founders_prepared
+            || self.teams[0].fighters.len() != 3
+            || self.teams[0]
+                .fighters
+                .iter()
+                .any(|f| f.battles > 0 || f.experience > 0 || !f.history.is_empty())
+        {
+            return Err("This phalanx is already established; use the workshop to retrain".into());
+        }
+        if name.is_empty() || name.chars().count() > 40 || name.chars().any(char::is_control) {
+            return Err("Give your phalanx a name of 1 to 40 characters".into());
+        }
+        let mut prepared = self.clone();
+        prepared.teams[0].name = name.into();
+        for (fighter, class) in prepared.teams[0].fighters.iter_mut().zip(classes) {
+            fighter.class = class;
+        }
+        prepared.founders_prepared = true;
+        prepared.validate()?;
+        *self = prepared;
+        Ok(())
+    }
     pub fn validate(&self) -> Result<(), String> {
+        if !self.tutorial.valid() {
+            return Err("invalid tutorial progress".into());
+        }
         if self.last_report.as_ref().is_some_and(|r| {
             !r.valid()
                 || r.battle_id >= self.next_battle_id
@@ -681,7 +722,11 @@ impl Campaign {
         }
         let mut updated = self.clone();
         updated.capture_minds(b)?;
+        updated.founders_prepared = true;
         let winner = b.winner();
+        updated
+            .tutorial
+            .record(self.teams[1].rival_style, winner == Some(0));
         for (team, squad) in updated.teams.iter_mut().enumerate() {
             squad.gold = squad
                 .gold

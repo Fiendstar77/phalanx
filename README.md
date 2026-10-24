@@ -6,6 +6,8 @@ Players shape battlefields and agent personalities, then observe autonomous team
 
 > **Status: early playable prototype.** The default Founders setup starts each team with a King, Queen, and General. The Lab keeps its original 5-versus-5 standard battles and 10-versus-10 Citadel arena, personality-weighted routes, cover, rough ground, ten arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
 
+**New playable opening:** name your phalanx, choose three founders, then face five NPC tutorial teams. Compact fighter cards, three persistent tactical styles, seeded procedural battlefields, heartbeat-driven splatter, critical-health panic and ten replacement 3D hair concepts. Extra fighter slots still cost gold. [Play controls, current limits and validation](docs/player-experience.md) · [Short gameplay recording](docs/media/opening-campaign.mp4) · [Hair lineup](docs/images/hair-lineup.png).
+
 ![Citadel: 20 agents and clickable disagreement highlights](docs/images/citadel-filter.png)
 
 [Live learned-controller gameplay recording](docs/images/learned-demo.gif)
@@ -20,7 +22,7 @@ The squads now persist locally: fighter IDs, minds, classes, XP, battle history,
 
 ## Visual combat and wounded veterans
 
-The supplied male/female bases now have derived game-ready rigs with seven basic animation clips. Appearance uses real 3D hair, painted skin textures and an actual on-field camera portrait. Founders can survive limb loss, carry wounds across battles, earn salvage and craft Iron I prosthetics. The first iron arm grants **3× damage with a 15% movement penalty**. Blood sprays, spreading puddles, stylized organ debris and flying body pieces follow actual combat events.
+The supplied male/female bases now have derived game-ready rigs with seventeen animation clips, including near-death panic and wounded staggering. Appearance uses real 3D hair, painted skin textures and an actual on-field camera portrait. Founders can survive limb loss, carry wounds across battles, earn salvage and craft Iron I prosthetics. The first iron arm grants **3× damage with a 15% movement penalty**. Blood sprays, spreading puddles, stylized organ debris and flying body pieces follow actual combat events.
 
 ![Characters, blood and wounded veterans](docs/images/veteran-combat.png)
 

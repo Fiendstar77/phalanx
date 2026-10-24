@@ -15,7 +15,9 @@
     "HitHeavy",
     "LimbRecoil",
     "DeathBackward",
-    "DeathDelayed"
+    "DeathDelayed",
+    "NearDeathPanic",
+    "WoundedStagger"
   ],
   "method": "Artist-rigged new bases, independent bone-parented eyes; authored procedural combat motion. Feet normalized to ground."
 }

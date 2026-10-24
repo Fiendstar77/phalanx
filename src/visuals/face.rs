@@ -202,7 +202,10 @@ fn drive(
             } else {
                 unit.mind.aggression * 0.20
             };
-            target[FEAR] = if unit.action == 5 {
+            let critical = !session.battle.finished && unit.health_fraction() <= 0.30;
+            target[FEAR] = if critical {
+                0.95
+            } else if unit.action == 5 {
                 0.8
             } else if unit.health_fraction() < 0.3 {
                 0.55
@@ -235,7 +238,7 @@ fn drive(
         for (weight, target) in state.weights.iter_mut().zip(target) {
             *weight += (target - *weight) * alpha;
         }
-        let gaze = unit
+        let mut gaze = unit
             .contacts
             .iter()
             .find(|contact| Some(contact.enemy) == unit.enemy)
@@ -250,6 +253,10 @@ fn drive(
                 Vec2::new(yaw.clamp(-0.30, 0.30), 0.0)
             })
             .unwrap_or_else(|| Vec2::new((state.clock * 0.70 + state.id as f32).sin() * 0.10, 0.0));
+        if unit.health > 0. && unit.health_fraction() <= 0.30 && !session.battle.finished {
+            gaze.x += (state.clock * 11. + state.id as f32).sin() * 0.19;
+            gaze.y += (state.clock * 7.).sin() * 0.05;
+        }
         state.gaze = state.gaze.lerp(gaze, alpha);
         let appearance = look(&session, state.id);
         state.iris = appearance.eyes;

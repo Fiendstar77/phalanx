@@ -25,6 +25,8 @@ fn setup_menu(mut commands: Commands) {
                     p.spawn((Text::new("PHALANX"),font(48.0),TextColor(Color::srgb(1.0,0.72,0.08))));
                     p.spawn((Text::new("Build their minds. Watch them fight. Bring them home."),font(16.0)));
                     p.spawn((MenuSummary,Text::new(""),font(15.0),TextColor(Color::srgb(0.65,0.82,0.84))));
+                    button(p,"Begin / continue NPC tutorials",Control::NextTutorial);
+                    button(p,"Tutorial teams & tactical lessons",Control::Camp(camp::Page::Rivals));
                     button(p,"Enter arena / manage your fighters",Control::Continue);
                     button(p,"Squad workshop",Control::Camp(camp::Page::Workshop));
                     button(p,"Last battle report",Control::Camp(camp::Page::Report));
@@ -71,7 +73,11 @@ fn menu(
     mut summaries: Query<&mut Text, With<MenuSummary>>,
 ) {
     for (page, mut panel) in &mut panels {
-        panel.display = if session.menu && session.camp_page.is_none() && session.ladder == page.0 {
+        panel.display = if !session.founding.open
+            && session.menu
+            && session.camp_page.is_none()
+            && session.ladder == page.0
+        {
             Display::Flex
         } else {
             Display::None

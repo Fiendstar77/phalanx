@@ -1,0 +1,67 @@
+{
+  "styles": [
+    {
+      "id": 1,
+      "name": "Short Messy",
+      "vertices": 1846,
+      "faces": 1758
+    },
+    {
+      "id": 2,
+      "name": "Buzzed Crop",
+      "vertices": 1216,
+      "faces": 1152
+    },
+    {
+      "id": 3,
+      "name": "Swept Back",
+      "vertices": 1216,
+      "faces": 1152
+    },
+    {
+      "id": 4,
+      "name": "Bob",
+      "vertices": 2702,
+      "faces": 2620
+    },
+    {
+      "id": 5,
+      "name": "Long Straight",
+      "vertices": 2702,
+      "faces": 2620
+    },
+    {
+      "id": 6,
+      "name": "High Ponytail",
+      "vertices": 1960,
+      "faces": 1886
+    },
+    {
+      "id": 7,
+      "name": "Twin Tails",
+      "vertices": 2704,
+      "faces": 2620
+    },
+    {
+      "id": 8,
+      "name": "Curly Fluffy",
+      "vertices": 6720,
+      "faces": 7296
+    },
+    {
+      "id": 9,
+      "name": "Mohawk",
+      "vertices": 2686,
+      "faces": 2566
+    },
+    {
+      "id": 10,
+      "name": "Warrior Braid",
+      "vertices": 3946,
+      "faces": 3858
+    }
+  ],
+  "fit": "Raycast envelope of actual male and female Face_Sculpt meshes in neutral rest pose",
+  "preview": "docs/images/hair-lineup.png",
+  "source_heads_preserved": true
+}

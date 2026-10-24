@@ -137,6 +137,8 @@ impl Challenge {
     pub fn start(&self) -> Result<(Campaign, Battle), String> {
         self.validate()?;
         let mut campaign = Campaign {
+            founders_prepared: true,
+            tutorial: Default::default(),
             schema_version: 1,
             teams: std::array::from_fn(|i| self.teams[i].team.clone()),
             rivals: Vec::new(),

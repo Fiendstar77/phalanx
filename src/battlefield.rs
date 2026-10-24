@@ -7,9 +7,9 @@ pub struct WallMaterials {
 }
 pub struct Battlefield;
 #[derive(Component)]
-struct Briefing;
+pub(super) struct Briefing;
 #[derive(Component)]
-struct BriefingText;
+pub(super) struct BriefingText;
 impl Plugin for Battlefield {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup_briefing.after(setup))
@@ -50,7 +50,7 @@ fn setup_briefing(mut commands: Commands) {
             );
         });
 }
-fn show_briefing(
+pub(super) fn show_briefing(
     session: Res<Session>,
     mut panels: Query<&mut Node, (With<Briefing>, Without<InspectorPanel>)>,
     mut inspector: Query<&mut Node, (With<InspectorPanel>, Without<Briefing>)>,
@@ -61,6 +61,7 @@ fn show_briefing(
         _ => None,
     };
     let show = field.is_some()
+        && !session.player.research
         && session.map_briefing
         && session.exchange.live.is_none()
         && !session.menu
