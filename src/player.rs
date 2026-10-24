@@ -2,12 +2,13 @@
 use super::*;
 use phalanx::styles::BattleStyle;
 pub const CARDS_PER_PAGE: usize = 6;
-#[derive(Default)]
 pub struct View {
+    pub details:bool,
     pub research: bool,
     pub side: usize,
     pub page: usize,
 }
+impl Default for View {fn default()->Self {Self {details:false,research:false,side:0,page:0}}}
 pub fn page_count(fighters: usize) -> usize {
     fighters.div_ceil(CARDS_PER_PAGE).max(1)
 }
@@ -54,6 +55,7 @@ impl Plugin for Player {
                 Update,
                 update
                     .after(update_divergence)
+                    .after(rewards::tick)
                     .after(battlefield::show_briefing),
             );
     }
@@ -88,6 +90,7 @@ fn setup_player(mut commands: Commands) {
             })
             .with_children(|row| {
                 button(row, "Fight / pause [Space]", Control::TogglePlay);
+                button(row,"Fighter details",Control::BattleView);
                 button(row, "Speed", Control::Speed);
                 button(row, "NPC tutorials", Control::Camp(camp::Page::Rivals));
                 button(row, "Workshop", Control::Camp(camp::Page::Workshop));
@@ -103,7 +106,7 @@ fn setup_player(mut commands: Commands) {
             Node {
                 position_type: PositionType::Absolute,
                 left: px(22),
-                right: px(370),
+                right: px(22),
                 bottom: px(14),
                 padding: UiRect::all(px(10)),
                 flex_direction: FlexDirection::Column,
@@ -185,6 +188,7 @@ fn setup_player(mut commands: Commands) {
     .with_children(|p|{
         p.spawn((Detail,Text::new(""),font(15.)));
         button(p,"Follow this fighter",Control::FollowFighter);
+        button(p,"Rename this fighter",Control::RenameFighter);
         for style in BattleStyle::ALL {
             p.spawn((StyleButton(style),Control::BattleStyle(style),Button,PressLatch::default(),
                 BackgroundColor(Color::srgb(0.12,0.18,0.25)),Node{padding:UiRect::all(px(10)),flex_direction:FlexDirection::Column,..default()}))
@@ -253,12 +257,13 @@ fn update(
     )>,
     mut styles: Query<(&StyleButton, &mut BackgroundColor), Without<CardHealth>>,
 ) {
-    let play = session.battle.founders && !session.player.research && !session.menu;
+    let play = session.battle.founders && !session.player.research && !session.menu && !session.harvesting;
     let map = session.map_briefing
         && session.battle.tick == 0
         && matches!(session.battle.arena, Arena::Pressure(_));
     for (panel, mut node) in &mut panels {
-        node.display = if play && (!matches!(panel, Panel::Details) || !map) {
+        if matches!(panel,Panel::Top|Panel::Roster) {node.right=px(if session.player.details {370.}else{22.});}
+        node.display = if play && (!matches!(panel, Panel::Details) || (!map && session.player.details)) {
             Display::Flex
         } else {
             Display::None
@@ -266,6 +271,7 @@ fn update(
     }
     for (mut node, inspector) in &mut research {
         node.display = if !session.menu
+            && !session.harvesting
             && !play
             && !(inspector.is_some() && map && !session.player.research)
         {
@@ -275,7 +281,7 @@ fn update(
         };
     }
     for mut node in &mut portraits {
-        node.display = if play { Display::None } else { Display::Flex };
+        node.display = if play || session.harvesting { Display::None } else { Display::Flex };
     }
     if !session.battle.founders {
         return;
@@ -287,12 +293,11 @@ fn update(
         "LEARNED driving | utility legality/fallback"
     };
     let heading = format!(
-        "{}  {} : {}  {}  |  {}  |  {}  x{}  |  {}",
+        "{}  {} : {}  {}  |  {}  x{}  |  {}",
         session.team_name(0),
         battle.survivors(0),
         battle.survivors(1),
         session.team_name(1),
-        battle.arena.name(),
         if session.running {
             "FIGHTING"
         } else {
@@ -486,6 +491,7 @@ fn record_demo(
     match demo.phase {
         0 => {
             session.founding.name = "THE BAD DECISIONS".into();
+            for i in 0..3 {session.founding.reveal(i).unwrap();}
             demo.phase = 1;
         }
         1 if t > 2. => {

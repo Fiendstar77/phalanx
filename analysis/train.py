@@ -5,9 +5,15 @@ import torch
 from torch import nn
 
 class Policy(nn.Module):
-    def __init__(self, inputs, actions):
+    def __init__(self, inputs, actions, hidden=64, depth=2):
         super().__init__()
-        self.network = nn.Sequential(nn.Linear(inputs, 64), nn.ReLU(), nn.Linear(64, 64), nn.ReLU(), nn.Linear(64, actions))
+        layers = []
+        width = inputs
+        for _ in range(depth):
+            layers += [nn.Linear(width, hidden), nn.ReLU()]
+            width = hidden
+        layers.append(nn.Linear(width, actions))
+        self.network = nn.Sequential(*layers)
     def forward(self, x):
         return self.network(x)
 
@@ -73,7 +79,8 @@ def run(args):
     output.mkdir(parents=True)
     mean = data["train"][0].mean(0); std = data["train"][0].std(0).clamp_min(1e-4)
     normalized = {name: ((x - mean) / std, masks, labels, seeds) for name, (x, masks, labels, seeds) in data.items()}
-    model = Policy(len(features), len(actions)); optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    decay = 0.01 if args.hidden == 64 else 1e-4
+    model = Policy(len(features), len(actions), args.hidden, args.depth); optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=decay)
     labels = data["train"][2]; counts = torch.bincount(labels, minlength=len(actions)).float()
     # Class weighting gives rare tactical choices a voice; absent classes get no training weight.
     weights = counts.sum() / counts.clamp_min(1).sqrt(); weights /= weights.mean()
@@ -90,9 +97,9 @@ def run(args):
         history.append({"epoch": epoch + 1, "loss": total / len(y), "validation_accuracy": validation["accuracy"], "validation_macro_f1": validation["macro_f1_supported"]})
         if validation["macro_f1_supported"] > best:
             best = validation["macro_f1_supported"]
-            torch.save({"state_dict": model.state_dict(), "mean": mean, "std": std, "features": features, "actions": actions, "epoch": epoch + 1}, checkpoint)
+            torch.save({"state_dict": model.state_dict(), "mean": mean, "std": std, "features": features, "actions": actions, "epoch": epoch + 1, "hidden": args.hidden, "depth": args.depth}, checkpoint)
         print(f"epoch {epoch+1}: loss {total/len(y):.4f}, val accuracy {validation['accuracy']:.3f}, macro-F1 {validation['macro_f1_supported']:.3f}", flush=True)
-    saved = torch.load(checkpoint, weights_only=True); reloaded = Policy(len(features), len(actions)); reloaded.load_state_dict(saved["state_dict"]); reloaded.eval()
+    saved = torch.load(checkpoint, weights_only=True); reloaded = Policy(len(features), len(actions), int(saved["hidden"]), int(saved["depth"])); reloaded.load_state_dict(saved["state_dict"]); reloaded.eval()
     report = {"task": "utility-policy imitation, not generative AI or combat-outcome optimization", "torch": torch.__version__, "seed": args.seed,
               "feature_names": features, "actions": actions, "parameters": sum(p.numel() for p in model.parameters()), "best_epoch": saved["epoch"],
               "selection": "validation macro-F1 over classes present in validation", "epochs": args.epochs, "seconds": time.perf_counter()-start,
@@ -121,7 +128,8 @@ def run(args):
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__); p.add_argument("--data", nargs="+", required=True); p.add_argument("--output", required=True)
     p.add_argument("--epochs",type=int,default=20); p.add_argument("--seed",type=int,default=2026)
+    p.add_argument("--hidden",type=int,default=64); p.add_argument("--depth",type=int,default=2); p.add_argument("--lr",type=float,default=1e-3)
     p.add_argument("--train-end",type=int,default=32); p.add_argument("--val-end",type=int,default=40)
     args = p.parse_args()
-    if args.epochs<1 or args.train_end<1 or args.val_end<=args.train_end: p.error("positive epochs and 0 < train-end < val-end required")
+    if args.epochs<1 or args.train_end<1 or args.val_end<=args.train_end or args.hidden<8 or not 1<=args.depth<=4: p.error("positive epochs, 8+ hidden, depth 1..4, and 0 < train-end < val-end required")
     run(args)

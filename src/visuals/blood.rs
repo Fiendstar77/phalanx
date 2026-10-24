@@ -6,7 +6,7 @@ use bevy::{
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
 const COUNT: usize = 8192;
-const INTENSITY: usize = 10;
+const INTENSITY: usize = 6;
 const MAX_FOUNTAINS: usize = 5;
 const BLOOD_VOLUME: usize = 8;
 const EMISSION_STEP: f32 = 0.025;
@@ -15,9 +15,14 @@ const SIZE: usize = 512;
 pub(super) struct Particle(usize);
 #[derive(Component)]
 pub(super) struct StainSurface;
+#[derive(Component)]
+pub(super) struct WetSurface;
+#[derive(Component)]
+pub(super) struct Socket { pub id:usize, pub limb:u8 }
 #[derive(Clone)]
 struct Fountain {
     unit: usize,
+    limb: u8,
     height: f32,
     side: f32,
     life: f32,
@@ -43,6 +48,7 @@ impl Fountain {
         };
         Self {
             unit: event.defender,
+            limb: 1 << event.severed.trailing_zeros(),
             height: if event.severed & 12 != 0 { 0.30 } else { 0.90 },
             side,
             life: duration,
@@ -68,6 +74,7 @@ pub(super) struct Droplet {
     p: Vec3,
     v: Vec3,
     scale: Vec3,
+    volume: f32,
     pub(super) life: f32,
 }
 #[derive(Resource)]
@@ -79,6 +86,11 @@ pub(crate) struct Fx {
     upload: f32,
     drip: f32,
     image: Handle<Image>,
+    wet_image: Handle<Image>,
+    pub(crate) pools: super::pooling::Pools,
+    remaining: Vec<f32>,
+    wounds: Vec<f32>,
+    flow_clock: f32,
     pixels: Vec<u8>,
     dirty: bool,
     fountains: Vec<Fountain>,
@@ -89,17 +101,33 @@ pub(super) fn install(app: &mut App) {
     app.add_systems(Startup, setup.after(super::load_visuals));
 }
 fn image() -> Image {
+    image_sized(SIZE)
+}
+fn image_sized(size:usize) -> Image {
     Image::new(
         Extent3d {
-            width: SIZE as u32,
-            height: SIZE as u32,
+            width: size as u32,
+            height: size as u32,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
-        vec![0; SIZE * SIZE * 4],
+        vec![0; size * size * 4],
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::default(),
     )
+}
+fn wet_surface(pools:&super::pooling::Pools)->Mesh {
+    use super::pooling::SIDE;
+    let mut positions=Vec::with_capacity(SIDE*SIDE); let mut uv=Vec::with_capacity(SIDE*SIDE);let mut indices=Vec::new();
+    for z in 0..SIDE {for x in 0..SIDE {
+        let p=pools.position(x,z);let i=z*SIDE+x;
+        positions.push([p[0],pools.height[i]+0.027+pools.depth(i).min(0.06),p[1]]);
+        uv.push([(x as f32+0.5)/SIDE as f32,(z as f32+0.5)/SIDE as f32]);
+        if x+1<SIDE && z+1<SIDE {let i=i as u32;let n=i+SIDE as u32;indices.extend([i,n,i+1,i+1,n,n+1]);}
+    }}
+    let mut mesh=Mesh::new(PrimitiveTopology::TriangleList,RenderAssetUsages::default());
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION,positions);mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0,uv);
+    mesh.insert_indices(Indices::U32(indices));mesh.compute_smooth_normals();mesh
 }
 fn surface(arena: Arena) -> Mesh {
     let half = arena.half_size();
@@ -142,6 +170,11 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let image = images.add(image());
+    let wet_image=images.add(image_sized(super::pooling::SIDE));
+    let pools=super::pooling::Pools::new(session.battle.arena);
+    commands.spawn((WetSurface,Mesh3d(meshes.add(wet_surface(&pools))),
+        MeshMaterial3d(materials.add(StandardMaterial {base_color_texture:Some(wet_image.clone()),alpha_mode:AlphaMode::Blend,
+            perceptual_roughness:0.16,reflectance:0.55,cull_mode:None,..default()})),Transform::default()));
     let stain = materials.add(StandardMaterial {
         base_color_texture: Some(image.clone()),
         alpha_mode: AlphaMode::Blend,
@@ -182,6 +215,11 @@ fn setup(
         upload: 0.,
         drip: 0.,
         image,
+        wet_image,
+        pools,
+        remaining:vec![0.04;session.battle.units.len()],
+        wounds:vec![0.;session.battle.units.len()],
+        flow_clock:0.,
         pixels: vec![0; SIZE * SIZE * 4],
         dirty: false,
         fountains: Vec::new(),
@@ -190,6 +228,9 @@ fn setup(
     });
 }
 impl Fx {
+    fn bleed(&mut self,id:usize,requested:f32)->f32 {
+        let volume=requested.min(self.remaining[id]);self.remaining[id]-=volume;volume
+    }
     pub(crate) fn stained_pixels(&self) -> usize {
         self.pixels.chunks_exact(4).filter(|p| p[3] != 0).count()
     }
@@ -230,10 +271,10 @@ impl Fx {
         }
         self.dirty = true;
     }
-    fn emit(&mut self, p: Vec3, direction: Vec3, amount: f32, severe: bool, blunt: bool) {
+    fn emit(&mut self, p: Vec3, direction: Vec3, amount: f32, severe: bool, blunt: bool, volume:f32) {
         let count = INTENSITY
             * if severe {
-                90
+                40
             } else {
                 (amount * 2.0).clamp(12.0, 50.0) as usize
             };
@@ -242,9 +283,8 @@ impl Fx {
         for j in 0..count {
             let index = self.cursor % COUNT;
             self.cursor += 1;
-            let n = (phalanx::procedural::hash(self.cursor as u64 ^ (j as u64).wrapping_mul(131))
-                & 65535) as f32
-                / 65535.;
+            let bits=phalanx::procedural::hash(self.cursor as u64 ^ (j as u64).wrapping_mul(131));
+            let n=(bits&65535) as f32/65535.;let m=((bits>>16)&65535) as f32/65535.;let k=((bits>>32)&65535) as f32/65535.;
             let fan = if severe {
                 1.2
             } else if blunt {
@@ -252,7 +292,7 @@ impl Fx {
             } else {
                 0.7
             };
-            let a = (n - 0.5) * fan;
+            let a = (m - 0.5) * fan;
             let speed = if severe {
                 3.5 + n * 3.0
             } else if blunt {
@@ -261,23 +301,24 @@ impl Fx {
                 2.0 + n * 2.5
             };
             let radius = if severe {
-                0.02 + n * 0.035
+                0.009 + k * 0.024
             } else if blunt {
                 0.035 + n * 0.035
             } else {
                 0.018 + n * 0.028
             };
             self.particles[index] = Droplet {
-                p,
+                p:p+Vec3::new((m-0.5)*0.035,(k-0.5)*0.025,(n-0.5)*0.035),
                 v: (forward * a.cos() + side * a.sin()) * speed
-                    + Vec3::Y * (0.5 + n * if severe { 1.6 } else { 2.0 }),
+                    + Vec3::Y * (0.2 + k * if severe { 1.3 } else { 1.6 }),
                 scale: Vec3::new(radius, radius * if blunt { 1.2 } else { 2.5 }, radius),
                 life: 3.0,
+                volume:volume/count as f32,
             };
         }
     }
-    fn spurt(&mut self, p: Vec3, angle: f32, pitch: f32, pressure: f32, motion: Vec3, seed: u64) {
-        for j in 0..6 * BLOOD_VOLUME {
+    fn spurt(&mut self, p: Vec3, angle: f32, pitch: f32, pressure: f32, motion: Vec3, seed: u64,volume:f32) {
+        for j in 0..2 * BLOOD_VOLUME {
             let bits = phalanx::procedural::hash(self.cursor as u64 ^ seed);
             let n = (bits & 65535) as f32 / 65535.;
             let m = ((bits >> 16) & 65535) as f32 / 65535.;
@@ -286,9 +327,9 @@ impl Fx {
             let elevation = pitch + (k - 0.5) * 0.22;
             let speed = (4.8 + n * 2.8) * pressure;
             let radius = if j % 11 == 0 {
-                0.035 + n * 0.025
+                0.023 + n * 0.015
             } else {
-                0.008 + n * 0.02
+                0.006 + n * 0.014
             };
             let index = self.cursor % COUNT;
             self.cursor += 1;
@@ -302,6 +343,7 @@ impl Fx {
                     + motion,
                 scale: Vec3::new(radius, radius * (1.3 + m), radius),
                 life: 1.8 + n,
+                volume:volume/(2*BLOOD_VOLUME) as f32,
             };
         }
     }
@@ -313,6 +355,8 @@ pub(super) fn effects(
     mut fx: ResMut<Fx>,
     mut particles: Query<(&Particle, &mut Transform, &mut Visibility)>,
     surface_mesh: Single<&Mesh3d, With<StainSurface>>,
+    wet_mesh: Single<&Mesh3d, With<WetSurface>>,
+    sockets: Query<(&Socket,&GlobalTransform)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut images: ResMut<Assets<Image>>,
 ) {
@@ -323,6 +367,8 @@ pub(super) fn effects(
         fx.fountains.clear();
         fx.streams_started = 0;
         fx.peak_streams = 0;
+        fx.pools=super::pooling::Pools::new(arena);
+        fx.remaining=vec![0.04;session.battle.units.len()];fx.wounds=vec![0.;session.battle.units.len()];fx.flow_clock=0.;
         fx.pixels.fill(0);
         fx.dirty = true;
         for p in &mut fx.particles {
@@ -342,14 +388,17 @@ pub(super) fn effects(
             event.position[1],
         );
         let direction = Vec3::new(event.velocity[0], 0., event.velocity[1]);
+        let volume=fx.bleed(event.defender,if event.severed!=0 {0.0015}else{0.00012});
         fx.emit(
             pos,
             direction,
             event.amount,
             event.severed != 0 || event.amount >= 25.0,
             event.blunt,
+            volume,
         );
         if event.severed != 0 {
+            fx.wounds[event.defender]=(fx.wounds[event.defender]+0.5).min(1.);
             let same = fx
                 .fountains
                 .iter()
@@ -365,8 +414,8 @@ pub(super) fn effects(
             fx.stamp(
                 arena,
                 pos,
-                0.85,
-                1.5,
+                0.13,
+                1.2,
                 event.velocity[1].atan2(event.velocity[0]),
                 0.65,
             );
@@ -402,6 +451,11 @@ pub(super) fn effects(
             arena.elevation(p) + jet.height * if collapsed { 0.25 } else { 1. },
             p[1],
         ) + lateral;
+        let source=sockets.iter().find(|(s,_)| s.id==jet.unit && s.limb==jet.limb);
+        let (origin,angle,pitch)=if let Some((_,world))=source {
+            let outward=world.affine().transform_vector3(Vec3::Y).normalize_or_zero();
+            (world.translation()+outward*0.025,outward.z.atan2(outward.x),outward.y.clamp(-0.9,0.9).asin())
+        } else {(origin,heading+jet.angle,jet.pitch)};
         let motion = if session.running && !collapsed {
             session
                 .battle
@@ -421,13 +475,15 @@ pub(super) fn effects(
                 let beat = ((jet.sample + jet.phase) / jet.period).floor() as u64;
                 let sway =
                     (phalanx::procedural::hash(jet.seed ^ beat) & 65535) as f32 / 65535. - 0.5;
+                let volume=fx.bleed(jet.unit,0.00007*pressure);
                 fx.spurt(
                     origin,
-                    heading + jet.angle + sway * 0.5,
-                    jet.pitch + sway * 0.18 - if collapsed { 0.12 } else { 0. },
+                    angle + sway * 0.6 + (jet.sample*6.7).sin()*0.10,
+                    pitch + sway * 0.22 - if collapsed { 0.12 } else { 0. },
                     pressure,
                     motion,
                     jet.seed ^ beat,
+                    volume,
                 );
             }
             jet.sample += EMISSION_STEP;
@@ -435,6 +491,15 @@ pub(super) fn effects(
     }
     fountains.retain(|j| j.life > 0.);
     fx.fountains = fountains;
+    for u in &session.battle.units {
+        if u.health<=0. {fx.wounds[u.id]=1.;}
+        let flow=if u.health<=0. {0.0008}else{fx.wounds[u.id]*0.00035};
+        let volume=fx.bleed(u.id,flow*dt);
+        if volume>0. {fx.pools.deposit(session.presented(u.id),volume);}
+        if u.health>0. {fx.wounds[u.id]*=(-dt*0.15).exp();}
+    }
+    fx.flow_clock+=dt;
+    while fx.flow_clock>=0.05 {fx.pools.step(0.05);fx.flow_clock-=0.05;}
     fx.drip += dt;
     if fx.drip >= 0.10 {
         fx.drip = 0.;
@@ -489,21 +554,25 @@ pub(super) fn effects(
                     (p.scale.x * 2.5).max(0.04),
                     1.0 + (speed * 0.2).min(2.0),
                     p.v.z.atan2(p.v.x),
+                    p.volume,
                 ));
                 p.life = 0.;
                 break;
             }
         }
     }
-    for (p, r, stretch, angle) in landed {
-        fx.stamp(arena, p, r, stretch, angle, 0.65);
+    for (p, r, stretch, angle,volume) in landed {
+        fx.stamp(arena, p, r*0.5,stretch.min(1.5), angle, 0.4);
+        fx.pools.deposit([p.x,p.z],volume);
     }
     fx.upload += time.delta_secs();
-    if fx.dirty && fx.upload >= 0.1 {
+    if fx.upload >= 0.1 && (fx.dirty || dt>0.) {
         let bytes = fx.pixels.clone();
         if let Some(mut image) = images.get_mut(&fx.image) {
             image.data = Some(bytes);
         }
+        if let Some(mut image)=images.get_mut(&fx.wet_image) {image.data=Some(fx.pools.texture());}
+        if let Some(mut mesh)=meshes.get_mut(&wet_mesh.0) {*mesh=wet_surface(&fx.pools);}
         fx.dirty = false;
         fx.upload = 0.;
     }

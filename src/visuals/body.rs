@@ -349,7 +349,7 @@ pub(super) fn update(
                             settled: false,
                         },
                         Mesh3d(meshes.add(piece)),
-                        MeshMaterial3d(iron.wound.clone()),
+                        MeshMaterial3d(body.material.clone()),
                         Transform::from_translation(origin)
                             .with_rotation(transform.rotation)
                             .with_scale(transform.scale),

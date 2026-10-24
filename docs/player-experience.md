@@ -34,6 +34,8 @@ The eventual endgame reveals an **asynchronous player arena**: publish a frozen 
 
 The long-term progression goal is extreme veteran growth through time, dedication and strategic combinations. Very high levels and a broader arena experience ladder are design goals, not new rewards, level limits or balance claims in this build.
 
+Why the Yard, the houses, the naming word, and the hidden Register work this way is drafted in [lore](lore.md). That note is for designing systems. It is not a claim that those beats are implemented, and tutorial copy should still keep the late reveal a surprise.
+
 ## Replacement hair concepts
 
 [Front-view lineup on the actual character head](images/hair-lineup.png). Ten new hair-only GLBs replace the six earlier meshes: short messy, buzzed crop, swept back, bob, long straight, high ponytail, twin tails, curly/fluffy, mohawk and warrior braid. Their continuous scalps use a raycast envelope of the actual male and female heads in neutral rest pose. Source heads remain intact.

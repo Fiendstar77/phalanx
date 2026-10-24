@@ -3,6 +3,8 @@
 mod archery;
 mod barks;
 mod blood;
+mod pooling;
+pub(super) mod organs;
 pub(super) use blood::Fx;
 use blood::effects;
 mod body;
@@ -26,6 +28,7 @@ impl Plugin for BattleVisuals {
         barks::install(app);
         archery::install(app);
         blood::install(app);
+        organs::install(app);
         face::install(app);
         health::install(app);
         standards::install(app);
@@ -279,6 +282,10 @@ fn ready(
         return;
     };
     for entity in children.iter_descendants(event.entity) {
+        if let Ok(name)=names.get(entity) {
+            let limb=match name.as_str() { "mixamorigRightArm"=>1,"mixamorigLeftArm"=>2,"mixamorigRightUpLeg"=>4,"mixamorigLeftUpLeg"=>8,_=>0 };
+            if limb!=0 { commands.entity(entity).insert(blood::Socket { id:model.id,limb }); }
+        }
         if names.get(entity).is_ok_and(|name| {
             matches!(
                 name.as_str(),
@@ -638,6 +645,7 @@ struct PortraitPhoto(Handle<Image>);
 #[derive(Component)]
 pub(super) struct PortraitCamera;
 fn look(session: &Session, id: usize) -> phalanx::progression::Appearance {
+    if session.founding.open && id<3 {return session.founding.cards[id].appearance;}
     let id = if id == super::rpg::PREVIEW_ID {
         session.selected
     } else {

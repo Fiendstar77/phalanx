@@ -299,6 +299,8 @@ impl BattleReport {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Campaign {
+    #[serde(default)]
+    pub origin: Option<crate::genesis::Origin>,
     #[serde(default = "legacy_founders_prepared")]
     pub founders_prepared: bool,
     #[serde(default)]
@@ -330,6 +332,7 @@ impl Campaign {
             .unwrap_or_default()
             .as_nanos();
         let mut campaign = Self {
+            origin:None,
             founders_prepared: false,
             tutorial: Default::default(),
             rivals: Vec::new(),
@@ -403,6 +406,11 @@ impl Campaign {
         name: &str,
         classes: [FighterClass; 3],
     ) -> Result<(), String> {
+        let founders=std::array::from_fn(|i|crate::genesis::Founder {name:self.teams[0].fighters[i].name.clone(),class:classes[i],
+            mind:self.teams[0].fighters[i].mind,appearance:self.teams[0].fighters[i].appearance});
+        self.found_phalanx(name,founders,None)
+    }
+    pub fn found_phalanx(&mut self,name:&str,founders:[crate::genesis::Founder;3],origin:Option<crate::genesis::Origin>)->Result<(),String> {
         let name = name.trim();
         if self.founders_prepared
             || self.teams[0].fighters.len() != 3
@@ -418,15 +426,18 @@ impl Campaign {
         }
         let mut prepared = self.clone();
         prepared.teams[0].name = name.into();
-        for (fighter, class) in prepared.teams[0].fighters.iter_mut().zip(classes) {
-            fighter.class = class;
+        for (fighter, choice) in prepared.teams[0].fighters.iter_mut().zip(founders) {
+            fighter.class = choice.class;
+            fighter.name=choice.name.trim().into();fighter.mind=choice.mind;fighter.appearance=choice.appearance;
         }
+        prepared.origin=origin;
         prepared.founders_prepared = true;
         prepared.validate()?;
         *self = prepared;
         Ok(())
     }
     pub fn validate(&self) -> Result<(), String> {
+        if self.origin.as_ref().is_some_and(|o|!o.valid()) {return Err("Invalid founder seed record".into());}
         if !self.tutorial.valid() {
             return Err("invalid tutorial progress".into());
         }
@@ -635,6 +646,11 @@ impl Campaign {
             recruit.appearance = Appearance::default();
             recruit.psyche = Psyche::default();
             team.fighters.push(recruit);
+        }
+        if let Some(origin)=&updated.origin {
+            let f=crate::genesis::reveal(&origin.word,3,0,FighterClass::Warrior)?;
+            let recruit=&mut updated.teams[0].fighters[3];
+            recruit.name=f.name;recruit.mind=f.mind;recruit.appearance=f.appearance;
         }
         updated.validate()?;
         *self = updated;

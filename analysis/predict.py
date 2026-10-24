@@ -6,7 +6,7 @@ from analysis.train import Policy
 
 def verify(directory):
     saved=torch.load(Path(directory)/"policy.pt",weights_only=True)
-    model=Policy(len(saved["features"]),len(saved["actions"]));model.load_state_dict(saved["state_dict"]);model.eval()
+    model=Policy(len(saved["features"]),len(saved["actions"]),int(saved.get("hidden",64)),int(saved.get("depth",2)));model.load_state_dict(saved["state_dict"]);model.eval()
     witness=json.loads((Path(directory)/"reload_witness.json").read_text())
     x=torch.tensor(witness["features"]); mask=torch.tensor(witness["masks"],dtype=torch.bool)
     with torch.inference_mode(): logits=model((x-saved["mean"])/saved["std"])

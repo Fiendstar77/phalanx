@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help") {
         println!(
-            "phalanx-batch [--seed N] [--arena ridge|choke|open|citadel] [--swap] [--controller utility|learned] [--duel] [--founders] [--trait teamwork|caution --low 0.2 --high 0.9] [--output FILE] [--trace FILE]"
+            "phalanx-batch [--seed N] [--arena ridge|choke|open|citadel] [--pressure] [--swap] [--controller utility|learned] [--duel] [--founders] [--trait teamwork|caution --low 0.2 --high 0.9] [--output FILE] [--trace FILE]"
         );
         return Ok(());
     }
@@ -28,10 +28,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|s| s.parse::<u64>())
         .transpose()?
         .unwrap_or(42);
-    let arena = value("--arena")?
-        .map(|s| Arena::parse(&s).ok_or("arena must be ridge, choke, open, or citadel"))
-        .transpose()?
-        .unwrap_or_default();
+    let arena = if args.iter().any(|a| a == "--pressure") {
+        let lesson = match seed % 4 {
+            0 => phalanx::pressure::Lesson::Split,
+            1 => phalanx::pressure::Lesson::Ridge,
+            2 => phalanx::pressure::Lesson::Exposure,
+            _ => phalanx::pressure::Lesson::Approach,
+        };
+        Arena::Pressure(phalanx::procedural::decorate(
+            phalanx::pressure::PressureField {
+                lesson,
+                cover_extra: (seed % 2) as u8,
+                wide: false,
+                reach: 1,
+                ..Default::default()
+            },
+            seed,
+        ))
+    } else {
+        value("--arena")?
+            .map(|s| Arena::parse(&s).ok_or("arena must be ridge, choke, open, or citadel"))
+            .transpose()?
+            .unwrap_or_default()
+    };
     let swapped = args.iter().any(|a| a == "--swap");
     let mut battle =
         Battle::with_setup(seed, swapped, arena, args.iter().any(|a| a == "--founders"));

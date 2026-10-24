@@ -1,5 +1,6 @@
 //! Local procedural score and bounded, event-driven synthetic combat foley.
 mod synth;
+mod director;
 use super::Session;
 use bevy::{
     audio::{AudioSinkPlayback, Volume},
@@ -24,9 +25,11 @@ impl Default for Settings {
     }
 }
 #[derive(Component)]
-struct Music;
+struct Music {layer:usize,gain:f32}
+#[derive(Message)]pub(crate) enum Cue {Xp,Level}
 #[derive(Component)]
 struct Effect;
+#[derive(Component)]struct UiEffect;
 #[derive(Component, Clone, Copy)]
 enum Toggle {
     Music,
@@ -34,7 +37,7 @@ enum Toggle {
 }
 #[derive(Resource)]
 struct Bank {
-    effects: [Handle<AudioSource>; 24],
+    effects: [Handle<AudioSource>; 27],
 }
 #[derive(Clone)]
 struct Previous {
@@ -55,7 +58,8 @@ struct Events {
 }
 #[derive(Resource, Default)]
 pub(crate) struct Audit {
-    pub emitted: [usize; 24],
+    pub emitted: [usize; 27],
+    pub music_peak:[f32;6],
 }
 
 impl Plugin for GameAudio {
@@ -67,10 +71,11 @@ impl Plugin for GameAudio {
         app.insert_resource(settings)
             .init_resource::<Events>()
             .init_resource::<Audit>()
+            .add_message::<Cue>()
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
-                (controls, combat, playback).chain().after(super::simulate),
+                (controls, combat, cues,playback).chain().after(super::simulate),
             );
     }
 }
@@ -84,18 +89,17 @@ fn setup(
     settings: Res<Settings>,
     mut assets: ResMut<Assets<AudioSource>>,
 ) {
-    let score = assets.add(AudioSource {
-        bytes: synth::music(session.battle.seed).into(),
-    });
+    for layer in 0..6 {
+    let score = assets.add(AudioSource {bytes:synth::stem(session.battle.seed,layer).into()});
     commands.spawn((
-        Music,
+        Music {layer,gain:if layer==0 {0.5}else{0.}},
         AudioPlayer::new(score),
         PlaybackSettings {
-            volume: Volume::Linear(0.22),
+                volume: Volume::Linear(0.),
             muted: !settings.music || silent_witness(),
             ..PlaybackSettings::LOOP
         },
-    ));
+    ));}
     let effects = std::array::from_fn(|i| {
         assets.add(AudioSource {
             bytes: synth::effect(i).into(),
@@ -232,9 +236,11 @@ fn combat(
             pending.push((1, 18 + voice));
         }
         if unit.health <= 0.0 && before.health > 0.0 {
-            pending.push((0, 8));
+            pending.push((0,22+voice));
+            pending.push((1, 8));
             pending.push((1, 14 + unit.id % 2));
         } else if unit.lost_limbs != before.limbs {
+            pending.push((0,22+voice));
             pending.push((0, 3));
             pending.push((1, 12 + (session.battle.tick as usize + unit.id) % 4));
         } else if unit.health < before.health {
@@ -297,14 +303,27 @@ fn combat(
         audit.emitted[kind] += 1;
     }
 }
+fn cues(mut commands:Commands,mut cues:MessageReader<Cue>,bank:Res<Bank>,settings:Res<Settings>,session:Res<Session>,mut previous:Local<[u32;3]>,mut audit:ResMut<Audit>,active:Query<(),With<Effect>>) {
+    let mut pending=Vec::new();
+    for i in 0..3 {if previous[i]!=session.founding.stamps[i] {previous[i]=session.founding.stamps[i];if previous[i]>0 {pending.push(24);}}}
+    for cue in cues.read() {pending.push(match cue {Cue::Xp=>25,Cue::Level=>26});}
+    if !settings.effects || silent_witness() {return;}
+    for kind in pending.into_iter().take(16_usize.saturating_sub(active.iter().count()).min(2)) {
+        commands.spawn((Effect,UiEffect,AudioPlayer::new(bank.effects[kind].clone()),PlaybackSettings {volume:Volume::Linear(0.28),..PlaybackSettings::DESPAWN}));audit.emitted[kind]+=1;
+    }
+}
 fn playback(
     session: Res<Session>,
     settings: Res<Settings>,
-    mut sinks: Query<(&mut AudioSink, Option<&Music>, Option<&Effect>)>,
+    time:Res<Time>,mut audit:ResMut<Audit>,
+    mut sinks: Query<(&mut AudioSink, Option<&mut Music>, Option<&Effect>,Option<&UiEffect>)>,
 ) {
-    for (mut sink, music, effect) in &mut sinks {
-        if music.is_some() {
-            sink.set_volume(Volume::Linear(if session.running { 0.16 } else { 0.22 }));
+    let target=director::target(&session.battle,session.menu);
+    for (mut sink, music, effect,ui_effect) in &mut sinks {
+        if let Some(mut music)=music {
+            let mut mix=[0.;6];mix[music.layer]=music.gain;director::fade(&mut mix,target,time.delta_secs().min(0.1));music.gain=mix[music.layer];
+            audit.music_peak[music.layer]=audit.music_peak[music.layer].max(music.gain);
+            sink.set_volume(Volume::Linear(music.gain*0.22));
             if settings.music && !silent_witness() {
                 sink.unmute();
             } else {
@@ -317,7 +336,7 @@ fn playback(
             } else {
                 sink.mute();
             }
-            if session.menu || (!session.running && !session.battle.finished) {
+            if ui_effect.is_none() && (session.menu || (!session.running && !session.battle.finished)) {
                 sink.pause();
             } else {
                 sink.play();
@@ -329,6 +348,7 @@ pub(crate) fn export_witness(seed: u64) -> std::io::Result<()> {
     let directory = std::path::Path::new("outputs/audio-witness");
     std::fs::create_dir_all(directory)?;
     std::fs::write(directory.join("music.wav"), synth::music(seed))?;
+    for (i,name) in director::NAMES.iter().enumerate() {std::fs::write(directory.join(format!("stem-{name}.wav")),synth::stem(seed,i))?;}
     for (kind, name) in synth::NAMES.iter().enumerate() {
         std::fs::write(directory.join(format!("{name}.wav")), synth::effect(kind))?;
     }

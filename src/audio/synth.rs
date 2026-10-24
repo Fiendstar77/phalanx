@@ -1,7 +1,7 @@
 //! Original procedural score and cartoon foley. No recordings or voice model.
 use std::f32::consts::TAU;
 pub const RATE: usize = 22_050;
-pub const NAMES: [&str; 24] = [
+pub const NAMES: [&str; 27] = [
     "swing",
     "heavy_swing",
     "impact",
@@ -26,6 +26,7 @@ pub const NAMES: [&str; 24] = [
     "female_victory",
     "male_scream",
     "female_scream",
+    "founder_reveal","experience_spark","level_up",
 ];
 struct Random(u64);
 impl Random {
@@ -139,7 +140,7 @@ pub fn music(seed: u64) -> Vec<u8> {
 pub fn effect(kind: usize) -> Vec<u8> {
     let durations = [
         0.22, 0.34, 0.20, 0.32, 0.68, 0.34, 0.32, 0.78, 0.70, 0.26, 0.24, 0.75, 0.48, 0.25, 0.75,
-        0.30, 0.50, 0.50, 0.80, 0.80, 0.90, 0.90, 0.95, 0.95,
+        0.30, 0.65, 0.65, 1.10, 1.10, 0.90, 0.90, 1.65, 1.65,0.75,0.15,1.20,
     ];
     let duration = durations[kind];
     let mut rng = Random::new(kind as u64 + 145);
@@ -198,6 +199,11 @@ pub fn effect(kind: usize) -> Vec<u8> {
                     * (0.5 + 0.5 * (TAU * 37.0 * t).sin())
                     * (-t * 12.0).exp()
             }
+            24..=26=> {
+                let notes=if kind==26 {[69,73,76,81]}else if kind==24 {[57,64,69,76]}else{[81,88,93,100]};
+                let pitch=hz(notes[((u*4.) as usize).min(3)]);
+                ((TAU*pitch*t).sin()*0.35+(TAU*pitch*2.01*t).sin()*0.13)*(-t*if kind==25 {16.}else{3.}).exp()
+            }
             16..=23 => {
                 let female = kind % 2 == 1;
                 let feeling = (kind - 16) / 2;
@@ -224,7 +230,8 @@ pub fn effect(kind: usize) -> Vec<u8> {
                 } else {
                     1.0
                 };
-                (voice * 0.25 + noise * 0.04)
+                let rough=if feeling==3 {0.10*(TAU*31.*t).sin()+0.12*noise}else{0.};
+                (voice * 0.25 + noise * 0.06+rough)
                     * tremolo
                     * (std::f32::consts::PI * u).sin().powf(0.65)
             }
@@ -234,6 +241,30 @@ pub fn effect(kind: usize) -> Vec<u8> {
                 .sum::<f32>(),
         };
         samples.push(value * envelope(t, duration));
+    }
+    wav(&samples)
+}
+/// Equal-length stems share tempo, key and bar boundaries with the base score.
+pub fn stem(seed:u64,kind:usize)->Vec<u8> {
+    if kind==0 {return music(seed);}
+    let beat=60./116.;let mut samples=vec![0.;(48.*beat*RATE as f32) as usize];let mut rng=Random::new(seed+kind as u64*37);
+    let chords=[[57,60,64],[53,57,60],[50,53,57],[52,56,59]];
+    for bar in 0..16 {
+        let chord=chords[bar%4];let start=bar as f32*3.*beat;
+        match kind {
+            1=>for step in 0..6 {note(&mut samples,start+step as f32*beat*0.5,beat*0.4,chord[step%3]+12,0.13,false);},
+            2=>for step in 0..6 {
+                let at=start+step as f32*beat*0.5;
+                for i in 0..(RATE as f32*0.22) as usize {let t=i as f32/RATE as f32;
+                    let v=if step%2==0 {(TAU*(65.*t+1.4*(1.-(-t*40.).exp()))).sin()*0.6*(-t*20.).exp()}else{(rng.next()*2.-1.)*0.25*(-t*38.).exp()};
+                    let idx=((at*RATE as f32) as usize+i)%samples.len();samples[idx]+=v*envelope(t,0.22);
+                }
+                if step%2==0 {note(&mut samples,at,beat*0.5,chord[0]-12,0.18,true);}
+            },
+            3=>for step in 0..12 {note(&mut samples,start+step as f32*beat*0.25,beat*0.3,chord[step%3]+if step%4==3 {18}else{24},0.12,false);},
+            4=>for step in 0..6 {note(&mut samples,start+step as f32*beat*0.5,beat*0.8,[69,73,76,81,76,73][step],0.24,false);},
+            _=> {note(&mut samples,start,beat*2.7,chord[0]-24,0.45,true);note(&mut samples,start+beat,beat*1.8,chord[1],0.16,false);}
+        }
     }
     wav(&samples)
 }

@@ -115,13 +115,20 @@ impl Serialize for ComparisonSummary {
 impl LearnedPolicy {
     pub fn from_json(text: &str) -> Result<Self, String> {
         let model: Self = serde_json::from_str(text).map_err(|e| e.to_string())?;
-        if model.schema_version != 1
-            || model.features != FEATURE_NAMES
+        if model.features != FEATURE_NAMES
             || model.actions != ACTIONS
-            || model.mean.len() != 29
-            || model.std.len() != 29
-            || model.layers.len() != 3
+            || model.mean.len() != FEATURE_NAMES.len()
+            || model.std.len() != FEATURE_NAMES.len()
+            || model.layers.len() < 2
+            || model.layers.len() > 6
         {
+            return Err("policy schema mismatch".into());
+        }
+        if model.schema_version == 1 && (model.layers.len() != 3 || model.layers[0].weight.len() != 64)
+        {
+            return Err("policy schema mismatch".into());
+        }
+        if model.schema_version != 1 && model.schema_version != 2 {
             return Err("policy schema mismatch".into());
         }
         if model.mean.iter().any(|v| !v.is_finite())
@@ -129,10 +136,15 @@ impl LearnedPolicy {
         {
             return Err("invalid normalization".into());
         }
-        let mut inputs = 29;
-        for (layer, width) in model.layers.iter().zip([64, 64, ACTION_COUNT]) {
-            if layer.bias.len() != width
-                || layer.weight.len() != width
+        let mut inputs = FEATURE_NAMES.len();
+        for (i, layer) in model.layers.iter().enumerate() {
+            let width = layer.weight.len();
+            let last = i + 1 == model.layers.len();
+            if width == 0
+                || width > 2048
+                || (last && width != ACTION_COUNT)
+                || (!last && model.schema_version == 1 && width != 64)
+                || layer.bias.len() != width
                 || layer
                     .weight
                     .iter()
@@ -176,7 +188,11 @@ impl LearnedPolicy {
                         .iter()
                         .zip(&values)
                         .fold(*bias, |sum, (w, x)| sum + w * x);
-                    if i < 2 { value.max(0.0) } else { value }
+                    if i + 1 < self.layers.len() {
+                        value.max(0.0)
+                    } else {
+                        value
+                    }
                 })
                 .collect();
         }
