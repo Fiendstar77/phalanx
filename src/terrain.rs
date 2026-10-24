@@ -137,8 +137,8 @@ impl Arena {
             [if team == 0 { -8.0 } else { 8.0 }, slot as f32 * 1.6 - 3.2]
         }
     }
-    pub fn walls(self) -> &'static [([f32; 2], [f32; 2])] {
-        match self {
+    pub fn walls(self) -> crate::procedural::Walls {
+        crate::procedural::Walls::from_slice(match self {
             Self::Gauntlet => &[
                 ([-6., -5.], [2.0, 18.]),
                 ([6., 5.], [2.0, 18.]),
@@ -166,7 +166,7 @@ impl Arena {
                 ([12., 0.], [2., 8.]),
             ],
             Self::Choke => &[([0.0, -5.0], [2.0, 6.0]), ([0.0, 5.0], [2.0, 6.0])],
-            Self::Pressure(field) => field.walls(),
+            Self::Pressure(field) => return field.walls(),
             Self::Citadel => &[
                 ([0.0, -12.0], [2.0, 6.0]),
                 ([0.0, 0.0], [2.0, 6.0]),
@@ -175,7 +175,7 @@ impl Arena {
                 ([9.0, 0.0], [2.0, 8.0]),
             ],
             _ => &[],
-        }
+        })
     }
     pub fn challenge(self) -> &'static str {
         match self {
@@ -192,6 +192,19 @@ impl Arena {
         }
     }
     pub fn high_ground(self, p: [f32; 2]) -> [f32; 2] {
+        if let Self::Pressure(field) = self
+            && field.generator > 0
+        {
+            return crate::procedural::high_points(field)
+                .into_iter()
+                .filter(|point| !self.blocked(*point))
+                .max_by(|a, b| {
+                    self.elevation(*a)
+                        .total_cmp(&self.elevation(*b))
+                        .then_with(|| distance(p, *b).total_cmp(&distance(p, *a)))
+                })
+                .unwrap_or([0., 0.]);
+        }
         if self.large() {
             [[-6.0, -9.0], [6.0, 9.0]]
                 .into_iter()
@@ -207,6 +220,18 @@ impl Arena {
         }
         let sign = if team == 0 { 1.0 } else { -1.0 };
         let spread = (slot % 3) as f32 * 0.7 - 0.7;
+        if let Self::Pressure(field) = self
+            && field.generator > 0
+        {
+            // Revisit shared crossings rather than sweeping empty deployment-side corners.
+            // These are public map objectives, never hidden enemy coordinates.
+            let z = match leg % 5 {
+                2 => crate::procedural::flank_z(field),
+                4 => -crate::procedural::flank_z(field),
+                _ => 0.,
+            };
+            return [spread * 0.5, z];
+        }
         if self == Self::Gauntlet {
             let point = match leg % 5 {
                 1 => [0.0, 16.0],
@@ -349,7 +374,7 @@ impl Arena {
         if self.blocked(a) || self.blocked(b) {
             return false;
         }
-        for (center, size) in self.walls() {
+        for (center, size) in self.walls().iter() {
             let mut enter = 0.0_f32;
             let mut leave = 1.0_f32;
             for axis in 0..2 {
@@ -412,6 +437,12 @@ impl Arena {
             return None;
         }
         if let Self::Pressure(field) = self {
+            if field.generator > 0 {
+                return crate::procedural::cover_anchors(field)
+                    .into_iter()
+                    .filter(|pocket| !self.blocked(*pocket) && self.cover(*pocket) > 0.)
+                    .min_by(|a, b| distance(p, *a).total_cmp(&distance(p, *b)));
+            }
             return field
                 .cover_anchors()
                 .iter()

@@ -15,8 +15,12 @@ fn seeded_tactical_zones_connect_and_destroyed_cover_opens_space() {
             destroyed: 15,
             ..field
         });
-        assert!(cleared.walls().is_empty());
-        for (center, _) in procedural::original_walls(field) {
+        assert_eq!(
+            cleared.walls().len(),
+            6,
+            "permanent stone survives breaches"
+        );
+        for (center, _) in procedural::original_walls(field).iter().take(4) {
             assert!(Arena::Pressure(field).blocked(*center));
             assert!(!cleared.blocked(*center));
         }

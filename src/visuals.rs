@@ -215,7 +215,7 @@ pub(crate) fn load_visuals(
     // Shrubs sit only in authored cover; ruin stones only in blocked wall cells.
     // No decorative solid obstacle is introduced into a walkable corridor.
     let battlement = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-    for i in 0..200 {
+    for i in 0..160 + phalanx::procedural::MAX_WALLS * 8 {
         commands.spawn((
             Dressing(i),
             Mesh3d(if i >= 160 {
@@ -535,13 +535,21 @@ fn scenery(
             let wall = (i - 160) / 8;
             let block = (i - 160) % 8;
             if let Some((center, extent)) = arena.walls().get(wall) {
+                let timber = if let Arena::Pressure(f) = arena {
+                    f.layout > 0 && wall < 4 - (f.destroyed & 15).count_ones() as usize
+                } else {
+                    false
+                };
                 *visibility = Visibility::Inherited;
-                let z = center[1] + (block as f32 / 7.0 - 0.5) * (extent[1] - 0.45);
-                let h = arena.elevation(*center) + 2.55;
-                *transform = Transform::from_xyz(center[0], h, z).with_scale(Vec3::new(
-                    extent[0] * 0.46,
-                    0.24,
-                    0.29,
+                let along_x = extent[0] > extent[1];
+                let t = block as f32 / 7.0 - 0.5;
+                let x = center[0] + if along_x { t * (extent[0] - 0.25) } else { 0. };
+                let z = center[1] + if along_x { 0. } else { t * (extent[1] - 0.25) };
+                let h = arena.elevation(*center) + if timber { 1.58 } else { 2.53 };
+                *transform = Transform::from_xyz(x, h, z).with_scale(Vec3::new(
+                    if along_x { 0.24 } else { extent[0] * 0.75 },
+                    if timber { 0.12 } else { 0.26 },
+                    if along_x { extent[1] * 0.75 } else { 0.24 },
                 ));
             } else {
                 *visibility = Visibility::Hidden;
@@ -894,7 +902,8 @@ fn witness(
         witness.captured = true;
         if session.menu
             || std::env::args().any(|a| {
-                a == "--face-witness"
+                a == "--battlefield-witness"
+                    || a == "--face-witness"
                     || a == "--standard-witness"
                     || a == "--weapon-loadout-witness"
                     || a == "--bow-draw-witness"
@@ -903,7 +912,9 @@ fn witness(
             commands
                 .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
                 .observe(bevy::render::view::screenshot::save_to_disk(
-                    if std::env::args().any(|a| a == "--bow-draw-witness") {
+                    if std::env::args().any(|a| a == "--battlefield-witness") {
+                        "outputs/battlefield-witness.png"
+                    } else if std::env::args().any(|a| a == "--bow-draw-witness") {
                         if std::env::args().any(|a| a == "--male-bow-witness") {
                             "outputs/bow-male-draw-witness.png"
                         } else {
@@ -1049,7 +1060,8 @@ fn witness(
         || witness.seconds > 40.0
         || (((session.menu && !session.battle.finished)
             || std::env::args().any(|a| {
-                a == "--face-witness"
+                a == "--battlefield-witness"
+                    || a == "--face-witness"
                     || a == "--standard-witness"
                     || a == "--weapon-loadout-witness"
                     || a == "--bow-draw-witness"

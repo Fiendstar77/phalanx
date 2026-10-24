@@ -47,6 +47,9 @@ impl Lesson {
 /// 1 is the 3-fighter skirmish, 2 is the 4-fighter company. Older saves omit it and stay at 0.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PressureField {
+    /// Zero preserves the terrain of saved maps from before the battlefield grammar.
+    #[serde(default)]
+    pub generator: u8,
     #[serde(default)]
     pub layout: u8,
     #[serde(default)]
@@ -62,6 +65,7 @@ pub struct PressureField {
 impl Default for PressureField {
     fn default() -> Self {
         Self {
+            generator: 0,
             lesson: Lesson::Split,
             cover_extra: 0,
             wide: false,
@@ -82,6 +86,9 @@ const SPLIT_COMPANY: [([f32; 2], [f32; 2]); 3] = [
 ];
 impl PressureField {
     pub fn name(self) -> &'static str {
+        if self.generator > 0 {
+            return crate::procedural::family(self);
+        }
         self.lesson.name()
     }
     pub fn reason(self) -> &'static str {
@@ -119,18 +126,18 @@ impl PressureField {
             _ => 1 + self.cover_extra.min(1),
         }
     }
-    pub fn walls(self) -> &'static [([f32; 2], [f32; 2])] {
+    pub fn walls(self) -> crate::procedural::Walls {
         if self.layout > 0 {
             return crate::procedural::walls(self);
         }
         if self.lesson != Lesson::Split {
-            return &[];
+            return crate::procedural::Walls::default();
         }
-        match self.reach {
+        crate::procedural::Walls::from_slice(match self.reach {
             0 => &SPLIT_SMALL,
             1 => &SPLIT_SKIRMISH,
             _ => &SPLIT_COMPANY,
-        }
+        })
     }
     pub fn cover_anchors(self) -> &'static [[f32; 2]] {
         match self.reach {
@@ -170,6 +177,9 @@ impl PressureField {
             })
     }
     pub fn elevation(self, p: [f32; 2]) -> f32 {
+        if self.generator > 0 {
+            return crate::procedural::elevation(self, p);
+        }
         if self.lesson != Lesson::Ridge {
             return if self.layout > 0 {
                 1.5 * (1.0 - p[0].abs() / 3.5).max(0.0) * (1.0 - p[1].abs() / 4.0).max(0.0)
@@ -187,6 +197,9 @@ impl PressureField {
         x * z * height
     }
     pub fn cover(self, p: [f32; 2]) -> f32 {
+        if self.generator > 0 {
+            return crate::procedural::cover(self, p);
+        }
         let (flank, pocket) = match self.reach {
             0 => (
                 p[0].abs() >= 2.5 && p[0].abs() <= 7.0 && p[1].abs() >= 3.5 && p[1].abs() <= 6.5,
@@ -212,6 +225,9 @@ impl PressureField {
         )
     }
     pub fn roughness(self, p: [f32; 2]) -> f32 {
+        if self.generator > 0 {
+            return crate::procedural::roughness(self, p);
+        }
         let band = match self.reach {
             0 => 3.0,
             1 => 6.0,

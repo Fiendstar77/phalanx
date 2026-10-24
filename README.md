@@ -187,3 +187,5 @@ Living fighters now show overhead HP bars. Healers—including a Queen retrained
 The [RPG workshop](docs/rpg-workshop.md) gives every member a full-body character sheet, drag-and-drop inventories, ten active and three passive skill slots, and an animated forge with item levels and alloy reforging. All fighters now have triple HP, with tenfold blood bursts.
 
 **Local snapshot challenges:** export your Phalanx, import another player's frozen team, fight a generated pressure arena, and return a battle packet that the other installation can replay and verify. Open **Snapshot challenges / exchange teams** from the menu. These exhibition matches preserve both campaigns and their progression. [File exchange, headless tool and verification limits](docs/snapshot-challenges.md).
+
+**Battlefield forge:** create and preview seeded Broken Gate, Crown of Stone, Long Causeway and Sunken Court battlefields. Fight through permanent ruins, breach timber barricades, contest heights or take the longer covered flanks. Choose **Create a procedural battlefield** or press **G** before a Founders match. [Tactics, controls and SVG/JSON map exports](docs/pressure.md).

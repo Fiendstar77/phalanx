@@ -33,6 +33,7 @@ fn setup_menu(mut commands: Commands) {
                     button(p,"Unlock fourth fighter / League 4 - 1000 gold",Control::Recruit);
                     button(p,"View League 3 -> 20 gold ladder",Control::Ladder);
                     button(p,"Change arena",Control::Arena);
+                    button(p,"Create a procedural battlefield",Control::GenerateArena);
                     button(p,"Switch Game / AI Lab",Control::Setup);
                     button(p,"Save squads",Control::Save);
                     button(p,"Load saved squads",Control::Load);

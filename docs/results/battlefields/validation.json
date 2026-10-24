@@ -1,0 +1,228 @@
+{
+  "date": "2026-10-23",
+  "generator": 1,
+  "checks": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit": 0,
+      "tests_passed": 0,
+      "log": "outputs/battlefield-qa/check-0.log"
+    },
+    {
+      "command": "cargo test --offline --locked --no-default-features",
+      "exit": 0,
+      "tests_passed": 135,
+      "log": "outputs/battlefield-qa/check-1.log"
+    },
+    {
+      "command": "cargo clippy --offline --locked --no-default-features --all-targets -- -D warnings",
+      "exit": 0,
+      "tests_passed": 0,
+      "log": "outputs/battlefield-qa/check-2.log"
+    },
+    {
+      "command": "cargo test --offline --locked --bin phalanx",
+      "exit": 0,
+      "tests_passed": 13,
+      "log": "outputs/battlefield-qa/check-3.log"
+    },
+    {
+      "command": "cargo build --offline --locked --bin phalanx --bin phalanx-map",
+      "exit": 0,
+      "tests_passed": 0,
+      "log": "outputs/battlefield-qa/check-4.log"
+    }
+  ],
+  "seed_sweep": {
+    "seeds": 48,
+    "league_sizes": [
+      3,
+      4
+    ],
+    "combinations": 96,
+    "checks": [
+      "all_floor_connected",
+      "three_crossing_routes",
+      "spawn_clearance",
+      "patrol_objective_clearance",
+      "mirrored_terrain",
+      "accessible_cover_and_heights"
+    ]
+  },
+  "samples": [
+    {
+      "arena": "outputs/battlefield-qa/broken-gate.json",
+      "battle": {
+        "damage": 1800.9605712890625,
+        "ticks": 789,
+        "winner": 0
+      },
+      "league": 3,
+      "name": "THE BROKEN GATE",
+      "routes_connected": true,
+      "seed": 6,
+      "svg": "outputs/battlefield-qa/broken-gate.svg",
+      "render": "docs/images/battlefield-broken-gate.png"
+    },
+    {
+      "arena": "outputs/battlefield-qa/crown-of-stone.json",
+      "battle": {
+        "damage": 2329.279296875,
+        "ticks": 2018,
+        "winner": 0
+      },
+      "league": 4,
+      "name": "CROWN OF STONE",
+      "routes_connected": true,
+      "seed": 42,
+      "svg": "outputs/battlefield-qa/crown-of-stone.svg",
+      "render": "docs/images/battlefield-crown-of-stone.png"
+    },
+    {
+      "arena": "outputs/battlefield-qa/long-causeway.json",
+      "battle": {
+        "damage": 1683.0980224609375,
+        "ticks": 614,
+        "winner": 0
+      },
+      "league": 3,
+      "name": "THE LONG CAUSEWAY",
+      "routes_connected": true,
+      "seed": 2,
+      "svg": "outputs/battlefield-qa/long-causeway.svg",
+      "render": "docs/images/battlefield-long-causeway.png"
+    },
+    {
+      "arena": "outputs/battlefield-qa/sunken-court.json",
+      "battle": {
+        "damage": 1828.95849609375,
+        "ticks": 767,
+        "winner": 0
+      },
+      "league": 4,
+      "name": "THE SUNKEN COURT",
+      "routes_connected": true,
+      "seed": 13,
+      "svg": "outputs/battlefield-qa/sunken-court.svg",
+      "render": "docs/images/battlefield-sunken-court.png"
+    }
+  ],
+  "cli": {
+    "svg_xml_valid": true,
+    "overwrite_refused_and_files_unchanged": true,
+    "unsupported_league_refused": true
+  },
+  "live_combat": {
+    "actors": 42,
+    "arrows_blocked": 0,
+    "blood": true,
+    "bow_draw": 0.0,
+    "bow_grip_error": 0.0,
+    "bow_poses": 0,
+    "bow_string_error": 0.0,
+    "clip_names": [
+      "Idle",
+      "Walk",
+      "Run",
+      "Attack",
+      "Throw",
+      "Hit",
+      "Death",
+      "AttackQuick",
+      "AttackHeavy",
+      "AttackDesperate",
+      "ThrowUnderhand",
+      "HitHeavy",
+      "LimbRecoil",
+      "DeathBackward",
+      "DeathDelayed"
+    ],
+    "clips": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true
+    ],
+    "detached_limbs": true,
+    "eye_rotation": true,
+    "face_expressions": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "face_morph_meshes": 504,
+    "finished": true,
+    "male_female_motion": [
+      true,
+      true
+    ],
+    "particle_capacity": 8192,
+    "repeated_gestures": 35,
+    "seconds": 40.00737380981445,
+    "selected_healing": 0.0,
+    "selected_shots": [
+      45,
+      0,
+      0,
+      0
+    ],
+    "selected_weapon": "Rock | unlimited | 6.5 range",
+    "shaft_projectile": false,
+    "skeleton_motion": true,
+    "sound_effects": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "stained_pixels": 5614,
+    "surviving_wounded": true,
+    "weapon_windup": false
+  },
+  "optional_graphics_strict_clippy": {
+    "status": "fails_on_15_existing_diagnostics",
+    "unchanged_files": [
+      "src/camp.rs",
+      "src/rpg.rs",
+      "src/visuals/blood.rs",
+      "src/visuals/equipment.rs",
+      "src/visuals/health.rs"
+    ]
+  },
+  "hosted_ci": "not_run",
+  "delivery": "local_uncommitted"
+}

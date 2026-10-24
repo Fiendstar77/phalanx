@@ -1731,6 +1731,7 @@ impl Battle {
                 && !arena.clear_segment(unit.position, enemy_position)
                 && let Some((index, _)) = crate::procedural::original_walls(field)
                     .iter()
+                    .take(4)
                     .enumerate()
                     .filter(|(index, _)| field.destroyed & (1 << index) == 0)
                     .filter(|(_, (c, s))| {

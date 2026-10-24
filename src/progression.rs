@@ -441,10 +441,15 @@ impl Campaign {
         b.pressure_note = arena.challenge().into();
         if let crate::terrain::Arena::Pressure(field) = arena {
             b.pressure_note = format!(
-                "{} | seed {} / layout {} | two flanks, cover, rough ground and a central objective",
-                field.reason(),
+                "{} | {} | Seed {} | {}",
+                field.name(),
+                field.lesson.name(),
                 field.seed,
-                field.layout
+                if field.generator > 0 {
+                    crate::procedural::briefing(field)
+                } else {
+                    field.reason()
+                }
             );
         }
         let size = b.team_size();

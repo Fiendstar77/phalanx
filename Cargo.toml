@@ -22,6 +22,10 @@ path = "src/batch.rs"
 name = "phalanx-challenge"
 path = "src/challenge_cli.rs"
 
+[[bin]]
+name = "phalanx-map"
+path = "src/map_cli.rs"
+
 [dependencies]
 bevy = { version = "=0.19.1", optional = true, default-features = false, features = ["3d", "ui", "bevy_audio", "wav"] }
 serde = { version = "1", features = ["derive"] }

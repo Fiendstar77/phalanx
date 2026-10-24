@@ -918,6 +918,8 @@ Team size changes battle scale and matchmaking category without breaking persist
 
 ## PHASE K — Procedural Pressure Arenas
 
+Current local implementation: [seeded tactical battlefield grammar](docs/pressure.md) with four families, three connected crossings, permanent ruins, breachable timber, elevation, cover and slow terrain. Pre-battle creation/preview and a headless SVG/JSON exporter support both playable leagues. Wider leagues and empirical balancing remain ahead.
+
 Inputs:
 - team size,
 - team power,

@@ -1,4 +1,5 @@
 mod audio;
+mod battlefield;
 mod camp;
 mod exchange;
 mod front;
@@ -34,6 +35,7 @@ fn frame_zoom(arena: Arena) -> f32 {
 
 #[derive(Resource)]
 struct Session {
+    map_briefing: bool,
     exchange: exchange::State,
     preview: Option<phalanx::Unit>,
     battle: Battle,
@@ -121,6 +123,7 @@ impl Session {
         let paths = if battle.arena.large() { 1 } else { 0 };
         let zoom = frame_zoom(battle.arena);
         let mut session = Self {
+            map_briefing: true,
             exchange: exchange::State::default(),
             battle,
             preview: None,
@@ -372,6 +375,8 @@ enum Control {
     Speed,
     Paths,
     Arena,
+    GenerateArena,
+    BattlefieldBriefing,
     Overlay,
     Controller,
     Pair(usize, usize),
@@ -740,6 +745,16 @@ fn main() {
             apply(Control::ExportChallengeResult, &mut session);
         }
     }
+    if args.iter().any(|a| a == "--battlefield-witness") {
+        session.autosave = false;
+        session.campaign = Campaign::new();
+        if args.iter().any(|a| a == "--league-four") {
+            session.campaign.teams[0].gold = 1000;
+            session.campaign.unlock_fourth().unwrap();
+        }
+        session.restart_founders(seed.wrapping_sub(1), Arena::OpenField, Controller::Utility);
+        apply(Control::GenerateArena, &mut session);
+    }
     std::fs::create_dir_all("outputs").expect("create log directory");
     let log_path = format!(
         "outputs/disagreements-{}.jsonl",
@@ -808,7 +823,12 @@ fn main() {
     )
     .insert_resource(ClearColor(Color::srgb(0.025, 0.035, 0.055)))
     .insert_resource(session)
-    .add_plugins((camp::Camp, rpg::Rpg, exchange::Exchange))
+    .add_plugins((
+        camp::Camp,
+        rpg::Rpg,
+        exchange::Exchange,
+        battlefield::Battlefield,
+    ))
     .add_systems(Startup, setup)
     .add_systems(
         Update,
@@ -901,11 +921,17 @@ fn setup(
         MeshMaterial3d(materials.add(Color::WHITE)),
         Transform::default(),
     ));
-    for id in 0..5 {
+    let stone_wall = materials.add(Color::srgb(0.43, 0.46, 0.46));
+    let timber_wall = materials.add(Color::srgb(0.39, 0.23, 0.11));
+    commands.insert_resource(battlefield::WallMaterials {
+        stone: stone_wall.clone(),
+        timber: timber_wall,
+    });
+    for id in 0..phalanx::procedural::MAX_WALLS {
         commands.spawn((
             ChokeWall(id),
             Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-            MeshMaterial3d(materials.add(Color::srgb(0.3, 0.35, 0.4))),
+            MeshMaterial3d(stone_wall.clone()),
             Transform::default(),
             Visibility::Hidden,
         ));
@@ -1294,7 +1320,7 @@ fn setup(
     commands.spawn(Node { position_type: PositionType::Absolute, left: px(20), bottom: px(18), flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
         p.spawn((Text::new("WASD move | RMB orbit | MMB pan | Wheel zoom | Shift faster | F follow | Home arena | Space pause/run"),font(13.0),TextColor(Color::srgb(0.6,0.72,0.78))));
         p.spawn(Node { margin: UiRect::top(px(8)),flex_wrap:FlexWrap::Wrap,width:vw(95.0), ..default() }).with_children(|row| {
-            button(row,"Menu",Control::Menu);button(row,"Squad workshop",Control::Camp(camp::Page::Workshop));button(row,"Battle report",Control::Camp(camp::Page::Report));button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup); button(row,"Next battle",Control::NextBattle);button(row,"Save",Control::Save);button(row,"Load",Control::Load);
+            button(row,"Menu",Control::Menu);button(row,"Squad workshop",Control::Camp(camp::Page::Workshop));button(row,"Battle report",Control::Camp(camp::Page::Report));button(row,"Run",Control::Run); button(row,"Pause",Control::Pause); button(row,"Step",Control::Step); button(row,"Reset",Control::Reset); button(row,"Swap profiles",Control::Swap); button(row,"Speed",Control::Speed); button(row,"Paths",Control::Paths); button(row,"Arena",Control::Arena); button(row,"Map briefing",Control::BattlefieldBriefing); button(row,"Overlay",Control::Overlay); button(row,"Utility/Learned",Control::Controller); button(row,"Show all",Control::ClearPair); button(row,"Founders/Lab",Control::Setup); button(row,"Next battle",Control::NextBattle);button(row,"Save",Control::Save);button(row,"Load",Control::Load);
             for (i,name) in ["Amber","Teal","Violet","Coral","Azure","Lime","Pink","Ivory"].iter().enumerate() {button(row,name,Control::TeamColor(i));}
         });
     });
@@ -1320,6 +1346,7 @@ fn apply(control: Control, session: &mut Session) {
                 | Control::Speed
                 | Control::Paths
                 | Control::Overlay
+                | Control::BattlefieldBriefing
                 | Control::Pair(..)
                 | Control::ClearPair
                 | Control::NextMatch
@@ -1756,6 +1783,28 @@ fn apply(control: Control, session: &mut Session) {
         }
         Control::Paths => session.paths = (session.paths + 1) % 3,
         Control::Overlay => session.overlay = (session.overlay + 1) % 5,
+        Control::BattlefieldBriefing => session.map_briefing = !session.map_briefing,
+        Control::GenerateArena => {
+            if !session.battle.founders || (session.battle.tick > 0 && !session.battle.finished) {
+                session.save_notice =
+                    "Generate a battlefield before starting or after finishing a Founders battle"
+                        .into();
+                return;
+            }
+            if session.battle.tick == 0 {
+                let _ = session.campaign.capture_minds(&session.battle);
+            }
+            let seed = session.battle.seed.wrapping_add(1);
+            let arena = phalanx::pressure::generate(&session.campaign.teams, seed);
+            session.restart_founders(seed, arena, controller);
+            session.save_notice = session.battle.pressure_note.clone();
+            session.menu = false;
+            session.camp_page = None;
+            session.running = false;
+            session.accumulator = 0.;
+            session.paths = 2;
+            session.map_briefing = true;
+        }
         Control::Arena => {
             session.battle = Battle::with_setup(
                 session.battle.seed,
@@ -1814,6 +1863,7 @@ fn apply(control: Control, session: &mut Session) {
             | Control::Arena
             | Control::Setup
             | Control::NextBattle
+            | Control::GenerateArena
             | Control::Load
             | Control::ChooseRival(_)
     ) {
@@ -1885,6 +1935,7 @@ fn controls(
                         | Control::LeaveChallenge
                         | Control::Quit
                         | Control::Arena
+                        | Control::GenerateArena
                         | Control::Save
                         | Control::Load
                         | Control::Setup
@@ -1927,6 +1978,9 @@ fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
     }
     if keys.just_pressed(KeyCode::KeyM) {
         apply(Control::Arena, &mut session);
+    }
+    if keys.just_pressed(KeyCode::KeyG) {
+        apply(Control::GenerateArena, &mut session);
     }
     if keys.just_pressed(KeyCode::KeyO) {
         apply(Control::Overlay, &mut session);
@@ -2575,7 +2629,9 @@ fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>
                 }
             ),
             session.battle.arena.name(),
-            if session.battle.pressure_note.is_empty() {
+            if session.battle.pressure_note.is_empty()
+                || matches!(session.battle.arena, Arena::Pressure(f) if f.generator > 0)
+            {
                 String::new()
             } else {
                 format!("\n{}", session.battle.pressure_note)
@@ -2602,7 +2658,13 @@ fn update_status(session: Res<Session>, mut text: Query<&mut Text, With<Status>>
                 "{content}\nGold {} | Salvage {} | {}",
                 session.campaign.teams[0].gold,
                 session.campaign.teams[0].salvage,
-                session.save_notice
+                if !session.battle.pressure_note.is_empty()
+                    && session.save_notice.contains(&session.battle.pressure_note)
+                {
+                    ""
+                } else {
+                    &session.save_notice
+                }
             )
         } else {
             content
@@ -2682,7 +2744,27 @@ fn terrain_mesh(arena: Arena) -> Mesh {
             let c = [a[0], a[1] + 0.5];
             let d = [a[0] + 0.5, a[1] + 0.5];
             let middle = [a[0] + 0.25, a[1] + 0.25];
-            let color = if arena == Arena::Quarry && arena.cover(middle) == 0.0 {
+            let color = if let Arena::Pressure(field) = arena
+                && field.generator > 0
+            {
+                let palette = phalanx::procedural::palette(field);
+                let height = arena.elevation(middle);
+                let color = if arena.cover(middle) > 0. {
+                    palette[1]
+                } else if arena.roughness(middle) > 0.5 {
+                    palette[2]
+                } else if height > 0.9 {
+                    palette[3]
+                } else {
+                    palette[0]
+                };
+                let terrace = if (height * 5.).fract() < 0.14 {
+                    0.86
+                } else {
+                    1.
+                };
+                Color::srgb(color[0] * terrace, color[1] * terrace, color[2] * terrace)
+            } else if arena == Arena::Quarry && arena.cover(middle) == 0.0 {
                 Color::srgb(0.42, 0.39, 0.32)
             } else if arena == Arena::Mire && arena.roughness(middle) > 0.0 {
                 Color::srgb(0.16, 0.23, 0.20)
@@ -2716,9 +2798,18 @@ fn terrain_mesh(arena: Arena) -> Mesh {
 }
 fn sync_terrain(
     session: Res<Session>,
+    wall_materials: Res<battlefield::WallMaterials>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut ground: Single<(&Mesh3d, &mut GroundArena)>,
-    mut walls: Query<(&ChokeWall, &mut Visibility, &mut Transform), Without<Slab>>,
+    mut walls: Query<
+        (
+            &ChokeWall,
+            &mut Visibility,
+            &mut Transform,
+            &mut MeshMaterial3d<StandardMaterial>,
+        ),
+        Without<Slab>,
+    >,
     mut slab: Single<&mut Transform, With<Slab>>,
 ) {
     let (mesh, rendered) = &mut *ground;
@@ -2738,11 +2829,26 @@ fn sync_terrain(
     if slab.scale != slab_scale {
         slab.scale = slab_scale;
     }
-    for (wall, mut visible, mut transform) in &mut walls {
+    for (wall, mut visible, mut transform, mut material) in &mut walls {
         if let Some((center, extent)) = arena.walls().get(wall.0) {
+            let timber = if let Arena::Pressure(field) = arena {
+                field.layout > 0 && wall.0 < 4 - (field.destroyed & 15).count_ones() as usize
+            } else {
+                false
+            };
+            let handle = if timber {
+                &wall_materials.timber
+            } else {
+                &wall_materials.stone
+            };
+            if material.0 != *handle {
+                material.0 = handle.clone();
+            }
             *visible = Visibility::Inherited;
-            let wall_translation = Vec3::new(center[0], arena.elevation(*center) + 1.2, center[1]);
-            let wall_scale = Vec3::new(extent[0], 2.4, extent[1]);
+            let h = if timber { 1.5 } else { 2.4 };
+            let wall_translation =
+                Vec3::new(center[0], arena.elevation(*center) + h * 0.5, center[1]);
+            let wall_scale = Vec3::new(extent[0], h, extent[1]);
             if transform.translation != wall_translation {
                 transform.translation = wall_translation;
             }
@@ -2941,6 +3047,30 @@ fn update_workshop(
 #[cfg(test)]
 mod workshop_regressions {
     use super::*;
+    #[test]
+    fn battlefield_control_previews_rerolls_and_preserves_fighters_without_midfight_changes() {
+        let mut session = Session::new(Battle::new(42, false));
+        session.autosave = false;
+        session.campaign = Campaign::new();
+        session.restart_founders(42, Arena::OpenField, Controller::Utility);
+        let fighters = serde_json::to_string(&session.campaign.teams).unwrap();
+        apply(Control::GenerateArena, &mut session);
+        assert!(!session.running && !session.menu);
+        assert_eq!(session.battle.seed, 43);
+        assert_eq!(session.battle.tick, 0);
+        assert_eq!(
+            serde_json::to_string(&session.campaign.teams).unwrap(),
+            fighters
+        );
+        let arena = session.battle.arena;
+        apply(Control::Reset, &mut session);
+        assert_eq!(session.battle.arena, arena);
+        session.battle.step();
+        apply(Control::GenerateArena, &mut session);
+        assert_eq!(session.battle.arena, arena);
+        assert_eq!(session.battle.seed, 43);
+        assert!(session.save_notice.contains("before starting"));
+    }
     #[test]
     fn inspector_controls_retrain_queen_equip_and_reject_mid_battle_changes() {
         // Lab initialization avoids touching the player's campaign save.

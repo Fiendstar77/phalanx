@@ -1,21 +1,48 @@
-# Pressure fields
+# Procedural battlefields
 
-Founders battles generate the battlefield from both squads. Lab arenas stay authored. Pass `--arena` to force an authored map for a Founders session. **Arena** in a Founders battle steps back onto that authored cycle. **Next battle** generates again.
+Founders battles now use a seeded battlefield grammar: four terrain families, continuous seed-driven wall spacing and relief, covered flanks, exposed central crossings, and breachable timber among permanent stone ruins. The same terrain rules drive rendering, visibility, path costs, movement and combat.
 
-The field is mirrored. Neither side gets a private hill, a private lane, or a private patch of rough ground. Four lessons exist:
+Open **Create a procedural battlefield** in the main menu, or press **G** before starting a Founders battle. The game opens a paused preview with a tactical briefing. **New battlefield** generates another seed; **Fight on this battlefield** starts the match. Generation is also available after a finished battle. A fight in progress cannot be rerolled. **Reset** preserves the exact field and seed. **Inspect / prepare a fighter** restores the inspector; **Map briefing** opens the tactical panel again. These previews keep fighter identity, equipment, experience, wounds and resources.
 
-| Lesson | Terrain | Who it pressures |
-| --- | --- | --- |
-| Two lanes | A centered wall with an equal north lane and south lane | Low cohesion, or fear, hesitation, or attachment about being isolated |
-| Contested hill | One hill in the middle | Low patience and high aggression |
-| Open cover | Open ground with the same cover on both flanks | Low caution and high aggression |
-| Long crossing | A longer spawn and a rough band both sides must cross | Low mobility: Guardians and missing unrepaired legs |
+## Four battlefield families
 
-Preparedness is the average of the two squads. The least prepared lesson is chosen. Two scores within 0.02 are a tie, broken by the battle seed. A lesson either squad just fought is skipped for the next one. A 4-fighter split uses the standard spawn distance. A 3-fighter split starts closer.
+| Family | Tactical problem |
+| --- | --- |
+| The Broken Gate | A short central gate, screened wings and longer covered flanks. Timber breaches change crossfire and access to the courtyard. |
+| Crown of Stone | Two contested heights overlooking an exposed saddle. Ruins interrupt firing lanes; protected outer routes cost distance. |
+| The Long Causeway | Two dry lanes cross a slow basin. Commit through the open center, use the causeways or take the covered outer approach. |
+| The Sunken Court | A low center beneath raised shoulders. Broken corners screen movement around the court; heights command the approaches. |
 
-Ranged and melee labels use the same mobility unless the class is a Scout or a Guardian. Swapping Warriors for Rangers does not change the field. The two-lane map still leaves both flank lanes open, so a ranged team that does reach that lesson can still shoot. On the 4-fighter field a mirrored pair of posts narrows the middle and both lanes stay open past them.
+Rendered previews: [Broken Gate](images/battlefield-broken-gate.png), [Crown of Stone](images/battlefield-crown-of-stone.png), [Long Causeway](images/battlefield-long-causeway.png), [Sunken Court](images/battlefield-sunken-court.png). [Live combat on a generated field](images/battlefield-combat.png).
 
-The footprint grows with the playable league, and the features move with it. Three fighters get a 36×26 skirmish. Four fighters get a 48×34 company field with a longer hill, a wider rough crossing, and cover set farther from the spawns. The original 22×16 field remains readable from older saves. League 5–20, with several fronts and a larger roster, is still ahead.
+Every new field has four timber barricades and six permanent stone walls. Timber can be destroyed by the existing combat rules; stone remains. Ruin shapes, widths, spacing, high-ground height, cover pockets and biome palette vary with the seed. Green vegetation marks cover, dark earth marks the slow basin, and pale strata make elevation readable. Four biome palettes provide reclaimed grassland, ochre ruins, slate and weathered stone.
+
+There are three connected crossings: the center and both outer flanks. Cover and travel distance differ between them. Body clearance is included in collision and navigation. Deployment is clear; X reflection gives both teams the same terrain at each corresponding position. A four-member field grows from **36 x 26** to **48 x 34**, including its terrain features. No decorative obstacle is added to a walkable corridor.
+
+## Team pressure
+
+Both squads still determine the pressure lesson. The lowest shared preparedness is selected, avoiding a lesson either squad just fought; the seed resolves near ties. Low cohesion/isolation reactions invite split-lane pressure, impatience invites elevation, recklessness invites exposure, and low mobility invites a longer rough crossing. The chosen lesson adjusts the generated field while its family comes from the seed. A ranged class label does not select a hostile map.
+
+Lab arenas remain authored. **Arena** / **M** cycles those maps; **G** returns to generated Founders fields. **Next battle** generates a new field from both current squads and their histories. Leagues 5-20 remain outside this build.
+
+## Export a tactical map without graphics
+
+```bash
+cargo run --locked --no-default-features --bin phalanx-map -- \
+  --seed 6 --league 4 --output broken-gate.svg --simulate
+```
+
+This writes a top-down SVG and the complete serialized arena in `broken-gate.json`, then optionally runs an actual battle and prints its ticks, damage and winner. It does not read or write campaign saves and refuses to overwrite earlier exports. Repeat a seed and league to reproduce the geometry; Founders gameplay also uses the actual teams to select its pressure lesson.
+
+## Compatibility and validation
+
+`PressureField.generator` versions the terrain grammar. Absent/zero retains the exact original terrain functions and eight legacy barricade layouts. Version one identifies the new battlefields. Navigation caches retain the seed for this version because geometry is seed-dependent. Snapshot challenges include the new arena and remain restricted to the same game build.
+
+The procedural regression suite checks 96 seed/size combinations for complete floor connectivity, spawn and search-objective clearance, mirrored geometry/heights/cover/roughness, accessible cover and high ground, plus three crossing routes using the real path planner. Separate checks exercise actual combat breaches, seed-specific graph caching, exact replay, and completed battles in every family and both playable leagues. A known-threat comparison across twelve seeds verifies longer routes with lower threat exposure. Generated-map patrols revisit the shared crossings after losing contact. These checks establish map legality and observed engagements; balance and player enjoyment still need playtesting.
+
+[Recorded local validation](results/battlefields/validation.json): 135 simulation tests and 13 game tests passed, along with formatting, the CI simulation Clippy gate and the game build. Four separate rendered previews were inspected; a rendered generated battle completed with visible motion and combat effects. CLI exports were parsed as SVG and overwrite/unsupported-league rejection was checked. An additional strict graphics Clippy run reports 15 existing diagnostics in unchanged workshop/effects modules; that extra check is not the graphics CI gate. Hosted CI has not been run for these local changes.
+
+To reproduce a preview without touching the player's campaign, use a disposable directory with an `assets` symlink and run the built game with `--visual-witness --battlefield-witness --seed 6`. Add `--league-four` for 4v4. The screenshot is written to that directory's `outputs/battlefield-witness.png`. `--visual-witness --refinement-witness --seed 6` runs the generated battle and captures live combat instead.
 
 ## Veteran pursuit recovery
 
