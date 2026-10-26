@@ -547,7 +547,7 @@ fn refresh(
     for (kind, mut text) in &mut labels {
         let value=match kind{
         Label::Header=>format!("{} / {} [{}]     |     {} gold    {} salvage",squad.name,f.name,f.title.name(),squad.gold,squad.salvage),
-        Label::Identity=>format!("{} / {}   Level {}\n{:.0} HP   Damage x{:.2}   Protection x{:.2}",f.title.name(),f.class.name(),unit.level(),unit.max_health(),unit.damage_multiplier(),unit.incoming_multiplier()),
+        Label::Identity=>format!("{} / {}   Level {}\n{:.0} HP   Damage x{:.2}   Protection x{:.2}\n{}",f.title.name(),f.class.name(),unit.level(),unit.max_health(),unit.damage_multiplier(),unit.incoming_multiplier(),phalanx::theus_combat::description(&unit)),
         Label::Limbs=>format!("Missing: {}\nProsthetics: {}",limb_names(f.lost_limbs),limb_names(f.prosthetics)),
         Label::Notice=>format!("{}{}",if session.battle.tick>0&&!session.battle.finished{"Battle in progress: loadout changes are locked. "}else{"Drag items between the chest, personal inventory and matching equipment slots. "},session.save_notice),
         Label::Forge=>state.focus.and_then(|l|object(&session,l)).map(|i|match i.forged(){Some(next)=>{let(g,s)=i.forge_cost().unwrap();format!("{}\n-> {}\nCost: {g} gold + {s} salvage\nPower x{:.2} -> x{:.2}",i.label(),next.label(),i.power(),next.power())},None=>"Maximum level and alloy reached".into()}).unwrap_or_else(||"No item selected".into()),

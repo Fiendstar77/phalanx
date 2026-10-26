@@ -46,6 +46,28 @@ pub fn can_see(arena: Arena, observer: [f32; 2], target: [f32; 2]) -> bool {
 }
 /// Direct reports are collected simultaneously before sharing. Memories never echo each other.
 pub fn update(units: &mut [Unit], arena: Arena, tick: u32) {
+    update_in_field(units, arena, tick, &crate::ninjutsu::Field::default());
+}
+pub fn update_in_field(
+    units: &mut [Unit],
+    arena: Arena,
+    tick: u32,
+    field: &crate::ninjutsu::Field,
+) {
+    let sees = |observer: &Unit, target: &Unit| {
+        if field.empty()
+            && !crate::ninjutsu::in_transit(observer)
+            && !crate::ninjutsu::in_transit(target)
+        {
+            return can_see(arena, observer.position, target.position);
+        }
+        let from = crate::ninjutsu::body(observer, arena, tick as f32);
+        let to = crate::ninjutsu::body(target, arena, tick as f32);
+        let sight = 10. + (from[1] - 0.85) * 1.5 - arena.cover(target.position) * 2.;
+        distance(observer.position, target.position) <= sight
+            && crate::ninjutsu::clear_line(arena, from, to, 0.)
+            && field.clear_sight(from, to, tick as f32)
+    };
     let old = units.to_vec();
     let direct: Vec<Vec<Contact>> = old
         .iter()
@@ -54,9 +76,7 @@ pub fn update(units: &mut [Unit], arena: Arena, tick: u32) {
                 return Vec::new();
             }
             old.iter()
-                .filter(|e| {
-                    e.team != u.team && e.health > 0.0 && can_see(arena, u.position, e.position)
-                })
+                .filter(|e| e.team != u.team && e.health > 0.0 && sees(u, e))
                 .map(|e| Contact {
                     enemy: e.id,
                     position: e.position,
@@ -86,11 +106,20 @@ pub fn update(units: &mut [Unit], arena: Arena, tick: u32) {
                 return false;
             }
             // Observed bodies and an inspected empty last-known location clear stale beliefs.
-            let observed_dead = old.iter().any(|e| {
-                e.id == c.enemy && e.health <= 0.0 && can_see(arena, unit.position, e.position)
-            });
+            let observed_dead = old
+                .iter()
+                .any(|e| e.id == c.enemy && e.health <= 0.0 && sees(unit, e));
             let searched = distance(unit.position, c.position) < 1.2
                 && can_see(arena, unit.position, c.position)
+                && field.clear_sight(
+                    crate::ninjutsu::body(unit, arena, tick as f32),
+                    [
+                        c.position[0],
+                        arena.elevation(c.position) + 0.85,
+                        c.position[1],
+                    ],
+                    tick as f32,
+                )
                 && !direct[unit.id].iter().any(|v| v.enemy == c.enemy);
             !observed_dead && !searched
         });

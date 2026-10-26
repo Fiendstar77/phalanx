@@ -16,6 +16,8 @@ impl Origin {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Founder {
+    #[serde(default)]
+    pub theus: Option<crate::theus::Sheet>,
     pub name: String,
     pub class: FighterClass,
     pub mind: Mind,
@@ -67,8 +69,17 @@ pub fn reveal(word: &str, slot: usize, roll: u32, class: FighterClass) -> Result
         nose: pick(17) as u8,
         skin: pick(8) as u8,
         hair_color: pick(7) as u8,
+        cheeks: pick(5) as u8,
+        mouth: pick(5) as u8,
+        brows: pick(5) as u8,
     };
     Ok(Founder {
+        theus: Some(crate::theus::Sheet::from_temperament([
+            mind.aggression,
+            mind.self_preservation,
+            mind.patience,
+            mind.courage,
+        ])),
         name,
         class,
         mind,

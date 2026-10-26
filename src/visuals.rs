@@ -5,14 +5,19 @@ mod barks;
 mod blood;
 pub(super) mod organs;
 mod pooling;
+mod stain_patch;
+pub(super) mod stains;
 pub(super) use blood::Fx;
 use blood::effects;
 mod body;
+mod cuts;
 mod equipment;
 mod face;
 mod health;
+mod occult;
 mod spectacle;
 mod standards;
+pub(super) mod team_actions;
 use super::{Pawn, Session, setup};
 use bevy::{
     camera::{RenderTarget, visibility::RenderLayers},
@@ -29,12 +34,15 @@ impl Plugin for BattleVisuals {
         barks::install(app);
         archery::install(app);
         blood::install(app);
+        stains::install(app);
         organs::install(app);
         face::install(app);
+        occult::install(app);
         health::install(app);
         standards::install(app);
         equipment::install(app);
         spectacle::install(app);
+        team_actions::install(app);
         app.add_systems(Update, portrait_camera.after(super::camera_motion))
             .add_systems(
                 PostUpdate,
@@ -43,7 +51,12 @@ impl Plugin for BattleVisuals {
                     .before(bevy::transform::TransformSystems::Propagate),
             );
         if std::env::args().any(|a| a == "--visual-witness")
-            && !std::env::args().any(|a| a == "--player-demo" || a == "--wirefu-demo")
+            && !std::env::args().any(|a| {
+                matches!(
+                    a.as_str(),
+                    "--player-demo" | "--wirefu-demo" | "--creator-review" | "--ninja-demo"
+                )
+            })
         {
             app.init_resource::<Witness>()
                 .add_systems(Update, witness.after(animate).after(effects));
@@ -70,7 +83,7 @@ pub(super) struct PanicAudit {
     run: Option<u32>,
     pub(super) clips_seen: [bool; 2],
 }
-const CLIP_NAMES: [&str; 22] = [
+const CLIP_NAMES: [&str; 52] = [
     "Idle",
     "Walk",
     "Run",
@@ -93,31 +106,98 @@ const CLIP_NAMES: [&str; 22] = [
     "VaultStrike",
     "WireRecoil",
     "WireDeath",
+    "BreatheLook",
+    "BreatheShift",
+    "ReadyBounce",
+    "SneakStep",
+    "SprintLow",
+    "SprintBlade",
+    "GuardStrafe",
+    "Sidestep",
+    "Backstep",
+    "ParryHigh",
+    "ParryLow",
+    "DodgeCartwheel",
+    "ButterflyKick",
+    "CorkscrewStrike",
+    "ScissorVault",
+    "WallKickStrike",
+    "ShadowStep",
+    "RisingLauncher",
+    "MeteorChase",
+    "MeteorSlam",
+    "CrossfireRelease",
+    "GroundSweep",
+    "CounterCut",
+    "LandingRoll",
+    "RecoverKipUp",
+    "DeathSpiral",
+    "VictorySalute",
+    "DefeatKneel",
+    "HurtTwist",
+    "HurtShoulder",
 ];
-const CLIP_DURATIONS: [f32; 22] = [
-    1.6, 0.9, 0.6, 0.65, 1.1, 0.38, 1.1, 0.42, 0.95, 0.60, 0.85, 0.70, 0.85, 1.35, 1.90, 1.4, 1.1,
-    0.82, 1.05, 1.10, 0.85, 1.45,
+const CLIP_DURATIONS: [f32; 52] = [
+    1.6, 0.9, 0.6, 0.65, 1.1, 0.38, 1.1, 0.42, 0.95, 0.6, 0.85, 0.7, 0.85, 1.35, 1.9, 1.4, 1.1,
+    0.82, 1.05, 1.1, 0.85, 1.45, 1.9, 2.1, 1.4, 0.9, 0.52, 0.58, 0.8, 0.45, 0.4, 0.35, 0.4, 0.75,
+    0.8, 1.0, 0.9, 1.0, 0.55, 0.65, 1.2, 1.1, 0.65, 0.7, 0.55, 0.55, 0.7, 1.4, 1.6, 1.7, 0.42, 0.4,
 ];
 fn loop_clip(clip: usize) -> bool {
-    matches!(clip, 0..=2 | 15 | 16)
+    matches!(clip, 0..=2 | 15 | 16 | 22..=28)
 }
 fn locomotion_clip(unit: &phalanx::Unit, moved: f32, finished: bool) -> usize {
     if !finished && unit.health > 0. && unit.health_fraction() <= 0.30 {
         if moved > 0.005 { 16 } else { 15 }
     } else if moved > 0.13 {
-        2
+        if unit.theus.is_some() {
+            26 + unit.id % 2
+        } else {
+            2
+        }
     } else if moved > 0.005 {
-        1
+        if unit.theus.is_some() {
+            if unit.action == 3 { 28 } else { 25 }
+        } else {
+            1
+        }
     } else {
-        0
+        if unit.theus.is_some() {
+            22 + unit.id % 3
+        } else {
+            0
+        }
     }
 }
 fn death_clip(clip: usize) -> bool {
-    matches!(clip, 6 | 13 | 14 | 21)
+    matches!(clip, 6 | 13 | 14 | 21 | 47)
 }
 fn attack_clip(unit: &phalanx::Unit, ordinal: u32) -> usize {
     use phalanx::FighterClass as Class;
     let grounded = unit.lost_limbs & !unit.prosthetics & 12 != 0;
+    if let Some(actor) = &unit.theus
+        && !unit.is_ranged()
+    {
+        use phalanx::theus::Technique as T;
+        return if grounded {
+            [7, 8, 44][ordinal as usize % 3]
+        } else {
+            match actor.technique {
+                T::AegisLaunch => 39,
+                T::MeteorRelay => {
+                    if ordinal.is_multiple_of(2) {
+                        40
+                    } else {
+                        41
+                    }
+                }
+                T::Pincer => 36,
+                T::WallKick => 37,
+                T::BurstStep => 38,
+                T::Counter => 44,
+                _ => [34, 35, 36, 43, 7, 44][(ordinal as usize + unit.id) % 6],
+            }
+        };
+    }
     if unit.projectile_weapon() == Some(phalanx::weapons::ProjectileWeapon::Bow) && unit.is_ranged()
     {
         return 0;
@@ -191,11 +271,17 @@ pub(crate) struct CrownAnchor {
     pub ring: f32,
     pub angle: f32,
 }
-pub(crate) const CROWN_BAND_UP: f32 = 0.50;
-pub(crate) const CROWN_TIP_UP: f32 = 0.62;
-pub(crate) const CROWN_RING: f32 = 0.19;
+pub(crate) const HEAD_PROPORTION: f32 = 0.85;
+pub(crate) const CROWN_BAND_UP: f32 = 0.50 * HEAD_PROPORTION;
+pub(crate) const CROWN_TIP_UP: f32 = 0.62 * HEAD_PROPORTION;
+pub(crate) const CROWN_RING: f32 = 0.19 * HEAD_PROPORTION;
 #[derive(Component, Default)]
 struct Actor {
+    ninja_receipt: Option<u64>,
+    node: Option<AnimationNodeIndex>,
+    blend: Option<Blend>,
+    receipt: Option<u64>,
+    windup_tick: u32,
     id: usize,
     female: bool,
     clip: usize,
@@ -211,6 +297,13 @@ struct Actor {
     replays: u32,
     attacks: u32,
     lost_limbs: u8,
+}
+struct Blend {
+    node: AnimationNodeIndex,
+    clip: usize,
+    clock: f32,
+    left: f32,
+    duration: f32,
 }
 pub(super) fn female(session: &Session, id: usize) -> bool {
     if let Some(choice) = look(session, id).female {
@@ -261,7 +354,8 @@ pub(crate) fn load_visuals(
                 .observe(face::ready)
                 .observe(equipment::ready)
                 .observe(standards::ready)
-                .observe(archery::ready);
+                .observe(archery::ready)
+                .observe(stains::ready);
             });
         }
     }
@@ -289,6 +383,7 @@ pub(crate) fn load_visuals(
     for i in 0..160 + phalanx::procedural::MAX_WALLS * 8 {
         commands.spawn((
             Dressing(i),
+            stains::Receiver::default(),
             Mesh3d(if i >= 160 {
                 battlement.clone()
             } else if i < 120 {
@@ -327,10 +422,10 @@ fn ready(
     for entity in children.iter_descendants(event.entity) {
         if let Ok(name) = names.get(entity) {
             let limb = match name.as_str() {
-                "mixamorigRightArm" => 1,
-                "mixamorigLeftArm" => 2,
-                "mixamorigRightUpLeg" => 4,
-                "mixamorigLeftUpLeg" => 8,
+                "mixamorigLeftArm" => 1,
+                "mixamorigRightArm" => 2,
+                "mixamorigLeftUpLeg" => 4,
+                "mixamorigRightUpLeg" => 8,
                 _ => 0,
             };
             if limb != 0 {
@@ -417,6 +512,7 @@ fn ready(
                     replays: 0,
                     attacks: 0,
                     lost_limbs: session.visual_unit(model.id).map_or(0, |u| u.lost_limbs),
+                    ..default()
                 },
             ));
         }
@@ -427,7 +523,7 @@ fn animate(
     time: Res<Time>,
     assets: Res<CharacterAssets>,
     mut audit: ResMut<PanicAudit>,
-    mut models: Query<(&Model, &mut Visibility)>,
+    mut models: Query<(&Model, &mut Visibility, &mut Transform)>,
     mut actors: Query<(&mut Actor, &mut AnimationPlayer)>,
 ) {
     if audit.run != Some(session.run_id) {
@@ -441,7 +537,16 @@ fn animate(
     } else {
         0.0
     };
-    for (model, mut visibility) in &mut models {
+    for (model, mut visibility, mut transform) in &mut models {
+        let tick = if session.running {
+            session.battle.tick.saturating_sub(1) as f32 + session.accumulator / phalanx::DT
+        } else {
+            session.battle.tick as f32
+        };
+        transform.translation.y = -0.64
+            + session.visual_unit(model.id).map_or(0., |u| {
+                phalanx::ninjutsu::visual_height(u, session.battle.arena, tick)
+            });
         *visibility = if session.visual_unit(model.id).is_some()
             && model.female == female(&session, model.id)
         {
@@ -472,6 +577,11 @@ fn animate(
             actor.attacks = 0;
             actor.lost_limbs = unit.lost_limbs;
             actor.position = p;
+            actor.node = None;
+            actor.blend = None;
+            actor.receipt = None;
+            actor.ninja_receipt = None;
+            actor.windup_tick = 0;
         }
         let dt = if dt > 0.0 {
             dt
@@ -484,7 +594,13 @@ fn animate(
         let bow = unit.projectile_weapon() == Some(phalanx::weapons::ProjectileWeapon::Bow);
         let advanced = unit.equipment.projectile_weapon().is_some() || bow;
         let release = advanced && unit.rocks_thrown > actor.shots;
-        let attack = if advanced {
+        let start_melee = unit
+            .theus
+            .as_ref()
+            .is_some_and(|a| a.windup_target.is_some() && a.strike_at != actor.windup_tick);
+        let attack = if unit.theus.is_some() && !unit.is_ranged() {
+            start_melee
+        } else if advanced {
             unit.windup.is_some() && !actor.winding
                 || (unit.ammunition == 0 && !release && unit.cooldown > actor.cooldown + 0.15)
         } else {
@@ -495,17 +611,63 @@ fn animate(
         }
         let mut retrigger = false;
         let mut clip = actor.clip;
+        let receipt = session.battle.theus_events.iter().rev().find(|e| {
+            (e.attacker == actor.id || e.defender == actor.id)
+                && actor.receipt.is_none_or(|old| e.sequence > old)
+        });
+        let defence = receipt
+            .filter(|e| e.defender == unit.id)
+            .map(|e| e.resolution.outcome);
+        let skill = unit
+            .theus
+            .as_ref()
+            .filter(|a| a.technique_until > session.battle.tick);
+        let ninja_event = session.battle.ninjutsu.events.iter().rev().find(|e| {
+            e.caster == actor.id && actor.ninja_receipt.is_none_or(|old| e.sequence > old)
+        });
         if unit.health <= 0.0 {
             if !death_clip(clip) {
-                clip = [21, 13, 14][unit.id.wrapping_add(session.battle.seed as usize) % 3];
+                clip = [21, 13, 14, 47][unit.id.wrapping_add(session.battle.seed as usize) % 4];
             }
+        } else if phalanx::ninjutsu::in_transit(unit) {
+            clip = 37;
+            actor.lock = 0.2;
+        } else if let Some(e) = ninja_event {
+            clip = match e.art {
+                phalanx::ninjutsu::Art::WallVault => 37,
+                phalanx::ninjutsu::Art::SmokeBomb => 10,
+                phalanx::ninjutsu::Art::GraveBind => 44,
+                phalanx::ninjutsu::Art::ChainSnare => 39,
+                phalanx::ninjutsu::Art::WheelThrow => 42,
+            };
+            actor.lock = CLIP_DURATIONS[clip];
+            retrigger = true;
         } else if limb_loss || (damage > 0.0 && (!attack || damage / unit.max_health() >= 0.16)) {
             clip = if limb_loss {
                 12
             } else if damage / unit.max_health() >= 0.16 {
                 20
             } else {
-                5
+                if unit.theus.is_some() {
+                    50 + unit.id % 2
+                } else {
+                    5
+                }
+            };
+            actor.lock = CLIP_DURATIONS[clip];
+            retrigger = true;
+        } else if matches!(
+            defence,
+            Some(phalanx::theus::Outcome::Dodge | phalanx::theus::Outcome::Parry)
+        ) {
+            clip = if defence == Some(phalanx::theus::Outcome::Dodge) {
+                if unit.lost_limbs & !unit.prosthetics & 12 == 0 && unit.id.is_multiple_of(2) {
+                    33
+                } else {
+                    29 + unit.id % 2
+                }
+            } else {
+                31 + unit.id % 2
             };
             actor.lock = CLIP_DURATIONS[clip];
             retrigger = true;
@@ -514,11 +676,44 @@ fn animate(
             clip = attack_clip(unit, actor.attacks);
             actor.lock = CLIP_DURATIONS[clip];
             retrigger = true;
+        } else if let Some(event) = receipt.filter(|e| {
+            e.attacker == unit.id && e.technique.combination() && e.resolution.damage > 0.
+        }) {
+            let desired = match event.technique {
+                phalanx::theus::Technique::MeteorRelay => 41,
+                phalanx::theus::Technique::AegisLaunch => 39,
+                phalanx::theus::Technique::Crossfire => 42,
+                _ => 36,
+            };
+            if !bow && clip != desired {
+                clip = desired;
+                actor.lock = CLIP_DURATIONS[clip];
+            }
+        } else if let Some(a) = skill.filter(|a| {
+            matches!(
+                a.technique,
+                phalanx::theus::Technique::WallKick | phalanx::theus::Technique::BurstStep
+            )
+        }) && actor.lock == 0.
+        {
+            clip = if a.technique == phalanx::theus::Technique::WallKick {
+                37
+            } else {
+                38
+            };
+            actor.lock = 0.35;
         } else if actor.lock == 0.0 {
             let moved = p.distance(actor.position);
             // A simulation tick advances positions every 0.1 s; retain gait between ticks.
             if session.battle.tick != actor.tick || reset {
                 clip = locomotion_clip(unit, moved, session.battle.finished);
+                if session.battle.finished && unit.theus.is_some() {
+                    clip = if session.battle.winner() == Some(unit.team) {
+                        48
+                    } else {
+                        49
+                    };
+                }
             }
         }
         if clip == usize::MAX {
@@ -567,6 +762,15 @@ fn animate(
         actor.winding = unit.windup.is_some();
         actor.shots = unit.rocks_thrown;
         actor.tick = session.battle.tick;
+        if let Some(e) = ninja_event {
+            actor.ninja_receipt = Some(e.sequence);
+        }
+        if let Some(event) = receipt {
+            actor.receipt = Some(event.sequence);
+        }
+        if start_melee {
+            actor.windup_tick = unit.theus.as_ref().unwrap().strike_at;
+        }
         actor.seed = session.battle.seed;
         if session.battle.tick != 0 {
             actor.position = p;
@@ -582,17 +786,35 @@ fn advance_clip(
     retrigger: bool,
 ) {
     if clip != actor.clip || (retrigger && clip > 2 && !death_clip(clip)) {
+        let previous = if actor.clip != clip && actor.clip < CLIP_NAMES.len() {
+            actor.node.map(|node| Blend {
+                node,
+                clip: actor.clip,
+                clock: actor.clock,
+                left: 0.14,
+                duration: 0.14,
+            })
+        } else {
+            None
+        };
         if clip == actor.clip {
             actor.replays += 1;
         }
         actor.clip = clip;
         actor.clock = 0.0;
         player.stop_all();
+        if let Some(old) = &previous {
+            let playing = player.play(old.node);
+            playing.pause().set_seek_time(old.clock).set_weight(1.);
+        }
         let playing = player.play(node);
         if loop_clip(clip) {
             playing.repeat();
         }
         playing.pause();
+        playing.set_weight(if previous.is_some() { 0. } else { 1. });
+        actor.node = Some(node);
+        actor.blend = previous;
     } else {
         actor.clock += dt;
     }
@@ -604,6 +826,26 @@ fn advance_clip(
     };
     if let Some(animation) = player.animation_mut(node) {
         animation.set_seek_time(clock);
+    }
+    if let Some(blend) = &mut actor.blend {
+        blend.left = (blend.left - dt).max(0.);
+        blend.clock += dt;
+        let amount = blend.left / blend.duration;
+        let old_time = if loop_clip(blend.clip) {
+            blend.clock % CLIP_DURATIONS[blend.clip]
+        } else {
+            blend.clock.min(CLIP_DURATIONS[blend.clip] - 0.001)
+        };
+        if let Some(old) = player.animation_mut(blend.node) {
+            old.set_weight(amount).set_seek_time(old_time);
+        }
+        if let Some(current) = player.animation_mut(node) {
+            current.set_weight(1. - amount);
+        }
+        if amount == 0. {
+            player.stop(blend.node);
+            actor.blend = None;
+        }
     }
 }
 
@@ -943,7 +1185,7 @@ fn update_looks(
 ) {
     for (part, mut visible) in &mut hair {
         *visible = if look(&session, part.id).hair == part.style
-            && session.visual_unit(part.id).is_some_and(|u| u.health > 0.0)
+            && session.visual_unit(part.id).is_some()
         {
             Visibility::Inherited
         } else {
@@ -951,7 +1193,7 @@ fn update_looks(
         };
     }
     for (part, mut visible) in &mut face {
-        *visible = if session.visual_unit(part.id).is_some_and(|u| u.health > 0.0) {
+        *visible = if session.visual_unit(part.id).is_some() {
             Visibility::Inherited
         } else {
             Visibility::Hidden
@@ -1018,9 +1260,9 @@ struct JointWitness {
     id: usize,
     female: bool,
 }
-#[derive(Resource, Default)]
+#[derive(Resource)]
 struct Witness {
-    seen: [bool; 22],
+    seen: [bool; 52],
     joints: std::collections::BTreeMap<Entity, Quat>,
     skeleton_motion: bool,
     model_motion: [bool; 2],
@@ -1036,6 +1278,28 @@ struct Witness {
     winding_seen: bool,
     shaft_seen: bool,
     founding_faces: bool,
+}
+impl Default for Witness {
+    fn default() -> Self {
+        Self {
+            seen: [false; 52],
+            joints: default(),
+            skeleton_motion: false,
+            model_motion: [false; 2],
+            blood: false,
+            seconds: 0.,
+            finished: 0.,
+            gibs: false,
+            wounded: false,
+            captured: false,
+            battle_captured: false,
+            refinement_captured: false,
+            weapon_captured: false,
+            winding_seen: false,
+            shaft_seen: false,
+            founding_faces: false,
+        }
+    }
 }
 #[allow(clippy::too_many_arguments)]
 fn witness(
@@ -1064,7 +1328,13 @@ fn witness(
             witness.model_motion[usize::from(joint.female)] |= moved;
         }
     }
-    if witness.seconds > 1.6 && !witness.captured && !actors.is_empty() {
+    let face_review = std::env::args().any(|a| a == "--face-witness");
+    // Dense morph meshes and skin pipelines need a rendered warm-up before
+    // an isolated static review can be captured and the process exits.
+    if witness.seconds > if face_review { 4.5 } else { 1.6 }
+        && !witness.captured
+        && !actors.is_empty()
+    {
         witness.captured = true;
         if session.menu
             || std::env::args().any(|a| {
@@ -1253,6 +1523,8 @@ fn witness(
             && witness.seconds
                 > if std::env::args().any(|a| a == "--rpg-witness") {
                     9.0
+                } else if face_review {
+                    6.0
                 } else if session.founding.open {
                     5.2
                 } else {
@@ -1261,7 +1533,7 @@ fn witness(
     {
         println!(
             "VISUAL_WITNESS {}",
-            serde_json::json!({"clip_names":CLIP_NAMES,"clips":witness.seen,"blood":witness.blood,"actors":actors.iter().count(),"finished":session.battle.finished,"seconds":witness.seconds,"bow_poses":bow_audit.poses,"bow_grip_error":bow_audit.max_grip_error,"bow_string_error":bow_audit.max_string_error,"bow_draw":bow_audit.max_draw,"arrows_blocked":session.battle.units.iter().map(|u|u.arrow_blocks).sum::<u32>(),"weapon_windup":witness.winding_seen,"shaft_projectile":witness.shaft_seen,"selected_weapon":session.battle.units[session.selected].weapon_status(),"selected_shots":session.battle.units[session.selected].weapon_shots,"selected_healing":session.battle.units[session.selected].healing_done,"particle_capacity":fx.particles.len(),"stained_pixels":fx.stained_pixels(),"detached_limbs":witness.gibs,"surviving_wounded":witness.wounded,"face_expressions":face_audit.seen,"eye_rotation":face_audit.eye_rotation,"face_morph_meshes":face_audit.meshes,"repeated_gestures":actors.iter().map(|a|a.replays).sum::<u32>(),"skeleton_motion":witness.skeleton_motion,"male_female_motion":witness.model_motion,"sound_effects":audio_audit.emitted})
+            serde_json::json!({"clip_names":&CLIP_NAMES[..],"clips":&witness.seen[..],"blood":witness.blood,"actors":actors.iter().count(),"finished":session.battle.finished,"seconds":witness.seconds,"bow_poses":bow_audit.poses,"bow_grip_error":bow_audit.max_grip_error,"bow_string_error":bow_audit.max_string_error,"bow_draw":bow_audit.max_draw,"arrows_blocked":session.battle.units.iter().map(|u|u.arrow_blocks).sum::<u32>(),"weapon_windup":witness.winding_seen,"shaft_projectile":witness.shaft_seen,"selected_weapon":session.battle.units[session.selected].weapon_status(),"selected_shots":session.battle.units[session.selected].weapon_shots,"selected_healing":session.battle.units[session.selected].healing_done,"particle_capacity":fx.particles.len(),"stained_pixels":fx.stained_pixels(),"detached_limbs":witness.gibs,"surviving_wounded":witness.wounded,"face_expressions":face_audit.seen,"eye_rotation":face_audit.eye_rotation,"face_morph_meshes":face_audit.meshes,"repeated_gestures":actors.iter().map(|a|a.replays).sum::<u32>(),"skeleton_motion":witness.skeleton_motion,"male_female_motion":witness.model_motion,"sound_effects":audio_audit.emitted})
         );
         exit.write(AppExit::Success);
     }

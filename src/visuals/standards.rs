@@ -178,6 +178,7 @@ pub(super) fn ready(
                     ([0., 2.17 + FLAG_LIFT, 0.], [0.045, 0.08, 0.045], &kit.iron),
                 ] {
                     p.spawn((
+                        super::stains::Receiver::default(),
                         Mesh3d(kit.pole.clone()),
                         MeshMaterial3d(material.clone()),
                         Transform::from_translation(Vec3::from_array(at))
@@ -191,6 +192,7 @@ pub(super) fn ready(
                 ))
                 .with_children(|p| {
                     p.spawn((
+                        super::stains::Receiver::default(),
                         Mesh3d(kit.pole.clone()),
                         MeshMaterial3d(kit.wood.clone()),
                         Transform::from_xyz(0.40, 2.02 + FLAG_LIFT, 0.0)
@@ -198,6 +200,7 @@ pub(super) fn ready(
                     ));
                     p.spawn((
                         Cloth { id: model.id },
+                        super::stains::Receiver::default(),
                         Mesh3d(cloth.clone()),
                         MeshMaterial3d(kit.materials[unit.team].clone()),
                         Transform::default(),

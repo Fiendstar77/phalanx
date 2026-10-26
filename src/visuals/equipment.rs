@@ -19,6 +19,8 @@ pub(super) struct Kit {
     gold: Handle<StandardMaterial>,
     cloth: Handle<StandardMaterial>,
     magic: Handle<StandardMaterial>,
+    wheel: Handle<Mesh>,
+    sickle: Handle<Mesh>,
 }
 #[derive(Component)]
 struct Item {
@@ -64,6 +66,8 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.insert_resource(Kit {
+        wheel: meshes.add(super::occult::razor_mesh()),
+        sickle: meshes.add(super::occult::sickle_mesh()),
         cube: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
         sphere: meshes.add(Sphere::new(1.0).mesh().uv(16, 12)),
         cone: meshes.add(Cone::new(1.0, 1.0)),
@@ -105,6 +109,7 @@ fn part(
     rotation: Quat,
 ) {
     p.spawn((
+        super::stains::Receiver::default(),
         Mesh3d(mesh.clone()),
         MeshMaterial3d(material.clone()),
         Transform::from_translation(at)
@@ -435,6 +440,71 @@ pub(super) fn ready(
         if let Ok(name) = names.get(entity) {
             let left = name.as_str() == "mixamorigLeftHand";
             if left || name.as_str() == "mixamorigRightHand" {
+                if !left {
+                    for gear in [Gear::Kusarigama, Gear::RazorWheel] {
+                        commands.entity(entity).with_children(|p| {
+                            p.spawn((
+                                Crafted {
+                                    id: model.id,
+                                    gear,
+                                    limb: 2,
+                                },
+                                grip(model.female, false, false),
+                                Visibility::Hidden,
+                            ))
+                            .with_children(|p| {
+                                if gear == Gear::RazorWheel {
+                                    part(
+                                        p,
+                                        &kit.wheel,
+                                        &kit.steel,
+                                        Vec3::new(0., 0.18, 0.),
+                                        Vec3::splat(0.85),
+                                        Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
+                                    );
+                                } else {
+                                    block(
+                                        p,
+                                        &kit,
+                                        &kit.leather,
+                                        [0., 0.1, 0.],
+                                        [0.045, 0.4, 0.045],
+                                    );
+                                    part(
+                                        p,
+                                        &kit.sickle,
+                                        &kit.steel,
+                                        Vec3::ZERO,
+                                        Vec3::ONE,
+                                        Quat::IDENTITY,
+                                    );
+                                    for link in 0..9 {
+                                        part(
+                                            p,
+                                            &kit.ring,
+                                            &kit.steel,
+                                            Vec3::new(0., -0.14 - link as f32 * 0.055, 0.),
+                                            Vec3::new(0.026, 0.013, 0.038),
+                                            Quat::from_rotation_x(if link % 2 == 0 {
+                                                0.
+                                            } else {
+                                                std::f32::consts::FRAC_PI_2
+                                            }),
+                                        );
+                                    }
+                                    part(
+                                        p,
+                                        &kit.sphere,
+                                        &kit.steel,
+                                        Vec3::new(0., -0.65, 0.),
+                                        Vec3::splat(0.075),
+                                        Quat::IDENTITY,
+                                    );
+                                }
+                            });
+                        });
+                    }
+                }
                 for class in Class::ALL {
                     if left
                         && !matches!(
@@ -677,6 +747,13 @@ fn update(
         *visible = if session.visual_unit(piece.id).is_some_and(|u| {
             u.health > 0.0
                 && u.equipment.has(piece.gear)
+                && !(piece.gear == Gear::RazorWheel
+                    && session
+                        .battle
+                        .ninjutsu
+                        .wheels
+                        .iter()
+                        .any(|w| w.owner == piece.id))
                 && (u.lost_limbs & !u.prosthetics & piece.limb == 0)
         }) {
             Visibility::Inherited
@@ -698,6 +775,8 @@ fn update(
         *visible = if session.visual_unit(item.id).is_some_and(|u| {
             u.health > 0.0
                 && u.lost_limbs & !u.prosthetics & item.limb == 0
+                && (!item.hand
+                    || (!u.equipment.has(Gear::Kusarigama) && !u.equipment.has(Gear::RazorWheel)))
                 && (!item.hand
                     || u.projectile_weapon() != Some(W::Bow)
                     || (!u.is_ranged() && !u.bow_follow_through()))

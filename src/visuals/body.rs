@@ -29,6 +29,11 @@ pub(super) struct IronAssets {
     joint: Handle<Mesh>,
     metal: Handle<StandardMaterial>,
     wood: Handle<StandardMaterial>,
+    flesh: Handle<StandardMaterial>,
+}
+#[derive(Component)]
+pub(super) struct WoundCap {
+    body: Entity,
 }
 #[derive(Component)]
 pub(super) struct Gib {
@@ -61,6 +66,14 @@ pub(super) fn setup(
             perceptual_roughness: 0.86,
             ..default()
         }),
+        flesh: materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            perceptual_roughness: 0.24,
+            reflectance: 0.35,
+            double_sided: true,
+            cull_mode: None,
+            ..default()
+        }),
     });
 }
 #[allow(clippy::too_many_arguments)]
@@ -70,7 +83,11 @@ pub(super) fn ready(
     children: Query<&Children>,
     models: Query<&Model>,
     primitives: Query<
-        (&Mesh3d, &MeshMaterial3d<StandardMaterial>),
+        (
+            &Mesh3d,
+            &MeshMaterial3d<StandardMaterial>,
+            &bevy::mesh::skinning::SkinnedMesh,
+        ),
         With<bevy::mesh::skinning::SkinnedMesh>,
     >,
     names: Query<&Name>,
@@ -84,11 +101,24 @@ pub(super) fn ready(
         return;
     };
     for entity in children.iter_descendants(event.entity) {
-        if let Ok((mesh, material)) = primitives.get(entity) {
+        if let Ok((mesh, material, skin)) = primitives.get(entity) {
             let Some(source) = meshes.get(&mesh.0).cloned() else {
                 continue;
             };
+            // Keep an allocated hidden placeholder; uploading a zero-vertex
+            // skinned mesh triggers Bevy's slab allocator error path.
+            let cap = meshes.add(Sphere::new(0.001));
             let instance = meshes.add(source);
+            commands.entity(entity).with_children(|p| {
+                p.spawn((
+                    WoundCap { body: entity },
+                    Mesh3d(cap),
+                    MeshMaterial3d(iron.flesh.clone()),
+                    skin.clone(),
+                    Transform::default(),
+                    Visibility::Hidden,
+                ));
+            });
             let mut mat = materials.get(&material.0).cloned().unwrap_or_default();
             mat.base_color = Color::WHITE;
             mat.base_color_texture = None;
@@ -154,7 +184,7 @@ pub(super) fn ready(
         });
     }
 }
-fn region(p: Vec3) -> u8 {
+pub(super) fn region(p: Vec3) -> u8 {
     if p.y > 1.26 {
         16
     } else if p.y > 0.82 && p.x > 0.23 {
@@ -247,17 +277,21 @@ pub(super) fn update(
     mut cache: ResMut<PaintCache>,
     iron: Res<IronAssets>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut bodies: Query<(&mut Painted, &Mesh3d, &GlobalTransform)>,
-    mut replacements: Query<(
-        &Iron,
-        &mut Visibility,
-        &mut MeshMaterial3d<StandardMaterial>,
-    )>,
+    mut bodies: Query<(Entity, &mut Painted, &Mesh3d, &GlobalTransform)>,
+    mut replacements: Query<
+        (
+            &Iron,
+            &mut Visibility,
+            &mut MeshMaterial3d<StandardMaterial>,
+        ),
+        Without<WoundCap>,
+    >,
+    mut caps: Query<(&WoundCap, &Mesh3d, &mut Visibility), Without<Iron>>,
     mut commands: Commands,
     gibs: Query<Entity, With<Gib>>,
 ) {
     let mut active_gibs = gibs.iter().count();
-    for (mut body, mesh, world) in &mut bodies {
+    for (entity, mut body, mesh, world) in &mut bodies {
         let Some(u) = session.visual_unit(body.id) else {
             continue;
         };
@@ -269,9 +303,10 @@ pub(super) fn update(
             body.choice = None;
         }
         // Nonfatal limb wounds persist; fatal dismemberment is cosmetic only.
+        let roll = phalanx::procedural::hash(session.battle.seed ^ (u.id as u64).wrapping_mul(997));
         let mask = u.lost_limbs
-            | if u.health <= 0.0 {
-                16 | if u.id % 2 == 0 { 3 } else { 12 }
+            | if u.health <= 0. && roll % 5 == 0 {
+                1 << ((roll >> 8) % 4)
             } else {
                 0
             };
@@ -293,6 +328,22 @@ pub(super) fn update(
                 material.base_color = skin_color(&session, body.id);
             }
             paint_uv(&mut painted);
+            for (cap, handle, mut visible) in &mut caps {
+                if cap.body != entity {
+                    continue;
+                }
+                let geometry = super::cuts::mesh(&painted, mask, false);
+                *visible = if geometry.count_vertices() > 0 {
+                    Visibility::Inherited
+                } else {
+                    Visibility::Hidden
+                };
+                if geometry.count_vertices() > 0
+                    && let Some(mut target) = meshes.get_mut(&handle.0)
+                {
+                    *target = geometry;
+                }
+            }
             let detached = mask & !body.mask;
             if detached != 0
                 && body.id != super::super::rpg::PREVIEW_ID
@@ -309,6 +360,9 @@ pub(super) fn update(
                         continue;
                     }
                     let mut piece = painted.clone();
+                    let mut inside = super::cuts::mesh(&painted, bit, true);
+                    inside.remove_attribute(Mesh::ATTRIBUTE_JOINT_INDEX);
+                    inside.remove_attribute(Mesh::ATTRIBUTE_JOINT_WEIGHT);
                     piece.insert_indices(Indices::U32(selected));
                     piece.remove_attribute(Mesh::ATTRIBUTE_JOINT_INDEX);
                     piece.remove_attribute(Mesh::ATTRIBUTE_JOINT_WEIGHT);
@@ -326,28 +380,47 @@ pub(super) fn update(
                             *p = (Vec3::from_array(*p) - center).to_array();
                         }
                     }
+                    if let Some(VertexAttributeValues::Float32x3(points)) =
+                        inside.attribute_mut(Mesh::ATTRIBUTE_POSITION)
+                    {
+                        for p in points {
+                            *p = (Vec3::from_array(*p) - center).to_array();
+                        }
+                    }
                     let transform = world.compute_transform();
                     let origin = world.transform_point(center);
                     let angle = u.id as f32 * 2.1 + bit as f32 * 0.7;
                     let speed = if bit == 16 { 9.0 } else { 7.0 };
-                    commands.spawn((
-                        Gib {
-                            velocity: Vec3::new(
-                                angle.cos() * speed,
-                                7.0 + bit as f32 * 0.1,
-                                angle.sin() * speed,
-                            ),
-                            spin: Vec3::new(7., 4., 5.),
-                            life: 180.0,
-                            run: session.run_id,
-                            settled: false,
-                        },
-                        Mesh3d(meshes.add(piece)),
-                        MeshMaterial3d(body.material.clone()),
-                        Transform::from_translation(origin)
-                            .with_rotation(transform.rotation)
-                            .with_scale(transform.scale),
-                    ));
+                    commands
+                        .spawn((
+                            Gib {
+                                velocity: Vec3::new(
+                                    angle.cos() * speed,
+                                    7.0 + bit as f32 * 0.1,
+                                    angle.sin() * speed,
+                                ),
+                                spin: Vec3::new(7., 4., 5.),
+                                life: 180.0,
+                                run: session.run_id,
+                                settled: false,
+                            },
+                            super::stains::Receiver(Some(body.id)),
+                            Mesh3d(meshes.add(piece)),
+                            MeshMaterial3d(body.material.clone()),
+                            Transform::from_translation(origin)
+                                .with_rotation(transform.rotation)
+                                .with_scale(transform.scale),
+                        ))
+                        .with_children(|p| {
+                            if inside.count_vertices() == 0 {
+                                return;
+                            }
+                            p.spawn((
+                                Mesh3d(meshes.add(inside)),
+                                MeshMaterial3d(iron.flesh.clone()),
+                                Transform::default(),
+                            ));
+                        });
                     active_gibs += 1;
                 }
             }

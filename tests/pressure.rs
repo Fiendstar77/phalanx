@@ -298,7 +298,17 @@ fn founders_can_fight_on_the_generated_field() {
         battle.step();
         for unit in &battle.units {
             assert!(unit.position.iter().all(|value| value.is_finite()));
-            assert!(!arena.blocked(unit.position), "{:?}", unit.position);
+            let p =
+                phalanx::ninjutsu::body(unit, battle.arena, battle.tick.saturating_sub(1) as f32);
+            assert!(
+                !phalanx::ninjutsu::solid(battle.arena, [p[0], p[1] - 0.85, p[2]], 0.),
+                "point {:?} unit {} tick {} ninja {:?} arena {:?}",
+                p,
+                unit.id,
+                battle.tick,
+                unit.ninja,
+                battle.arena
+            );
         }
     }
     if battle.finished {

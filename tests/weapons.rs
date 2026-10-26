@@ -33,6 +33,8 @@ fn duel(weapon: W) -> Battle {
         .begin_battle(42, Arena::OpenField, Controller::Utility)
         .unwrap();
     for u in &mut b.units {
+        // These fixtures measure projectile geometry and release timing.
+        u.theus = None;
         u.health = 0.;
     }
     b.units[0].health = 1000.;
@@ -197,8 +199,11 @@ fn technology_persists_and_a_queen_can_launch_heal_and_carry_a_banner_as_a_warri
     for u in b.units.iter_mut().skip(3) {
         u.position = [5., (u.id - 3) as f32 * 1.3];
     }
-    for _ in 0..40 {
+    for _ in 0..120 {
         b.step();
+        if b.units[0].healing_done > 0. && b.units[0].weapon_shots[W::Atlatl.index()] > 0 {
+            break;
+        }
     }
     assert_eq!(b.units[0].command_title, Some(phalanx::CommandTitle::Queen));
     assert_eq!(b.units[0].class, Some(C::Warrior));

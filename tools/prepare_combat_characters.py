@@ -9,6 +9,13 @@ ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'assets/characters';OUT.mkdir(exist_ok=True)
 CLIPS=[('Idle',1.6),('Walk',.9),('Run',.6),('Attack',.65),('Throw',1.1),('Hit',.38),('Death',1.1),('AttackQuick',.42),('AttackHeavy',.95),('AttackDesperate',.60),('ThrowUnderhand',.85),('HitHeavy',.70),('LimbRecoil',.85),('DeathBackward',1.35),('DeathDelayed',1.90),('NearDeathPanic',1.4),('WoundedStagger',1.1)]
 CLIPS += [('WireLunge',.82),('WhirlwindCut',1.05),('VaultStrike',1.10),('WireRecoil',.85),('WireDeath',1.45)]
+CLIPS += [('BreatheLook',1.9),('BreatheShift',2.1),('ReadyBounce',1.4),('SneakStep',.9),
+ ('SprintLow',.52),('SprintBlade',.58),('GuardStrafe',.8),('Sidestep',.45),('Backstep',.40),
+ ('ParryHigh',.35),('ParryLow',.40),('DodgeCartwheel',.75),('ButterflyKick',.8),
+ ('CorkscrewStrike',1.),('ScissorVault',.9),('WallKickStrike',1.),('ShadowStep',.55),
+ ('RisingLauncher',.65),('MeteorChase',1.2),('MeteorSlam',1.1),('CrossfireRelease',.65),
+ ('GroundSweep',.7),('CounterCut',.55),('LandingRoll',.55),('RecoverKipUp',.7),
+ ('DeathSpiral',1.4),('VictorySalute',1.6),('DefeatKneel',1.7),('HurtTwist',.42),('HurtShoulder',.40)]
 def clean():bpy.ops.wm.read_factory_settings(use_empty=True)
 def rot(rig,name,axis,angle):
  b=rig.pose.bones.get('mixamorig'+name)
@@ -192,6 +199,96 @@ def varied_pose(rig,name,u):
    rot(rig,side+'Leg',(1,0,0),.24+(.25*max(0,-wave*sign) if moving else .035*shake))
   hips.location.y=-.09+.025*wave
 
+def extended_pose(rig,name,u):
+ arc=math.sin(math.pi*u);wave=math.sin(math.tau*u);hit=pulse(u,.36)
+ if name in ['BreatheLook','BreatheShift','ReadyBounce']:
+  rot(rig,'Spine',(1,0,0),.035*wave)
+  rot(rig,'Head',(0,0,1),.16*wave if name=='BreatheLook' else .035*wave)
+  rot(rig,'Head',(1,0,0),.045*math.sin(math.tau*u+.8))
+  if name=='BreatheShift':root_offset(rig,.025*wave,0,.035*wave)
+  if name=='ReadyBounce':
+   root_offset(rig,.055*(1-math.cos(math.tau*u)))
+   for side in ['Left','Right']:rot(rig,side+'Leg',(1,0,0),.12*(1-math.cos(math.tau*u)))
+ elif name in ['SneakStep','SprintLow','SprintBlade','GuardStrafe']:
+  low=name in ['SneakStep','SprintLow'];stride=.38 if name=='SneakStep' else .85
+  for side,sign in [('Left',1),('Right',-1)]:
+   rot(rig,side+'UpLeg',(1,0,0),wave*sign*stride)
+   rot(rig,side+'Leg',(1,0,0),max(0,-wave*sign)*.85+(.25 if low else 0))
+   rot(rig,side+'Arm',(1,0,0),-wave*sign*(.12 if name=='SprintBlade' else .30))
+  root_offset(rig,(-.08 if low else 0)+abs(wave)*.025)
+  rot(rig,'Spine',(1,0,0),-.26 if low else -.10)
+  if name=='GuardStrafe':rot(rig,'Hips',(0,0,1),.35*wave)
+ elif name in ['Sidestep','Backstep']:
+  root_offset(rig,-.12*arc,-.12*arc if name=='Backstep' else 0,.14*arc if name=='Sidestep' else 0)
+  rot(rig,'Spine',(0,1,0),-.45*arc);rot(rig,'Head',(0,1,0),.15*arc)
+  rot(rig,'LeftUpLeg',(1,0,0),.5*arc);rot(rig,'RightUpLeg',(1,0,0),-.55*arc)
+ elif name in ['ParryHigh','ParryLow']:
+  high=name=='ParryHigh';rot(rig,'Spine2',(0,0,1),-.35*hit)
+  rot(rig,'RightArm',(1,0,0),(-1.3 if high else .40)*hit)
+  rot(rig,'RightForeArm',(1,0,0),-.65*hit);rot(rig,'LeftArm',(1,0,0),-.4*hit)
+  root_offset(rig,-.06*hit)
+ elif name in ['DodgeCartwheel','ButterflyKick','CorkscrewStrike','ScissorVault']:
+  height={'DodgeCartwheel':1.0,'ButterflyKick':1.2,'CorkscrewStrike':1.7,'ScissorVault':1.65}[name]
+  root_offset(rig,height*arc)
+  axis=(0,1,0) if name=='DodgeCartwheel' else ((1,0,0) if name=='ScissorVault' else (0,0,1))
+  rot(rig,'Hips',axis,math.tau*ease(u)*(2 if name=='CorkscrewStrike' else 1))
+  rot(rig,'Spine',(1,0,0),-.55*arc if name=='ButterflyKick' else .25*arc)
+  for side,sign in [('Left',1),('Right',-1)]:
+   rot(rig,side+'UpLeg',(0,1,0),sign*1.1*arc)
+   rot(rig,side+'UpLeg',(1,0,0),sign*1.2*arc)
+   rot(rig,side+'Leg',(1,0,0),.6*arc if name=='CorkscrewStrike' else .2*arc)
+   rot(rig,side+'Arm',(0,1,0),sign*.9*arc)
+  rot(rig,'RightArm',(1,0,0),-1.8*hit)
+ elif name in ['WallKickStrike','ShadowStep']:
+  root_offset(rig,(.8 if name=='WallKickStrike' else .12)*arc)
+  rot(rig,'Hips',(0,0,1),math.tau*ease(u) if name=='WallKickStrike' else .7*arc)
+  rot(rig,'Spine',(1,0,0),-.35*arc)
+  rot(rig,'LeftUpLeg',(1,0,0),-1.2*arc);rot(rig,'RightLeg',(1,0,0),1.5*arc)
+  rot(rig,'RightArm',(1,0,0),-2.1*hit)
+ elif name=='RisingLauncher':
+  root_offset(rig,.65*arc)
+  rot(rig,'Spine',(1,0,0),-.35*math.sin(math.tau*u)*arc)
+  rot(rig,'RightArm',(1,0,0),.5*arc-2.6*hit)
+  rot(rig,'LeftArm',(1,0,0),-1.2*hit);rot(rig,'LeftLeg',(1,0,0),.65*arc)
+ elif name in ['MeteorChase','MeteorSlam']:
+  root_offset(rig,.45*arc)
+  rot(rig,'Hips',(0,0,1),math.tau*ease(u))
+  rot(rig,'Spine',(1,0,0),-.65*arc)
+  rot(rig,'RightArm',(1,0,0),-2.6*math.sin(math.pi*u)**2+1.1*ease((u-.55)/.25)*arc)
+  rot(rig,'LeftArm',(1,0,0),-1.2*arc)
+  for side in ['Left','Right']:
+   rot(rig,side+'UpLeg',(1,0,0),-.8*arc);rot(rig,side+'Leg',(1,0,0),1.45*arc)
+ elif name in ['CrossfireRelease','CounterCut']:
+  rot(rig,'Spine2',(0,0,1),(.95 if name=='CounterCut' else -.45)*hit)
+  rot(rig,'RightArm',(1,0,0),-1.7*hit)
+  rot(rig,'RightForeArm',(1,0,0),.65*hit)
+  rot(rig,'LeftUpLeg',(1,0,0),-.3*arc);root_offset(rig,.13*arc)
+ elif name=='GroundSweep':
+  root_offset(rig,-.22*arc);rot(rig,'Hips',(0,0,1),math.tau*ease(u))
+  rot(rig,'Spine',(1,0,0),-.55*arc);rot(rig,'LeftLeg',(1,0,0),1.8*arc)
+  rot(rig,'RightUpLeg',(0,1,0),1.5*arc);rot(rig,'RightArm',(1,0,0),-1.8*hit)
+ elif name in ['LandingRoll','RecoverKipUp']:
+  root_offset(rig,(.22 if name=='LandingRoll' else .7)*arc)
+  rot(rig,'Hips',(1,0,0),math.tau*ease(u) if name=='LandingRoll' else -math.pi*arc)
+  for side in ['Left','Right']:
+   rot(rig,side+'UpLeg',(1,0,0),-.8*arc);rot(rig,side+'Leg',(1,0,0),1.5*arc)
+ elif name=='DeathSpiral':
+  fall=ease((u-.30)/.6);root_offset(rig,.7*arc-.65*fall)
+  rot(rig,'Hips',(0,0,1),math.tau*ease(u));rot(rig,'Hips',(1,0,0),1.45*fall)
+  rot(rig,'LeftArm',(0,1,0),-.85*arc);rot(rig,'RightArm',(0,1,0),.85*arc)
+ elif name in ['VictorySalute','DefeatKneel']:
+  salute=ease(u/.4)
+  if name=='VictorySalute':
+   rot(rig,'RightArm',(1,0,0),-1.9*salute);rot(rig,'LeftArm',(0,1,0),-.5*salute)
+   rot(rig,'Head',(1,0,0),-.12*salute)
+  else:
+   root_offset(rig,-.42*salute);rot(rig,'LeftLeg',(1,0,0),1.5*salute)
+   rot(rig,'RightUpLeg',(1,0,0),-.85*salute);rot(rig,'Head',(1,0,0),.45*salute)
+ elif name in ['HurtTwist','HurtShoulder']:
+  rot(rig,'Spine2',(0,0,1),(.60 if name=='HurtTwist' else -.35)*hit)
+  rot(rig,'Head',(1,0,0),.2*hit);rot(rig,'LeftArm',(1,0,0),-.65*hit)
+  root_offset(rig,-.055*hit)
+
 def bake(rig):
  rig.data.pose_position="POSE"
  for name,duration in CLIPS:
@@ -201,7 +298,9 @@ def bake(rig):
    u=frame/frames;phase=u*math.tau;wave=math.sin(phase)
    for b in rig.pose.bones:b.rotation_mode='QUATERNION';b.rotation_quaternion=Quaternion();b.location=Vector()
    fighting_stance(rig)
-   if name in [n for n,_ in CLIPS[17:]]:
+   if name in [n for n,_ in CLIPS[22:]]:
+    extended_pose(rig,name,u)
+   elif name in [n for n,_ in CLIPS[17:22]]:
     wire_pose(rig,name,u)
    elif name in [n for n,_ in CLIPS[7:17]]:
     varied_pose(rig,name,u)
@@ -259,7 +358,10 @@ for sex in ['male', 'female']:
  for obj in bpy.context.scene.objects:
   if obj.type=='MESH' and obj.data.shape_keys:
    for key in obj.data.shape_keys.key_blocks:key.value=0.0
- body=max((o for o in bpy.context.scene.objects if o.type=='MESH'),key=lambda o:len(o.data.vertices))
+ # The subdivided head can be larger than the torso. Select the actual
+ # skinned body, never a rigid bone-parented facial feature, for normalization.
+ body=max((o for o in bpy.context.scene.objects if o.type=='MESH'
+           and any(m.type=='ARMATURE' for m in o.modifiers)),key=lambda o:len(o.data.vertices))
  # Normalize centered studio bases to the runtime's feet-at-zero coordinates.
  # Bake the body world transform into vertices; move skeleton rest coordinates
  # by the same offset. Bone-parented eyes follow that rest-space translation.

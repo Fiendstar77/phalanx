@@ -181,6 +181,9 @@ fn appearance_is_backward_compatible_persistent_and_cannot_change_combat() {
         nose: 16,
         skin: 7,
         hair_color: 4,
+        cheeks: 4,
+        mouth: 3,
+        brows: 2,
     };
     let mut copy: Campaign =
         serde_json::from_str(&serde_json::to_string(&restored).unwrap()).unwrap();
@@ -188,6 +191,9 @@ fn appearance_is_backward_compatible_persistent_and_cannot_change_combat() {
     assert_eq!(copy.teams[0].fighters[0].appearance.female, Some(true));
     assert_eq!(copy.teams[0].fighters[0].appearance.skin, 7);
     assert_eq!(copy.teams[0].fighters[0].appearance.hair_color, 4);
+    assert_eq!(copy.teams[0].fighters[0].appearance.cheeks, 4);
+    assert_eq!(copy.teams[0].fighters[0].appearance.mouth, 3);
+    assert_eq!(copy.teams[0].fighters[0].appearance.brows, 2);
     let (_, mut original_battle) = campaign
         .clone()
         .begin_battle(42, Arena::Citadel, Controller::Utility)
@@ -220,6 +226,7 @@ fn appearance_is_backward_compatible_persistent_and_cannot_change_combat() {
         nose: 0,
         skin: 0,
         hair_color: 0,
+        ..Appearance::default()
     };
     assert_eq!(bald.resolved(0, 0), bald);
     assert_eq!(
@@ -248,18 +255,26 @@ fn severe_wounds_are_nonfatal_and_prosthetics_are_a_real_tradeoff() {
     b.units[3].position = [1.0, 0.0];
     b.step();
     assert!(b.units[0].health > 0.0);
-    assert_eq!(b.units[0].lost_limbs, 1);
+    assert_eq!(
+        b.units[0].lost_limbs, 0,
+        "Ordinary damage crossing half HP must not sever a limb"
+    );
     assert!(
         b.units[0].damage_dealt > 0.0,
         "The wounded fighter still fights"
     );
+    b.units[0].lost_limbs = 1;
     let natural = 1.1;
     assert!((b.units[0].damage_multiplier() - natural * 0.8).abs() < 0.0001);
     b.units[0].health = b.units[0].max_health() * 0.25 + 0.5;
     b.units[3].cooldown = 0.0;
     b.step();
     assert!(b.units[0].health > 0.0);
-    assert_eq!(b.units[0].lost_limbs, 5);
+    assert_eq!(
+        b.units[0].lost_limbs, 1,
+        "Crossing quarter HP must not sever a second limb"
+    );
+    b.units[0].lost_limbs = 5;
     assert_eq!(b.units[0].movement_multiplier(), 0.65);
     b.units[0].prosthetics = 5;
     assert!((b.units[0].damage_multiplier() - natural * 3.0).abs() < 0.0001);

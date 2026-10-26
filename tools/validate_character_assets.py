@@ -2,7 +2,7 @@
 import json,struct,math
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-EXPECTED=['Idle','Walk','Run','Attack','Throw','Hit','Death','AttackQuick','AttackHeavy','AttackDesperate','ThrowUnderhand','HitHeavy','LimbRecoil','DeathBackward','DeathDelayed','NearDeathPanic','WoundedStagger','WireLunge','WhirlwindCut','VaultStrike','WireRecoil','WireDeath']
+EXPECTED=['Idle', 'Walk', 'Run', 'Attack', 'Throw', 'Hit', 'Death', 'AttackQuick', 'AttackHeavy', 'AttackDesperate', 'ThrowUnderhand', 'HitHeavy', 'LimbRecoil', 'DeathBackward', 'DeathDelayed', 'NearDeathPanic', 'WoundedStagger', 'WireLunge', 'WhirlwindCut', 'VaultStrike', 'WireRecoil', 'WireDeath', 'BreatheLook', 'BreatheShift', 'ReadyBounce', 'SneakStep', 'SprintLow', 'SprintBlade', 'GuardStrafe', 'Sidestep', 'Backstep', 'ParryHigh', 'ParryLow', 'DodgeCartwheel', 'ButterflyKick', 'CorkscrewStrike', 'ScissorVault', 'WallKickStrike', 'ShadowStep', 'RisingLauncher', 'MeteorChase', 'MeteorSlam', 'CrossfireRelease', 'GroundSweep', 'CounterCut', 'LandingRoll', 'RecoverKipUp', 'DeathSpiral', 'VictorySalute', 'DefeatKneel', 'HurtTwist', 'HurtShoulder']
 report={}
 for sex in ['female','male']:
  p=ROOT/'assets/characters'/(sex+'.glb');raw=p.read_bytes();size=struct.unpack_from('<I',raw,12)[0];j=json.loads(raw[20:20+size]);binary=raw[28+size:]
@@ -37,6 +37,8 @@ for sex in ['female','male']:
    positions=read(a['POSITION']);weights=read(a['WEIGHTS_0']);joints=read(a['JOINTS_0']);indices=[v[0]for v in read(prim['indices'])]
    assert len(positions)==len(weights)==len(joints)
    assert all(all(math.isfinite(x)for x in p)for p in positions)
+   low=min(p[1]for p in positions);high=max(p[1]for p in positions)
+   assert -.05<low<.06 and high>1.,(sex,'skinned body was not normalized to its feet',low,high)
    assert all(abs(sum(w)-1)<.002 for w in weights)
    assert all(all(0<=x<len(skin['joints'])for x in v)for v in joints)
    assert all(0<=i<len(positions)for i in indices)

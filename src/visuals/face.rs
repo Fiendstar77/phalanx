@@ -15,7 +15,7 @@ const SHOUT: usize = 4;
 const BLINK: usize = 5;
 /// Uniform scale on the head bone. Hair and eyes are parented there, so they
 /// stay seated. Enough to read chibi at battle distance; the neck still holds.
-const HEAD_CARICATURE: f32 = 1.22;
+const HEAD_CARICATURE: f32 = 1.22 * super::HEAD_PROPORTION;
 const MOUTH_CAP: f32 = 1.35;
 
 #[derive(Component)]
@@ -30,7 +30,7 @@ struct FaceState {
     attack: f32,
     laugh: f32,
     seen_kill: u64,
-    weights: [f32; 10],
+    weights: [f32; 17],
     gaze: Vec2,
     iris: u8,
 }
@@ -59,6 +59,7 @@ struct Feature {
     root: Entity,
     rest: Transform,
     eye: bool,
+    lid: bool,
 }
 #[derive(Component)]
 struct IrisMaterial {
@@ -72,6 +73,8 @@ struct SkinMaterial {
     root: Entity,
     material: Handle<StandardMaterial>,
 }
+#[derive(Component)]
+struct MouthPart(Entity);
 
 #[derive(Resource, Default)]
 pub(super) struct Audit {
@@ -123,7 +126,7 @@ pub(super) fn ready(
         attack: 0.0,
         laugh: 0.0,
         seen_kill: caught_up(&session.battle.damage_events),
-        weights: [0.0; 10],
+        weights: [0.0; 17],
         gaze: Vec2::ZERO,
         iris: u8::MAX,
     });
@@ -140,6 +143,7 @@ pub(super) fn ready(
                 root: event.entity,
                 rest: *transform,
                 eye: name.as_str().starts_with("Eye_"),
+                lid: name.as_str().starts_with("Lid_"),
             });
         }
         if name.as_str() == "Face_Sculpt"
@@ -166,6 +170,9 @@ pub(super) fn ready(
                 root: event.entity,
                 base: transform.scale,
             });
+        }
+        if matches!(name.as_str(), "Teeth_Upper" | "Teeth_Lower" | "Tongue") {
+            commands.entity(entity).insert(MouthPart(event.entity));
         }
         if name.as_str().starts_with("Iris_") {
             for primitive in children.iter_descendants(entity) {
@@ -217,7 +224,7 @@ fn drive(
             state.health = unit.health;
             state.cooldown = unit.cooldown;
             state.run = session.run_id;
-            state.weights = [0.0; 10];
+            state.weights = [0.0; 17];
             state.gaze = Vec2::ZERO;
         }
         let dt = if dt > 0.0 {
@@ -300,7 +307,7 @@ fn drive(
         state.gaze = state.gaze.lerp(gaze, alpha);
         let appearance = look(&session, state.id);
         state.iris = appearance.eyes;
-        state.weights[6..10].copy_from_slice(&round_face(appearance.nose, appearance.face));
+        state.weights[6..].copy_from_slice(&identity_pose(appearance));
         if let Some(pose) = witness_pose() {
             state.weights[..6].copy_from_slice(&pose);
             state.gaze = Vec2::new(0.10, 0.0);
@@ -409,16 +416,66 @@ fn caricature_pose(mood: Mood) -> [f32; 6] {
 }
 
 /// Short round nose and soft cheeks, with the saved face still visible inside that.
-fn round_face(nose: u8, face: u8) -> [f32; 4] {
-    let nose_long = (nose % 4) as f32 / 3.0;
-    let nose_wide = (nose / 4) as f32 / 3.0;
-    let jaw = (face % 4) as f32 / 3.0;
-    let cheek = (face / 4) as f32 / 3.0;
+fn identity_pose(a: phalanx::progression::Appearance) -> [f32; 11] {
+    // Deliberately distinct silhouettes. Saved preset IDs retain their range;
+    // they no longer encode nearly invisible four-step sawtooth weights.
+    let faces = [
+        [0.05, 0.80, 0.15, 0.00],
+        [0.00, 0.45, 0.00, 0.18],
+        [0.30, 1.00, 0.85, 0.00],
+        [0.00, 0.20, 0.00, 0.00],
+        [0.30, 0.85, 0.55, 0.22],
+        [0.30, 0.65, 1.00, 0.00],
+        [0.00, 0.55, 0.30, 0.00],
+        [0.05, 0.35, 0.00, 0.65],
+        [0.00, 0.90, 0.05, 0.00],
+        [0.00, 0.15, 0.00, 0.30],
+        [1.00, 0.20, 0.20, 0.00],
+        [0.20, 0.10, 0.00, 1.00],
+        [0.00, 0.45, 0.05, 0.55],
+        [0.00, 0.85, 0.00, 0.20],
+        [0.70, 0.55, 0.75, 0.10],
+        [0.00, 0.60, 0.20, 0.35],
+        [0.40, 1.00, 0.65, 0.00],
+    ];
+    let noses = [
+        [0.00, 0.15, 0.15],
+        [-0.35, 0.00, 0.10],
+        [-0.10, 0.10, 1.00],
+        [0.25, 0.75, 0.10],
+        [0.10, 1.00, 0.00],
+        [1.00, 0.00, 0.00],
+        [0.75, -0.35, 0.00],
+        [-0.20, 0.45, 0.75],
+        [0.10, 0.30, 0.25],
+        [-0.15, 1.00, 0.35],
+        [0.10, -0.40, 0.15],
+        [-0.30, -0.20, 0.65],
+        [0.80, 0.15, -0.30],
+        [0.45, 0.90, -0.10],
+        [-0.50, 0.55, 0.00],
+        [1.00, 0.25, -0.60],
+        [0.20, 0.65, 0.50],
+    ];
+    let [jaw, soft, round, tall] = faces[a.face as usize % faces.len()];
+    let [length, width, upturned] = noses[a.nose as usize % noses.len()];
+    let cheek = [0.65, 0.25, 1.00, 0.45, -0.30][a.cheeks as usize % 5];
+    let sweet = [0.65, 1.00, -0.65, 0.25, -0.20][a.mouth as usize % 5];
+    let pout = [0.00, 0.00, -0.15, 0.85, -0.25][a.mouth as usize % 5];
+    let brow = [-0.20, 0.00, 0.00, -0.60, 1.00][a.brows as usize % 5];
+    let arch = [0.25, 1.00, -0.50, 0.45, 0.10][a.brows as usize % 5];
     [
-        nose_long * 0.45,
-        nose_wide * 0.40 + 0.48,
-        jaw * 0.85,
-        cheek * 0.35 + 0.62,
+        length,
+        width,
+        jaw,
+        (soft * 0.45 + cheek * 0.55),
+        round,
+        tall,
+        upturned,
+        sweet,
+        pout,
+        brow,
+        arch,
     ]
 }
 
@@ -442,7 +499,23 @@ fn apply(
     session: Res<Session>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut audit: ResMut<Audit>,
+    mut mouth_parts: Query<(&MouthPart, &mut Visibility)>,
 ) {
+    for (part, mut visible) in &mut mouth_parts {
+        let Ok(state) = states.get(part.0) else {
+            continue;
+        };
+        let open = state.weights[RAGE] * 0.082
+            + state.weights[PAIN] * 0.043
+            + state.weights[FEAR] * 0.054
+            + state.weights[GRIN] * 0.040
+            + state.weights[SHOUT] * 0.125;
+        *visible = if open > 0.025 {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
     let mut meshes = 0;
     for (feature, mut transform, morph) in &mut features {
         let Ok(state) = states.get(feature.root) else {
@@ -455,6 +528,16 @@ fn apply(
             }
             for (weight, value) in morph.weights_mut().iter_mut().zip(state.weights) {
                 *weight = value;
+            }
+            if feature.lid {
+                // Combining a full blink with pain/rage used to extrapolate the
+                // lid through itself. One bounded closing pose owns the shell.
+                let close = state.weights[BLINK]
+                    .max(state.weights[PAIN] * 0.8)
+                    .max(state.weights[RAGE] * 0.25)
+                    .max(state.weights[GRIN] * 0.30)
+                    .clamp(0., 1.);
+                morph.weights_mut()[..6].copy_from_slice(&lid_weights(close));
             }
         }
         if feature.eye {
@@ -508,6 +591,17 @@ fn apply(
             Color::srgb(0.22, 0.36, 0.13),
             Color::srgb(0.48, 0.28, 0.08),
             Color::srgb(0.32, 0.20, 0.39),
+            Color::srgb(0.06, 0.55, 0.48),
+            Color::srgb(0.25, 0.09, 0.035),
+            Color::srgb(0.64, 0.24, 0.39),
+            Color::srgb(0.72, 0.50, 0.05),
+            Color::srgb(0.47, 0.75, 0.88),
+            Color::srgb(0.07, 0.22, 0.09),
+            Color::srgb(0.57, 0.41, 0.74),
+            Color::srgb(0.56, 0.23, 0.09),
+            Color::srgb(0.07, 0.13, 0.31),
+            Color::srgb(0.58, 0.65, 0.69),
+            Color::srgb(0.55, 0.025, 0.055),
         ];
         if let Some(mut material) = materials.get_mut(&iris.material) {
             let base = palette[state.iris as usize % palette.len()].to_linear();
@@ -521,6 +615,23 @@ fn apply(
             }
         }
     }
+}
+
+fn lid_weights(close: f32) -> [f32; 6] {
+    let mut weights = [0.; 6];
+    let keys = [RAGE, GRIN, PAIN, BLINK];
+    let stage = close.clamp(0., 1.) * 4.;
+    let index = stage.floor() as usize;
+    if index == 4 {
+        weights[BLINK] = 1.;
+        return weights;
+    }
+    let amount = stage.fract();
+    if index > 0 {
+        weights[keys[index - 1]] = 1. - amount;
+    }
+    weights[keys[index]] = amount;
+    weights
 }
 
 #[cfg(test)]
@@ -628,16 +739,27 @@ mod caricature_rules {
     }
 
     #[test]
-    fn cheeks_and_noses_stay_round_and_still_differ() {
-        let plain = round_face(0, 0);
-        let strong = round_face(15, 15);
-        assert!(plain[1] >= 0.45);
-        assert!(plain[3] >= 0.60);
-        assert!(plain[0] < 0.2);
-        assert!(strong[1] > plain[1]);
-        assert!(strong[3] > plain[3]);
-        assert!(strong[0] > plain[0]);
-        assert!(strong[2] > plain[2]);
+    fn identity_presets_are_distinct_and_do_not_overwrite_expressions() {
+        use phalanx::progression::Appearance;
+        let base = Appearance::default();
+        for feature in [2, 4, 7, 8, 9] {
+            let mut poses = Vec::new();
+            let mut look = base;
+            for _ in 0..phalanx::appearance::COUNTS[feature] {
+                let pose = identity_pose(look);
+                assert!(
+                    !poses.contains(&pose),
+                    "duplicate identity preset {feature}"
+                );
+                assert!(
+                    pose.iter()
+                        .all(|w| w.is_finite() && (-1.0..=1.0).contains(w))
+                );
+                poses.push(pose);
+                look.cycle(feature, 1);
+            }
+            assert_eq!(look, base);
+        }
     }
 
     #[test]

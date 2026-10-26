@@ -27,7 +27,8 @@ for sex in ('male', 'female'):
 # Runtime facial shapes must contain real deformation and no weights channels
 # that allow the body clip player to overwrite the live expression controller.
 import math
-KEYS=['Rage','Pain','Fear','Grin','Shout','Blink','NoseLong','NoseWide','JawWide','CheekSoft']
+KEYS=['Rage','Pain','Fear','Grin','Shout','Blink','NoseLong','NoseWide','JawWide','CheekSoft',
+      'FaceRound','FaceTall','NoseUpturned','MouthSweet','MouthPout','BrowSoft','BrowArch']
 for sex in ('male','female'):
     raw=(ROOT/'assets/characters'/f'{sex}.glb').read_bytes()
     length=struct.unpack_from('<I',raw,12)[0]
@@ -59,5 +60,46 @@ for sex in ('male','female'):
                 changes[i]=max(changes[i],max((sum(x*x for x in p)**.5 for p in delta),default=0))
     assert morphs>=10,(sex,morphs)
     assert all(.001<x<.5 for x in changes),(sex,changes)
+    assert changes[6] > .045 and changes[7] > .015, (sex, 'nose choices must visibly deform the sculpt', changes)
     assert not any(c['target']['path']=='weights' for a in doc['animations']for c in a['channels'])
     print(sex,'facial morph meshes',morphs,'maximum displacement per control',dict(zip(KEYS,map(lambda x:round(x,4),changes))))
+    # Check exported receiver-space winding, not only recalculated normals.
+    nodes=doc['nodes'];ids={n.get('name'):i for i,n in enumerate(nodes)}
+    def subtract(a,b):return tuple(x-y for x,y in zip(a,b))
+    def cross(a,b):return (a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0])
+    def add(a,b):return tuple(x+y for x,y in zip(a,b))
+    def rotate(q,v):
+        t=tuple(2*x for x in cross(q[:3],v))
+        return add(v,add(tuple(q[3]*x for x in t),cross(q[:3],t)))
+    def parent_point(node,p):
+        scaled=tuple(x*y for x,y in zip(p,node.get('scale',[1,1,1])))
+        return add(node.get('translation',[0,0,0]),rotate(node.get('rotation',[0,0,0,1]),scaled))
+    head=doc['meshes'][nodes[ids['Face_Sculpt']]['mesh']]
+    count=sum(len(read(p['attributes']['POSITION'])) for p in head['primitives'])
+    assert count>=26000,(sex,'head lacks deformation support',count)
+    for side in ('L','R'):
+        lid=nodes[ids['Lid_'+side]];eye=nodes[ids['Eye_'+side]]
+        centre=parent_point(eye,nodes[ids['Eyeball_'+side]].get('translation',[0,0,0]))
+        for primitive in doc['meshes'][lid['mesh']]['primitives']:
+            points=[parent_point(lid,p) for p in read(primitive['attributes']['POSITION'])]
+            indices=[i[0]for i in read(primitive['indices'])]
+            # Every staged closure must stay outside the eye, including
+            # interpolation between stages, not merely the fully closed key.
+            base=read(primitive['attributes']['POSITION'])
+            deltas={name:read(primitive['targets'][KEYS.index(name)]['POSITION']) for name in ('Rage','Grin','Pain','Blink')}
+            stages=['Rage','Grin','Pain','Blink'];eye_radius=.123 if sex=='male' else .128
+            for closure in [i/40 for i in range(41)]:
+                t=closure*4;slot=min(3,int(t));fraction=t-slot
+                if slot>0:
+                    a=deltas[stages[slot-1]]
+                else:a=[(0,0,0)]*len(base)
+                b=deltas[stages[slot]]
+                for p,da,db in zip(base,a,b):
+                    q=parent_point(lid,tuple(x+(1-fraction)*u+fraction*v for x,u,v in zip(p,da,db)))
+                    assert math.dist(q,centre)>eye_radius,(sex,side,'lid intersects eyeball',closure)
+            for i in range(0,len(indices),3):
+                a,b,c=(points[j]for j in indices[i:i+3])
+                normal=cross(subtract(b,a),subtract(c,a))
+                midpoint=tuple((x+y+z)/3 for x,y,z in zip(a,b,c))
+                assert sum(x*y for x,y in zip(normal,subtract(midpoint,centre)))>0,(sex,side,'inward eyelid triangle',i)
+    print(sex,'head support vertices',count,'all exported eyelid triangles outward')

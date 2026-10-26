@@ -35,6 +35,7 @@ struct Effects {
     cursor: usize,
     run: Option<u32>,
     event: Option<u64>,
+    exchange: Option<u64>,
     tips: HashMap<Entity, Vec3>,
     landings: HashMap<usize, (usize, f32)>,
 }
@@ -45,6 +46,7 @@ impl Default for Effects {
             cursor: 0,
             run: None,
             event: None,
+            exchange: None,
             tips: HashMap::new(),
             landings: HashMap::new(),
         }
@@ -122,6 +124,11 @@ mod tests {
             .init_resource::<Audit>()
             .init_resource::<Kit>()
             .add_systems(Update, update);
+        app.world_mut().spawn(Actor {
+            id: super::super::super::rpg::PREVIEW_ID,
+            clip: 37,
+            ..default()
+        });
         app.world_mut()
             .resource_mut::<Time>()
             .advance_by(std::time::Duration::from_millis(100));
@@ -146,6 +153,10 @@ pub(super) struct Audit {
     pub landings: u32,
     pub air_clips: [bool; 3],
     pub peak_particles: usize,
+    pub combinations: std::collections::BTreeMap<&'static str, u32>,
+    pub defences: u32,
+    pub clips: std::collections::BTreeSet<&'static str>,
+    pub max_height: f32,
 }
 pub(super) fn install(app: &mut App) {
     app.init_resource::<Effects>()
@@ -182,10 +193,14 @@ fn demo_setup(mut session: ResMut<Session>) {
     }
     let seed = session.battle.seed;
     session.restart_founders(seed, Arena::OpenField, Controller::Utility);
+    let gore = std::env::args().any(|a| a == "--gore-demo");
+    if gore {
+        session.battle.arena = Arena::Choke;
+    }
     for unit in &mut session.battle.units {
         unit.position = [
-            if unit.team == 0 { -4.5 } else { 4.5 },
-            (unit.id % 3) as f32 * 1.7 - 1.7,
+            if unit.team == 0 { -1.5 } else { 1.5 } * if gore { 1.0 } else { 3.0 },
+            (unit.id % 3) as f32 * if gore { 1.3 } else { 1.7 } - if gore { 1.3 } else { 1.7 },
         ];
         unit.target = [-unit.position[0], unit.position[1]];
     }
@@ -213,6 +228,8 @@ fn demo(
     session: Res<Session>,
     audit: Res<Audit>,
     music: Res<super::super::audio::Audit>,
+    stains: Res<super::stains::Stains>,
+    blood: Res<super::blood::Fx>,
     mut state: Local<Demo>,
     mut commands: Commands,
     mut exit: MessageWriter<AppExit>,
@@ -243,6 +260,11 @@ fn demo(
             "cinema_grabbed":session.cinema_grabbed,"trails":audit.trails,"impacts":audit.impacts,
             "landings":audit.landings,"air_clips":audit.air_clips,"peak_particles":audit.peak_particles,
             "particle_capacity":CAPACITY,"music_layer_peaks":music.music_peak,
+            "rigid_blood_contacts":stains.rigid_hits,"fighter_blood_contacts":stains.skin_hits,
+            "blood_particle_capacity":blood.particles.len(),"blood_stained_pixels":blood.stained_pixels(),
+            "theus_combinations":audit.combinations,"theus_defences":audit.defences,
+            "animation_clips_seen":audit.clips,"theus_max_height_metres":audit.max_height,
+            "theus_enabled":session.battle.units.iter().all(|u|u.theus.is_some()),
         });
         std::fs::write(
             "outputs/wirefu-demo/audit.json",
@@ -330,11 +352,23 @@ fn update(
         }
     }
     for actor in &actors {
+        // Workshop previews have no arena position or landing effects.
+        if actor.id >= session.battle.units.len() {
+            continue;
+        }
         if actor.female != female(&session, actor.id) {
             continue;
         }
-        if matches!(actor.clip, 17..=19) {
-            audit.air_clips[actor.clip - 17] = true;
+        if actor.clip < CLIP_NAMES.len() {
+            audit.clips.insert(CLIP_NAMES[actor.clip]);
+        }
+        if let Some(a) = session.visual_unit(actor.id).and_then(|u| u.theus.as_ref()) {
+            audit.max_height = audit.max_height.max(a.height(session.battle.tick));
+        }
+        if matches!(actor.clip, 17..=19 | 33..=37 | 40..=41 | 45..=46) {
+            if matches!(actor.clip, 17..=19) {
+                audit.air_clips[actor.clip - 17] = true;
+            }
             let phase = actor.clock / CLIP_DURATIONS[actor.clip];
             let previous = fx.landings.insert(actor.id, (actor.clip, phase));
             if previous
@@ -365,7 +399,7 @@ fn update(
         let swinging = actors.iter().any(|a| {
             a.id == tip.id
                 && a.female == tip.female
-                && matches!(a.clip, 3 | 7..=9 | 17..=19)
+                && matches!(a.clip, 3 | 7..=9 | 17..=19 | 31..=32 | 34..=44)
                 && a.clock > 0.03
                 && a.clock < CLIP_DURATIONS[a.clip] * 0.85
         });
@@ -395,7 +429,12 @@ fn update(
         fx.event = Some(event.sequence);
         let position = Vec3::new(
             event.position[0],
-            session.battle.arena.elevation(event.position) + 0.75,
+            session.battle.arena.elevation(event.position)
+                + 0.75
+                + session.battle.units[event.defender]
+                    .theus
+                    .as_ref()
+                    .map_or(0., |a| a.height(session.battle.tick)),
             event.position[1],
         );
         for i in 0..8 {
@@ -414,6 +453,71 @@ fn update(
             });
         }
         audit.impacts += 1;
+    }
+    for event in &session.battle.theus_events {
+        if fx.exchange.is_some_and(|old| event.sequence <= old) {
+            continue;
+        }
+        fx.exchange = Some(event.sequence);
+        let defended = matches!(
+            event.resolution.outcome,
+            phalanx::theus::Outcome::Parry | phalanx::theus::Outcome::Dodge
+        );
+        if defended {
+            audit.defences += 1;
+        }
+        let combination = event.technique.combination() && event.resolution.damage > 0.;
+        if !combination && !defended {
+            continue;
+        }
+        let p = session.presented(event.defender);
+        let height = session.battle.units[event.defender]
+            .theus
+            .as_ref()
+            .map_or(0., |a| a.height(session.battle.tick));
+        let centre = Vec3::new(p[0], session.battle.arena.elevation(p) + 0.9 + height, p[1]);
+        if combination {
+            *audit
+                .combinations
+                .entry(event.technique.name())
+                .or_default() += 1;
+            fx.emit(Mote {
+                kind: Kind::Ring,
+                position: centre,
+                life: 0.42,
+                duration: 0.42,
+                size: 0.7,
+                ..default()
+            });
+            if let Some(partner) = event.partner {
+                let p = session.presented(partner);
+                let from = Vec3::new(p[0], session.battle.arena.elevation(p) + 1., p[1]);
+                fx.emit(Mote {
+                    kind: Kind::Trail,
+                    position: from,
+                    end: centre,
+                    life: 0.16,
+                    duration: 0.16,
+                    size: 0.065,
+                    ..default()
+                });
+            }
+        }
+        for i in 0..if combination { 18 } else { 6 } {
+            let angle = i as f32 * 2.399_963;
+            fx.emit(Mote {
+                position: centre,
+                velocity: Vec3::new(
+                    angle.cos() * 3.3,
+                    1. + (i % 5) as f32 * 0.5,
+                    angle.sin() * 3.3,
+                ),
+                life: 0.3,
+                duration: 0.3,
+                size: 0.04,
+                ..default()
+            });
+        }
     }
     let mut active = 0;
     for (particle, mut transform, mut visible, mut mesh, mut material) in &mut particles {

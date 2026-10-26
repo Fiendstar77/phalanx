@@ -179,7 +179,17 @@ fn candidate_pairs(
     pairs
 }
 pub fn resolve(arena: Arena, units: &mut [Unit], before: &[Unit]) -> Motion {
-    let alive = before.iter().map(|u| u.health > 0.0).collect::<Vec<_>>();
+    let alive = before
+        .iter()
+        .map(|u| {
+            u.health > 0.0
+                && crate::ninjutsu::physical_height(
+                    u,
+                    arena,
+                    u.theus.as_ref().map_or(0., |a| a.clock as f32),
+                ) < 1.6
+        })
+        .collect::<Vec<_>>();
     let original = before.iter().map(|u| u.position).collect::<Vec<_>>();
     let mut p = original.clone();
     let mut intended = units

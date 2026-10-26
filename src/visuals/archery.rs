@@ -77,6 +77,7 @@ fn block(
     scale: Vec3,
 ) {
     p.spawn((
+        super::stains::Receiver::default(),
         Mesh3d(kit.cube.clone()),
         MeshMaterial3d(mat.clone()),
         Transform::from_translation(at).with_scale(scale),
@@ -85,6 +86,7 @@ fn block(
 fn arrow(p: &mut ChildSpawnerCommands, kit: &Kit) {
     block(p, kit, &kit.wood, Vec3::ZERO, Vec3::new(0.018, 0.018, 1.0));
     p.spawn((
+        super::stains::Receiver::default(),
         Mesh3d(kit.tip.clone()),
         MeshMaterial3d(kit.steel.clone()),
         Transform::from_xyz(0., 0., 0.53)
@@ -153,6 +155,7 @@ pub(super) fn ready(
                         model: event.entity,
                         shape: Shape::Limb(i),
                     },
+                    super::stains::Receiver::default(),
                     Mesh3d(kit.cube.clone()),
                     MeshMaterial3d(kit.wood.clone()),
                     Transform::default(),
@@ -164,6 +167,7 @@ pub(super) fn ready(
                         model: event.entity,
                         shape: Shape::String(upper),
                     },
+                    super::stains::Receiver::default(),
                     Mesh3d(kit.cube.clone()),
                     MeshMaterial3d(kit.string.clone()),
                     Transform::default(),

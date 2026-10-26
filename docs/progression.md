@@ -26,6 +26,10 @@ The starting General trains as a **Paladin**. Any fighter may train this discipl
 
 The aura excludes its caster, does not affect enemies, does not stack, and stops on the next tick after the source dies or an ally leaves range. Walls block it. The temporary motivation boost does not overwrite persistent mind traits. Royalty, class, and experience are independent properties.
 
+## Theus character growth
+
+Campaign fighters now carry a versioned Theus attribute and skill sheet. Actual attacks, defence, acrobatics, combinations and healing earn bounded practice; battle settlement persists it alongside existing XP and class mastery. Old saves acquire a valid sheet at preparation. [Playable rules and limits](design/shared-rules.md).
+
 ## First progression rules
 
 A completed battle grants each fighter **25 participation XP**, plus **15 for victory**, **5 for survival**, and up to **10 for damage contribution**. Both local squads progress. Every 100 XP adds a level, capped at **level 10**. Each level above the first adds **2 maximum HP and 1% base damage**. The King/Queen's existing royal bonus remains separate. Surviving and eliminated fighters both return for the next battle; limb wounds now persist, and crafted Iron I prosthetics can replace missing parts. HP zero means battle incapacitation in this prototype; permanent character death is not implemented.
@@ -65,15 +69,15 @@ Lab rosters, seed-42 Choke results, and frozen experiment artifacts remain uncha
 
 ## Wounds, salvage and first crafting recipe
 
-Founders who remain above zero HP can lose an arm when damage crosses 50% maximum health, and a leg at 25%. The side is deterministic from seed and unit ID. Losing an arm reduces damage by 20%; losing a leg reduces movement by 35%, multiplicatively per unreplaced limb. They continue fighting. Reaching zero still incapacitates them for this battle.
+Crossing half or quarter health no longer amputates a limb. A living Founder at or below 65% HP can suffer a rare sever from a cutting melee hit worth at least 4% maximum HP: a dedicated seeded roll gives 3% of those eligible hits a single remaining natural limb loss. Blunt hits and projectiles cannot sever. The roll does not consume tactical RNG. Losing an arm reduces damage by 20%; losing a leg reduces movement by 35%, multiplicatively per unreplaced limb. They continue fighting. Reaching zero still incapacitates them for this battle.
 
 Completed battles keep the missing limbs and replacements with the same fighter ID. First recorded loss of each limb has a permanent battle-ID record; the latest twenty battle summaries also store limb state. HP recovers next match; limbs do not grow back. Aborting/resetting an unfinished match does not settle its wounds or rewards.
 
 The squad earns **10 salvage for victory, 6 otherwise**, once per completed battle. Before a match starts or after it finishes, select a fighter and click **Craft iron I (15 gold + 5 salvage)**. It crafts one missing replacement, arms before legs. Insufficient funds and repeated attempts without a missing limb leave the inventory unchanged. Prosthetics currently use this simple recipe; equipment levels and alloy reforging are separate.
 
-A tier-I iron arm restores the missing-arm penalty, multiplies the fighter's damage by **3**, and imposes **15% slower movement** for balance/weight. Two arms do not stack that multiplier to 9×. An iron leg restores that leg's movement penalty. These are early balance constants, not measured balanced equipment. A severe crossing can destroy an equipped replacement. No durability meter, higher crafting tiers, retirement or reserve roster exists yet.
+A tier-I iron arm restores the missing-arm penalty, multiplies the fighter's damage by **3**, and imposes **15% slower movement** for balance/weight. Two arms do not stack that multiplier to 9×. An iron leg restores that leg's movement penalty. These are early balance constants, not measured balanced equipment. These severing rolls select natural limbs; an already missing or replaced limb is not cut again. No durability meter, higher crafting tiers, retirement or reserve roster exists yet.
 
-Appearance controls change Body, Hair, Face, Eyes and Nose for any selected Founder; title does not lock body choice. Preferences persist with the fighter and have no tactical effect. The current inspector scrolls with the mouse wheel so the expanded controls do not cover the bottom toolbar.
+Appearance controls change Body, Hair, Face, Eyes, Nose, Skin, Dye, Cheeks, Mouth and Brows for any selected Founder; title does not lock body choice. Preferences persist with the fighter and have no tactical effect. The current inspector scrolls with the mouse wheel so the expanded controls do not cover the bottom toolbar.
 
 [Character, painting, gore and rendering details](visual-combat.md). [Proposed roster and replacement loop](roster-design.md).
 

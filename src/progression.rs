@@ -57,6 +57,12 @@ pub struct Appearance {
     pub skin: u8,
     #[serde(default)]
     pub hair_color: u8,
+    #[serde(default)]
+    pub cheeks: u8,
+    #[serde(default)]
+    pub mouth: u8,
+    #[serde(default)]
+    pub brows: u8,
 }
 impl Appearance {
     /// Saved zeros mean this fighter was never customized. Painting uses a stable look.
@@ -69,6 +75,9 @@ impl Appearance {
             || self.nose != 0
             || self.skin != 0
             || self.hair_color != 0
+            || self.cheeks != 0
+            || self.mouth != 0
+            || self.brows != 0
         {
             return self;
         }
@@ -80,6 +89,7 @@ impl Appearance {
             nose: 1 + ((slot * 4 + team * 2) % 16) as u8,
             skin: ((slot + team * 2) % 8) as u8,
             hair_color: 0,
+            ..Self::default()
         }
     }
 }
@@ -104,6 +114,8 @@ pub struct WoundRecord {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Fighter {
+    #[serde(default)]
+    pub theus: Option<crate::theus::Sheet>,
     #[serde(default)]
     pub skills: Option<crate::skills::SkillLoadout>,
     #[serde(default)]
@@ -216,7 +228,11 @@ impl Phalanx {
                 || f.appearance.nose > 16
                 || f.appearance.skin > 7
                 || f.appearance.hair_color > 6
+                || f.appearance.cheeks > 4
+                || f.appearance.mouth > 4
+                || f.appearance.brows > 4
                 || !f.psyche.valid()
+                || f.theus.is_some_and(|s| !s.valid())
                 || f.experience > 1_000_000
                 || f.battles > 1_000_000
                 || f.wins > f.battles
@@ -369,6 +385,7 @@ impl Campaign {
                 .into_iter()
                 .enumerate()
                 .map(|(slot, title)| Fighter {
+                    theus: None,
                     skills: None,
                     mastery: Default::default(),
                     equipment: Default::default(),
@@ -408,6 +425,7 @@ impl Campaign {
         classes: [FighterClass; 3],
     ) -> Result<(), String> {
         let founders = std::array::from_fn(|i| crate::genesis::Founder {
+            theus: self.teams[0].fighters[i].theus,
             name: self.teams[0].fighters[i].name.clone(),
             class: classes[i],
             mind: self.teams[0].fighters[i].mind,
@@ -441,6 +459,7 @@ impl Campaign {
             fighter.name = choice.name.trim().into();
             fighter.mind = choice.mind;
             fighter.appearance = choice.appearance;
+            fighter.theus = choice.theus;
         }
         prepared.origin = origin;
         prepared.founders_prepared = true;
@@ -520,7 +539,7 @@ impl Campaign {
         }
         let size = b.team_size();
         for u in &mut b.units {
-            let f = &self.teams[u.team].fighters[u.id % size];
+            let f = &mut self.teams[u.team].fighters[u.id % size];
             u.command_title = Some(f.title);
             u.class = Some(f.class);
             u.role = f.class.role();
@@ -537,6 +556,16 @@ impl Campaign {
             u.role = u.trained_role();
             u.ammunition = u.projectile_weapon().map(|w| w.ammunition()).unwrap_or(0);
             u.psyche = f.psyche;
+            let sheet = *f.theus.get_or_insert_with(|| {
+                crate::theus::Sheet::from_temperament([
+                    f.mind.aggression,
+                    f.mind.self_preservation,
+                    f.mind.patience,
+                    f.mind.courage,
+                ])
+            });
+            u.theus = Some(crate::theus::Actor::new(sheet));
+            u.ninja = Some(Default::default());
             u.health = u.max_health();
         }
         Ok((id, b))
@@ -648,6 +677,7 @@ impl Campaign {
             recruit.title = CommandTitle::Member;
             recruit.class = FighterClass::Warrior;
             recruit.experience = 0;
+            recruit.theus = None;
             recruit.battles = 0;
             recruit.wins = 0;
             recruit.history.clear();
@@ -771,6 +801,9 @@ impl Campaign {
         }
         for u in &b.units {
             let f = &mut updated.teams[u.team].fighters[u.id % b.team_size()];
+            if let Some(actor) = &u.theus {
+                f.theus = Some(actor.sheet);
+            }
             let won = winner == Some(u.team);
             let survived = u.health > 0.0;
             // The prototype recovers fighters after battle, but wounds persist.

@@ -12,9 +12,11 @@ pub enum Gear {
     ThrowingSpear,
     Atlatl,
     Bow,
+    Kusarigama,
+    RazorWheel,
 }
 impl Gear {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 11] = [
         Self::TemperedWeapon,
         Self::BalancedWeapon,
         Self::IronArmor,
@@ -24,6 +26,8 @@ impl Gear {
         Self::ThrowingSpear,
         Self::Atlatl,
         Self::Bow,
+        Self::Kusarigama,
+        Self::RazorWheel,
     ];
     pub fn index(self) -> usize {
         Self::ALL.iter().position(|g| *g == self).unwrap()
@@ -34,7 +38,9 @@ impl Gear {
             | Self::BalancedWeapon
             | Self::ThrowingSpear
             | Self::Atlatl
-            | Self::Bow => 0,
+            | Self::Bow
+            | Self::Kusarigama
+            | Self::RazorWheel => 0,
             Self::IronArmor | Self::TrailArmor => 1,
             Self::VitalityCharm | Self::WarBanner => 2,
         }
@@ -50,6 +56,8 @@ impl Gear {
             Self::ThrowingSpear => "Throwing spear",
             Self::Atlatl => "Atlatl",
             Self::Bow => "Bow",
+            Self::Kusarigama => "Chain-sickle",
+            Self::RazorWheel => "Returning razor wheel",
         }
     }
     pub fn effect(self) -> &'static str {
@@ -63,6 +71,10 @@ impl Gear {
             Self::ThrowingSpear => crate::weapons::ProjectileWeapon::Spear.description(),
             Self::Atlatl => crate::weapons::ProjectileWeapon::Atlatl.description(),
             Self::Bow => crate::weapons::ProjectileWeapon::Bow.description(),
+            Self::Kusarigama => "3.3m reach; successful hooks snare and pull along clear ground",
+            Self::RazorWheel => {
+                "Spinning return blade; physical outbound and return hits; costs 4 effort"
+            }
         }
     }
     pub fn locked_reason(self, mastery: crate::mastery::Mastery) -> Option<String> {
@@ -97,6 +109,7 @@ impl Gear {
             Self::ThrowingSpear => (30, 8),
             Self::Atlatl => (45, 12),
             Self::Bow => (55, 14),
+            Self::Kusarigama | Self::RazorWheel => (5, 0),
         }
     }
 }
@@ -150,7 +163,7 @@ impl Equipment {
                         .iter()
                         .flatten()
                         .fold(0, |mask, item| mask | (1 << item.gear.index()))))
-            && self.owned & !511 == 0
+            && self.owned & !((1 << Gear::ALL.len()) - 1) == 0
             && self
                 .slots
                 .iter()

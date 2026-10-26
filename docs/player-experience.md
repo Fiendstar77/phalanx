@@ -1,6 +1,8 @@
 # The opening campaign
 
-Fresh campaigns begin by naming the phalanx and choosing the classes of its three founders. King, Queen and General remain command titles; each can start in any of the ten classes. Type the team name, choose each fighter's class and confirm to enter the first trial, paused at normal speed. Initial class choices are free once; later retraining costs 10 gold. Existing saves retain their established squads and skip this setup.
+The main menu starts with **New Game**, **Load Game** and **Continue**. New Game opens a fresh three-founder creator; the previous save stays available until the new founders are accepted. **Back to main menu** or **Escape** leaves the draft available through Continue. Load Game restores saved fighters, equipment, appearances and campaign progress at battle preparation; the current save format does not resume an unfinished fight mid-action. Opening the game or an unaccepted creator does not overwrite the save. **Save Game** is available for established squads, and replacement saves retain the existing automatic backup.
+
+Fresh campaigns begin by naming the phalanx and choosing the classes of its three founders. King, Queen and General remain command titles; each can start in any of the ten classes. Type the team name, choose each fighter's class and confirm to enter the first trial, paused at normal speed. The class stage also allocates Theus attributes with a shared point budget. Initial class choices are free once; later retraining costs 10 gold. Existing saves retain their established squads and skip this setup.
 
 For an established team, use **Begin / continue NPC tutorials** in the main menu. The opening chapter has five tactical lessons, each backed by an actual rival team. Wins clear lessons; defeats give the ordinary battle XP and resources and leave the lesson available for another attempt. Rivals retain their existing authored development, equipment and wounds. There are no fabricated victories or tutorial reward multipliers.
 
@@ -20,9 +22,11 @@ Fighters still start in a three-person squad. Slot four costs **250 gold**. The 
 
 ## Splatter and panic
 
-The tone is caricatural splatter comedy with physically legible consequences. Actual severing events create at most **five sustained jets globally, two per fighter**. Each wound has a distinct side, source, direction, pitch and seeded variation. A fighter's wounds share a heartbeat: a fast pressure surge, falling tail and a quiet interval. Pressure stays exaggerated for an intentionally excessive eight to ten simulation seconds, then tapers away. The eightfold emission budget is an artistic quantity setting, not a measurement of physiological blood volume.
+The target is excessive splatter comedy: large directional bursts, heartbeat jets, wet pools and blood on the surroundings. Every damaging hit can bleed without removing a limb. Deep wounds and severing events share a fixed budget of 24 jets, at most three per fighter. Ordinary jets last 1.5–3 seconds; severed wounds last 10–13 seconds, with visible pressure surges and quiet intervals.
 
-Mixed droplet sizes inherit fighter motion, fall under gravity, slow with drag, hit walls and leave terrain-conforming stains. The pool is bounded at 8,192 droplets. Body pieces tumble, bounce and settle. Accumulated stains darken where they overlap; there is no fluid-volume solver, medical bleeding model or new blood-loss damage rule.
+Up to 12,288 droplets follow gravity and swept surface contacts. Walls, bridge structures, scenery, weapons and detached pieces use their actual triangles; skin uses animated bone proxies. Up to 512 wet surface marks stay attached to their receivers. Nearby marks merge, old marks recycle at capacity, and the next battle clears them. Ground blood accumulates into the existing downhill pool system.
+
+Limb loss no longer follows half/quarter-health thresholds. A living fighter at or below 65% health has a 3% deterministic severing chance on an individual cutting melee hit worth at least 4% of maximum HP. Blunt hits, projectiles, small hits and dead targets cannot cause a persistent sever. These rolls consume none of the tactical RNG stream. One fifth of seeded deaths show one extra cosmetic sever. Both sides of a cut receive flesh/muscle/bone caps; surviving caps keep the body skinning.
 
 Below 30% health, living fighters use two new authored clips: **NearDeathPanic** at rest and **WoundedStagger** while moving. Frantic glances, fear expressions and critical-health barks support the gesture. Attacks, hit reactions and deaths keep priority. These are presentation reactions to real health, not extra movement, status effects or changes to the controller's chosen action. Deaths retain their existing three variants.
 

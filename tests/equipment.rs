@@ -64,7 +64,7 @@ fn legacy_saves_default_and_invalid_loadouts_are_rejected() {
     restored.teams[0].fighters[0].equipment.slots[0] = Some(Gear::IronArmor);
     assert!(restored.validate().is_err());
     restored.teams[0].fighters[0].equipment = Equipment {
-        owned: 1024,
+        owned: 1 << Gear::ALL.len(),
         slots: [None; 3],
         ..Default::default()
     };

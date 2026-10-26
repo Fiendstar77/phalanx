@@ -16,6 +16,8 @@ pub struct Draft {
     pub stage: u8,
     /// The first three faces appear on a timer once. A seed edit waits for Reveal.
     pub introduced: bool,
+    pub closeup: [bool; 3],
+    pub angle: [u8; 3],
 }
 impl Draft {
     pub fn new(c: &Campaign, open: bool) -> Self {
@@ -32,6 +34,8 @@ impl Draft {
             focus: 0,
             stage: 0,
             introduced: false,
+            closeup: [true; 3],
+            angle: [0; 3],
         }
     }
     pub fn reveal(&mut self, i: usize) -> Result<(), String> {
@@ -91,6 +95,8 @@ enum Label {
     Fighter(usize),
     Slot(usize),
     Notice,
+    Theus(usize),
+    Attribute(usize, usize),
 }
 #[derive(Component)]
 struct Opening;
@@ -100,6 +106,8 @@ struct OpeningTitle;
 struct OpeningLine;
 #[derive(Component)]
 struct LookRow;
+#[derive(Component)]
+struct LookChoice(usize, usize);
 #[derive(Component)]
 struct ClassRow;
 #[derive(Component)]
@@ -118,10 +126,15 @@ impl Plugin for Founding {
                     refresh,
                     scroll,
                     portraits,
+                    refresh_choices,
                 )
                     .chain()
-                    .after(controls),
+                    .after(controls)
+                    .after(super::keyboard),
             );
+        if std::env::args().any(|a| a == "--creator-review") {
+            app.add_systems(Update, review.before(controls));
+        }
     }
 }
 fn label(p: &mut ChildSpawnerCommands, kind: Label, size: f32) {
@@ -140,11 +153,35 @@ fn field(p: &mut ChildSpawnerCommands, kind: Label, focus: usize) {
     ))
     .with_children(|p| label(p, kind, 18.));
 }
+fn look_arrow(p: &mut ChildSpawnerCommands, slot: usize, feature: usize, back: bool) {
+    p.spawn((
+        Button,
+        PressLatch::default(),
+        if back {
+            Control::FounderLookBack(slot, feature)
+        } else {
+            Control::FounderLook(slot, feature)
+        },
+        Node {
+            width: px(24),
+            height: px(26),
+            flex_shrink: 0.,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            border_radius: BorderRadius::all(px(4)),
+            ..default()
+        },
+        BackgroundColor(Color::srgb(0.12, 0.18, 0.25)),
+    ))
+    .with_children(|p| {
+        p.spawn((Text::new(if back { "<" } else { ">" }), font(13.)));
+    });
+}
 fn setup_founding(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     let portraits: [Handle<Image>; 3] = std::array::from_fn(|i| {
         let image = images.add(Image::new_target_texture(
-            256,
-            192,
+            384,
+            320,
             bevy::render::render_resource::TextureFormat::Rgba8Unorm,
             Some(bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb),
         ));
@@ -201,23 +238,43 @@ fn setup_founding(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
                 TextColor(Color::srgba(0.78, 0.86, 0.9, 0.)),
             ));
             button(p, "Meet them", Control::FoundingStep);
+            button(p, "Back to main menu", Control::CreatorMenu);
         });
     commands.spawn((Panel,GlobalZIndex(150),Interaction::default(),Node {position_type:PositionType::Absolute,width:percent(100),height:percent(100),align_items:AlignItems::Center,justify_content:JustifyContent::Center,display:Display::None,..default()},BackgroundColor(Color::srgb(0.018,0.022,0.045))))
-    .with_children(|root| {root.spawn((Scroll,ScrollPosition::default(),Node {width:px(1220),max_width:vw(96),max_height:vh(97),overflow:Overflow::scroll_y(),padding:UiRect::all(px(18)),flex_direction:FlexDirection::Column,row_gap:px(8),..default()})).with_children(|p| {
+    .with_children(|root| {root.spawn((Scroll,ScrollPosition::default(),Node {width:px(1220),max_width:vw(96),height:vh(97),min_height:px(0),flex_shrink:0.,overflow:Overflow::scroll_y(),padding:UiRect::all(px(18)),flex_direction:FlexDirection::Column,row_gap:px(8),..default()})).with_children(|p| {
         p.spawn((Text::new("A WORD. THREE LIVES. YOUR PHALANX."),font(29.),TextColor(Color::srgb(0.85,0.7,1.))));
+        button(p,"Back to main menu",Control::CreatorMenu);
         field(p,Label::Name,0);field(p,Label::Seed,1);
         p.spawn((Text::new("Appearance first. Click the company name or the seed word to type. Reveal each founder, then shape the body under the portrait. Classes come after the faces."),font(15.)));
         p.spawn(Node {column_gap:px(14),..default()}).with_children(|row| {for (i,photo) in portraits.into_iter().enumerate() {
             row.spawn((Card(i),BackgroundColor(Color::srgb(0.055,0.06,0.10)),Node {flex_basis:percent(33.),min_width:px(0),padding:UiRect::all(px(10)),flex_direction:FlexDirection::Column,row_gap:px(5),..default()})).with_children(|card| {
-                card.spawn((ImageNode::new(photo),Node {height:px(150),width:percent(100),..default()}));
+                card.spawn((ImageNode::new(photo),Node {height:px(190),width:percent(100),..default()}));
+                card.spawn(Node {column_gap:px(4),..default()}).with_children(|r| {
+                    button(r,"Face / body",Control::FounderView(i));
+                    button(r,"Turn portrait",Control::FounderTurn(i));
+                });
                 field(card,Label::Fighter(i),i+2);label(card,Label::Slot(i),14.);
                 button(card,"Reveal / reroll this founder",Control::RevealFounder(i));
-                card.spawn((LookRow,Node {flex_wrap:FlexWrap::Wrap,column_gap:px(3),row_gap:px(3),display:Display::None,..default()})).with_children(|r| {
-                    for (choice,name) in ["Body","Hair","Face","Eyes","Nose","Skin","Dye"].iter().enumerate() {
-                        button(r,name,Control::FounderLook(i,choice));
+                card.spawn((LookRow,Node {flex_wrap:FlexWrap::Wrap,row_gap:px(4),display:Display::None,..default()})).with_children(|r| {
+                    for choice in 0..phalanx::appearance::FEATURES.len() {
+                        r.spawn(Node {width:percent(50),padding:UiRect::right(px(4)),align_items:AlignItems::Center,column_gap:px(2),height:px(34),..default()}).with_children(|row| {
+                            look_arrow(row,i,choice,true);
+                            row.spawn((LookChoice(i,choice),Text::new(""),font(12.),Node {flex_grow:1.,min_width:px(0),..default()}));
+                            look_arrow(row,i,choice,false);
+                        });
                     }
                 });
                 card.spawn((ClassRow,Node {flex_direction:FlexDirection::Column,row_gap:px(3),display:Display::None,..default()})).with_children(|classes| {
+                    label(classes,Label::Theus(i),14.);
+                    classes.spawn(Node {flex_wrap:FlexWrap::Wrap,..default()}).with_children(|stats| {
+                        for attribute in 0..4 {
+                            stats.spawn(Node {width:percent(50),align_items:AlignItems::Center,..default()}).with_children(|row| {
+                                button(row,"-",Control::FounderAttribute(i,attribute,-1));
+                                label(row,Label::Attribute(i,attribute),12.);
+                                button(row,"+",Control::FounderAttribute(i,attribute,1));
+                            });
+                        }
+                    });
                     classes.spawn((Text::new("NOW THE CLASS"),font(13.),TextColor(Color::srgb(1.,0.78,0.35))));
                     for pair in FighterClass::ALL.chunks(2) {classes.spawn(Node {flex_wrap:FlexWrap::Wrap,column_gap:px(3),..default()}).with_children(|r| {
                         for class in pair {button(r,class.name(),Control::StarterClass(i,*class));}
@@ -231,6 +288,7 @@ fn setup_founding(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
         p.spawn((Advance,Node {display:Display::None,..default()})).with_children(|p| button(p,"Their faces are set. Choose classes.",Control::FoundingStep));
         p.spawn((Accept,Node {display:Display::None,..default()})).with_children(|p| button(p,"Accept these lives / enter the first trial",Control::ConfirmFounders));
         button(p,"Quit",Control::Quit);
+        button(p,"Back to main menu",Control::CreatorMenu);
     });});
     commands
         .spawn((
@@ -268,12 +326,208 @@ fn portraits(
     for (portrait, mut camera, mut transform) in &mut cameras {
         camera.is_active = session.founding.open && session.founding.revealed[portrait.0];
         if let Some((_, pawn)) = pawns.iter().find(|(p, _)| p.0 == portrait.0) {
-            let target = pawn.translation + Vec3::Y * 0.5;
-            *transform =
-                Transform::from_translation(target + pawn.rotation * Vec3::new(0.08, 0.12, 1.15))
-                    .looking_at(target, Vec3::Y);
+            let close = session.founding.closeup[portrait.0];
+            let target = pawn.translation + Vec3::Y * if close { 0.36 } else { 0.10 };
+            let yaw = [0.0, 0.55, 1.15, -1.15, -0.55][session.founding.angle[portrait.0] as usize];
+            let offset = Quat::from_rotation_y(yaw)
+                * if close {
+                    Vec3::new(0.0, 0.025, 1.12)
+                } else {
+                    Vec3::new(0.0, 0.12, 1.65)
+                };
+            *transform = Transform::from_translation(target + pawn.rotation * offset)
+                .looking_at(target, Vec3::Y);
         }
     }
+}
+fn refresh_choices(session: Res<Session>, mut labels: Query<(&LookChoice, &mut Text)>) {
+    if !session.founding.open {
+        return;
+    }
+    for (choice, mut text) in &mut labels {
+        let look = session.founding.cards[choice.0].appearance;
+        let value = format!(
+            "{}: {}",
+            phalanx::appearance::FEATURES[choice.1],
+            look.choice_name(choice.1)
+        );
+        if text.0 != value {
+            text.0 = value;
+        }
+    }
+}
+#[derive(Default)]
+struct Review {
+    started: u8,
+    saved_name: Option<String>,
+    saved_gold: u32,
+    seconds: f32,
+    next: f32,
+    step: u8,
+    base: Option<phalanx::progression::Appearance>,
+    edited: Option<phalanx::progression::Appearance>,
+    sheet: Option<phalanx::theus::Sheet>,
+}
+// Opt-in scripted render review: the actual visible UI buttons go through
+// controls(), then the accepted cosmetics round-trip through the campaign save.
+fn review(
+    time: Res<Time>,
+    mut session: ResMut<Session>,
+    mut state: Local<Review>,
+    mut buttons: Query<(&Control, &ComputedNode, &mut Interaction)>,
+    mut commands: Commands,
+    mut exit: MessageWriter<AppExit>,
+) {
+    state.seconds += time.delta_secs();
+    for (_, _, mut interaction) in &mut buttons {
+        *interaction = Interaction::None;
+    }
+    if state.seconds < 3.5 || state.seconds < state.next {
+        return;
+    }
+    std::fs::create_dir_all("outputs/creator-review").unwrap();
+    let starting = state.started < 3;
+    let wanted = if starting {
+        match state.started {
+            1 => Some(Control::NewGame),
+            2 => Some(Control::FoundingStep),
+            _ => None,
+        }
+    } else {
+        match state.step {
+            1 | 3 | 5 => Some(Control::FounderLook(1, 2)),
+            7 | 9 => Some(Control::FounderLookBack(1, 4)),
+            11 => Some(Control::FounderTurn(1)),
+            13 => Some(Control::FoundingStep),
+            14 => Some(Control::FounderAttribute(1, 0, 1)),
+            15 => Some(Control::StarterClass(1, FighterClass::Healer)),
+            17 => Some(Control::ConfirmFounders),
+            19 if session.save_path.exists() => Some(Control::Menu),
+            21 => Some(Control::Load),
+            _ => None,
+        }
+    };
+    if let Some(wanted) = wanted {
+        let mut found = false;
+        for (control, node, mut interaction) in &mut buttons {
+            if format!("{control:?}") == format!("{wanted:?}") && node.size().x > 0. {
+                *interaction = Interaction::Pressed;
+                found = true;
+                break;
+            }
+        }
+        assert!(
+            found,
+            "creator review could not find visible button {wanted:?}"
+        );
+    }
+    if starting {
+        if state.started == 0 {
+            state.saved_name = Some(session.campaign.teams[0].name.clone());
+            state.saved_gold = session.campaign.teams[0].gold;
+            commands
+                .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
+                .observe(bevy::render::view::screenshot::save_to_disk(
+                    "outputs/creator-review/00-menu.png",
+                ));
+        }
+        if state.started == 2 {
+            session.founding.name = "Creator QA".into();
+        }
+        state.started += 1;
+        state.next = state.seconds + 0.6;
+        return;
+    }
+    let snapshot = match state.step {
+        0 => {
+            state.base = Some(session.founding.cards[1].appearance);
+            Some("01-before")
+        }
+        6 => {
+            assert_eq!(
+                session.founding.cards[1].appearance.face,
+                (state.base.unwrap().face + 3) % 17
+            );
+            Some("02-face")
+        }
+        10 => {
+            assert_eq!(
+                session.founding.cards[1].appearance.nose,
+                (state.base.unwrap().nose + 15) % 17
+            );
+            state.edited = Some(session.founding.cards[1].appearance);
+            Some("03-nose")
+        }
+        12 => {
+            state.sheet = session.founding.cards[1].theus;
+            Some("04-profile")
+        }
+        16 => {
+            let sheet = session.founding.cards[1].theus.unwrap();
+            assert_eq!(sheet.attributes[0], state.sheet.unwrap().attributes[0] + 1);
+            state.sheet = Some(sheet);
+            Some("04-theus")
+        }
+        18 => {
+            assert!(!session.founding.open && !session.menu);
+            assert_eq!(
+                session.campaign.teams[0].fighters[1].appearance,
+                state.edited.unwrap()
+            );
+            let encoded = serde_json::to_string_pretty(&session.campaign).unwrap();
+            let restored: Campaign = serde_json::from_str(&encoded).unwrap();
+            restored.validate().unwrap();
+            assert_eq!(restored.teams[0].fighters[1].theus, state.sheet);
+            assert_eq!(
+                restored.teams[0].fighters[1].appearance,
+                state.edited.unwrap()
+            );
+            std::fs::write("outputs/creator-review/campaign.json", encoded).unwrap();
+            std::fs::write("outputs/creator-review/audit.json",serde_json::to_string_pretty(&serde_json::json!({
+                "scripted_ui":true,"human_playtest":false,"autosave":session.autosave,
+                "before":state.base,"accepted":state.edited,"class":session.battle.units[1].class,
+                "head_scale_relative_to_previous":super::visuals::HEAD_PROPORTION,"save_round_trip":true,
+                "theus_edited_and_persisted":state.sheet,
+            })).unwrap()).unwrap();
+            Some("05-entered")
+        }
+        22 => {
+            assert_eq!(
+                Some(&session.campaign.teams[0].name),
+                state.saved_name.as_ref()
+            );
+            assert_eq!(session.campaign.teams[0].gold, state.saved_gold);
+            assert!(!session.founding.open && !session.running);
+            std::fs::write(
+                "outputs/creator-review/load-audit.json",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "new_game_button":true,"load_game_button":true,"restored_name":state.saved_name,
+                    "restored_gold":state.saved_gold,"scripted_ui":true,
+                }))
+                .unwrap(),
+            )
+            .unwrap();
+            Some("06-loaded")
+        }
+        19 if !session.save_path.exists() => {
+            exit.write(AppExit::Success);
+            None
+        }
+        23 => {
+            exit.write(AppExit::Success);
+            None
+        }
+        _ => None,
+    };
+    if let Some(name) = snapshot {
+        commands
+            .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
+            .observe(bevy::render::view::screenshot::save_to_disk(format!(
+                "outputs/creator-review/{name}.png"
+            )));
+    }
+    state.step += 1;
+    state.next = state.seconds + if snapshot.is_some() { 0.8 } else { 0.20 };
 }
 fn scroll(
     session: Res<Session>,
@@ -317,6 +571,10 @@ fn type_name(mut input: MessageReader<KeyboardInput>, mut session: ResMut<Sessio
             continue;
         }
         if !session.founding.open {
+            continue;
+        }
+        if event.logical_key == Key::Escape {
+            apply(Control::CreatorMenu, &mut session);
             continue;
         }
         if session.founding.stage == 0 {
@@ -513,6 +771,21 @@ fn refresh(
                     )
                 }
             }
+            Label::Theus(i) => format!(
+                "THEUS | {} attribute points left",
+                session.founding.cards[*i]
+                    .theus
+                    .unwrap_or_default()
+                    .unspent()
+            ),
+            Label::Attribute(i, a) => format!(
+                "{} {}",
+                phalanx::theus::ATTRIBUTE_NAMES[*a],
+                session.founding.cards[*i]
+                    .theus
+                    .unwrap_or_default()
+                    .attributes[*a]
+            ),
             Label::Notice => session.save_notice.clone(),
         };
         if text.0 != content {
@@ -575,6 +848,32 @@ mod tests {
     }
 
     #[test]
+    fn escape_returns_to_the_menu_without_falling_through_to_game_controls() {
+        let mut app = button_app();
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::Escape);
+        app.insert_resource(keys)
+            .add_message::<KeyboardInput>()
+            .add_systems(
+                Update,
+                (super::super::keyboard, type_name).chain().after(controls),
+            );
+        app.world_mut()
+            .resource_mut::<Messages<KeyboardInput>>()
+            .write(KeyboardInput {
+                key_code: KeyCode::Escape,
+                logical_key: Key::Escape,
+                state: bevy::input::ButtonState::Pressed,
+                text: None,
+                repeat: false,
+                window: Entity::PLACEHOLDER,
+            });
+        app.update();
+        let session = app.world().resource::<Session>();
+        assert!(session.menu && !session.founding.open && !session.running);
+    }
+
+    #[test]
     fn creator_buttons_advance_from_opening_through_appearance_to_combat() {
         let mut app = button_app();
         assert!(app.world().resource::<Session>().menu);
@@ -582,7 +881,7 @@ mod tests {
         assert_eq!(app.world().resource::<Session>().founding.stage, 1);
 
         let look = app.world().resource::<Session>().founding.cards[0].appearance;
-        for choice in 0..7 {
+        for choice in 0..phalanx::appearance::FEATURES.len() {
             click(&mut app, Control::FounderLook(0, choice));
         }
         let changed = app.world().resource::<Session>().founding.cards[0].appearance;
@@ -593,6 +892,21 @@ mod tests {
         assert_eq!(changed.nose, (look.nose + 1) % 17);
         assert_eq!(changed.skin, (look.skin + 1) % 8);
         assert_eq!(changed.hair_color, (look.hair_color + 1) % 7);
+        assert_eq!(changed.cheeks, (look.cheeks + 1) % 5);
+        assert_eq!(changed.mouth, (look.mouth + 1) % 5);
+        assert_eq!(changed.brows, (look.brows + 1) % 5);
+        click(&mut app, Control::FounderLookBack(0, 2));
+        assert_eq!(
+            app.world().resource::<Session>().founding.cards[0]
+                .appearance
+                .face,
+            look.face
+        );
+        click(&mut app, Control::FounderLook(0, 2));
+        click(&mut app, Control::FounderView(0));
+        click(&mut app, Control::FounderTurn(0));
+        assert!(!app.world().resource::<Session>().founding.closeup[0]);
+        assert_eq!(app.world().resource::<Session>().founding.angle[0], 1);
 
         assert_eq!(
             app.world().resource::<Session>().founding.cards[1]
@@ -620,6 +934,17 @@ mod tests {
         );
         click(&mut app, Control::FoundingStep);
         assert_eq!(app.world().resource::<Session>().founding.stage, 2);
+        let original = app.world().resource::<Session>().founding.cards[0]
+            .theus
+            .unwrap();
+        click(&mut app, Control::FounderAttribute(0, 0, -1));
+        click(&mut app, Control::FounderAttribute(0, 1, 1));
+        let sheet = app.world().resource::<Session>().founding.cards[0]
+            .theus
+            .unwrap();
+        assert_eq!(sheet.attributes[0], original.attributes[0] - 1);
+        assert_eq!(sheet.attributes[1], original.attributes[1] + 1);
+        assert_eq!(sheet.unspent(), original.unspent());
         click(&mut app, Control::StarterClass(0, FighterClass::Guardian));
         click(&mut app, Control::StarterClass(1, FighterClass::Healer));
         app.world_mut().resource_mut::<Session>().founding.name = "Button Company".into();
@@ -631,6 +956,12 @@ mod tests {
         assert_eq!(session.battle.units[0].class, Some(FighterClass::Guardian));
         assert_eq!(session.battle.units[1].class, Some(FighterClass::Healer));
         assert_eq!(session.campaign.teams[0].fighters[0].appearance, changed);
+        assert_eq!(session.campaign.teams[0].fighters[0].theus, Some(sheet));
+        assert_eq!(session.battle.units[0].theus.as_ref().unwrap().sheet, sheet);
+        let loaded: Campaign =
+            serde_json::from_str(&serde_json::to_string(&session.campaign).unwrap()).unwrap();
+        loaded.validate().unwrap();
+        assert_eq!(loaded.teams[0].fighters[0].theus, Some(sheet));
         app.world_mut()
             .resource_mut::<Time>()
             .advance_by(std::time::Duration::from_millis(100));

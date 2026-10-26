@@ -73,6 +73,7 @@ struct Session {
     rewarded: bool,
     save_notice: String,
     autosave: bool,
+    save_path: std::path::PathBuf,
 }
 impl Session {
     fn cinematic_playing(&self) -> bool {
@@ -84,11 +85,23 @@ impl Session {
             && !self.player.details
     }
     fn new(mut battle: Battle) -> Self {
-        let path = std::path::Path::new("outputs/phalanx-save.json");
+        let path = std::path::PathBuf::from("outputs/phalanx-save.json");
         let mut notice = String::new();
-        let mut autosave = true;
+        // QA must never write the player's save during construction, before
+        // individual fixtures have had a chance to disable autosaving.
+        let mut autosave = !std::env::args().any(|a| {
+            a.ends_with("-witness")
+                || matches!(
+                    a.as_str(),
+                    "--creator-review"
+                        | "--wirefu-demo"
+                        | "--player-demo"
+                        | "--memory-soak"
+                        | "--ninja-demo"
+                )
+        });
         let mut campaign = if path.exists() {
-            match Campaign::load(path) {
+            match Campaign::load(&path) {
                 Ok(c) => {
                     notice = "Loaded persistent squads".into();
                     c
@@ -141,8 +154,7 @@ impl Session {
         let paths = if battle.arena.large() { 1 } else { 0 };
         let zoom = frame_zoom(battle.arena);
         let founders_cinema = battle.founders;
-        let founding =
-            founding::Draft::new(&campaign, battle.founders && !campaign.founders_prepared);
+        let founding = founding::Draft::new(&campaign, false);
         let mut session = Self {
             founding,
             renaming: None,
@@ -179,10 +191,8 @@ impl Session {
             rewarded: false,
             save_notice: notice,
             autosave,
+            save_path: path,
         };
-        if session.battle.founders && session.autosave {
-            session.save_campaign();
-        }
         session.refresh_preview();
         session
     }
@@ -232,6 +242,10 @@ impl Session {
         }
     }
     fn save_campaign(&mut self) -> bool {
+        if !self.campaign.founders_prepared {
+            self.save_notice = "Finish creating your founders before saving a new game.".into();
+            return false;
+        }
         if self.exchange.live.is_some() {
             self.save_notice = "Frozen challenge: return to your campaign to save squads".into();
             return false;
@@ -245,10 +259,7 @@ impl Session {
         } else {
             self.campaign.capture_minds(&self.battle)
         };
-        match capture.and_then(|()| {
-            self.campaign
-                .save(std::path::Path::new("outputs/phalanx-save.json"))
-        }) {
+        match capture.and_then(|()| self.campaign.save(&self.save_path)) {
             Ok(()) => {
                 self.save_notice = "Saved squads, experience and colors".into();
                 true
@@ -320,6 +331,16 @@ impl Session {
         if !self.running {
             return current;
         }
+        if let Some(leap) = self.battle.units[id]
+            .ninja
+            .as_ref()
+            .and_then(|n| n.leap.as_ref())
+        {
+            let tick =
+                self.battle.tick.saturating_sub(1) as f32 + (self.accumulator / DT).clamp(0., 1.);
+            let p = leap.sample(tick);
+            return [p[0], p[2]];
+        }
         if let Some(p) = self
             .battle
             .motion
@@ -383,6 +404,8 @@ struct PairRow(usize);
 #[derive(Component, Clone, Copy, Debug)]
 enum Control {
     Menu,
+    NewGame,
+    CreatorMenu,
     Camp(camp::Page),
     SelectFighter(usize),
     Ladder,
@@ -448,6 +471,10 @@ enum Control {
     Trait(usize, f32),
     FoundingStep,
     FounderLook(usize, usize),
+    FounderLookBack(usize, usize),
+    FounderView(usize),
+    FounderTurn(usize),
+    FounderAttribute(usize, usize, i8),
 }
 
 fn main() {
@@ -616,6 +643,7 @@ fn main() {
 
         if args.iter().any(|a| a == "--face-witness") {
             session.running = false;
+            session.map_briefing = false;
             if std::env::var_os("PHALANX_WITNESS_CLOSE").is_some() {
                 session.camera_follow = true;
                 session.zoom = 3.3;
@@ -739,6 +767,13 @@ fn main() {
             session.camp_page = None;
             session.ladder = false;
         }
+        if args.iter().any(|a| a == "--menu-witness") {
+            session.founding.open = false;
+            session.menu = true;
+            session.running = false;
+            session.camp_page = None;
+            session.ladder = false;
+        }
         if args.iter().any(|a| a == "--mind-witness") {
             session.autosave = false;
             session.founding.open = false;
@@ -839,6 +874,38 @@ fn main() {
         session.running = false;
         session.speed = 1.;
     }
+    if args.iter().any(|a| a == "--wound-witness") {
+        session.autosave = false;
+        session.campaign = Campaign::new();
+        session.campaign.teams[0].fighters[0].class = FighterClass::Scout;
+        session.restart_founders(seed, Arena::OpenField, Controller::Utility);
+        session.battle.arena = Arena::OpenField;
+        session.battle.units[0].lost_limbs = std::env::var("PHALANX_WOUND_LIMB")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .filter(|b| [1, 2, 4, 8].contains(b))
+            .unwrap_or(1);
+        session.battle.units[0].position = [0., 0.];
+        session.battle.units[0].target = [1., 0.];
+        session.selected = 0;
+        session.founding.open = false;
+        session.menu = false;
+        session.running = false;
+        session.map_briefing = false;
+        session.camera_follow = true;
+        session.cinema_grabbed = true;
+        session.zoom = 2.2;
+        session.orbit = 2.3;
+        session.pitch = 0.04;
+        session.player.details = false;
+        session.remember_positions();
+    }
+    if args.iter().any(|a| a == "--creator-review") {
+        session.autosave = false;
+        session.founding.open = false;
+        session.menu = true;
+        session.running = false;
+    }
     std::fs::create_dir_all("outputs").expect("create log directory");
     let log_path = format!(
         "outputs/disagreements-{}.jsonl",
@@ -899,7 +966,10 @@ fn main() {
                         "PHALANX | Minds x Terrain".into()
                     },
                     resolution: (1440, 900).into(),
-                    visible: !visual_witness && !args.iter().any(|a| a == "--memory-soak"),
+                    visible: !visual_witness
+                        && !args
+                            .iter()
+                            .any(|a| a == "--memory-soak" || a == "--creator-review"),
                     ..default()
                 }),
                 ..default()
@@ -944,8 +1014,16 @@ fn main() {
         )
             .chain(),
     );
-    if visual_witness || args.iter().any(|a| a == "--memory-soak") {
+    if visual_witness
+        || args
+            .iter()
+            .any(|a| a == "--memory-soak" || a == "--creator-review")
+    {
         app.insert_resource(bevy::winit::WinitSettings::continuous());
+    }
+    if std::env::var_os("PHALANX_UI_AUDIT").is_some() {
+        app.insert_resource(bevy::winit::WinitSettings::continuous())
+            .add_systems(Update, audit_ui_pointer.after(controls));
     }
     if args.iter().any(|a| a == "--profile") {
         app.add_plugins((
@@ -1026,6 +1104,7 @@ fn setup(
     for id in 0..phalanx::procedural::MAX_WALLS {
         commands.spawn((
             ChokeWall(id),
+            visuals::stains::Receiver::default(),
             Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
             MeshMaterial3d(stone_wall.clone()),
             Transform::default(),
@@ -1037,6 +1116,7 @@ fn setup(
     for z in [-6.0, 6.0] {
         commands.spawn((
             Bridge,
+            visuals::stains::Receiver::default(),
             Mesh3d(meshes.add(Cuboid::new(16.0, 0.22, 2.5))),
             MeshMaterial3d(deck_material.clone()),
             Transform::from_xyz(0.0, 3.09, z),
@@ -1045,6 +1125,7 @@ fn setup(
         for sign in [-1.0_f32, 1.0] {
             commands.spawn((
                 Bridge,
+                visuals::stains::Receiver::default(),
                 Mesh3d(meshes.add(Cuboid::new((4.0_f32 * 4.0 + 3.2 * 3.2).sqrt(), 0.16, 2.5))),
                 MeshMaterial3d(deck_material.clone()),
                 Transform::from_xyz(sign * 10.0, 1.52, z)
@@ -1053,6 +1134,7 @@ fn setup(
             ));
             commands.spawn((
                 Bridge,
+                visuals::stains::Receiver::default(),
                 Mesh3d(meshes.add(Cuboid::new(16.0, 0.25, 0.12))),
                 MeshMaterial3d(rail_material.clone()),
                 Transform::from_xyz(0.0, 3.45, z + sign * 1.12),
@@ -1062,6 +1144,7 @@ fn setup(
             let height = 3.0 - base;
             commands.spawn((
                 Bridge,
+                visuals::stains::Receiver::default(),
                 Mesh3d(meshes.add(Cuboid::new(0.5, height, 0.5))),
                 MeshMaterial3d(rail_material.clone()),
                 Transform::from_xyz(sign * 6.0, base + height * 0.5, z),
@@ -1156,8 +1239,14 @@ fn setup(
     let gold = materials.add(Color::srgb(1.0, 0.72, 0.08));
     let silver = materials.add(Color::srgb(0.88, 0.93, 1.0));
     let badge_background = materials.add(Color::srgb(0.04, 0.07, 0.1));
-    let crown_band = meshes.add(Cylinder::new(0.25, 0.10));
-    let crown_tip = meshes.add(Cone::new(0.07, 0.17));
+    let crown_band = meshes.add(Cylinder::new(
+        0.25 * visuals::HEAD_PROPORTION,
+        0.10 * visuals::HEAD_PROPORTION,
+    ));
+    let crown_tip = meshes.add(Cone::new(
+        0.07 * visuals::HEAD_PROPORTION,
+        0.17 * visuals::HEAD_PROPORTION,
+    ));
     let patch = meshes.add(Cuboid::new(0.33, 0.32, 0.025));
     let stripe = meshes.add(Cuboid::new(0.16, 0.045, 0.035));
     commands.insert_resource(PawnAssets {
@@ -1243,6 +1332,16 @@ fn setup(
         },
         Transform::from_xyz(-6.0, 12.0, 7.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
+    // The opposite fill preserves face and weapon shape while fighters turn.
+    commands.spawn((
+        bevy::camera::visibility::RenderLayers::layer(0).with(1),
+        DirectionalLight {
+            illuminance: 6000.,
+            color: Color::srgb(0.82, 0.9, 1.),
+            ..default()
+        },
+        Transform::from_xyz(7., 6., -5.).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
     commands.spawn((
         Camera3d::default(),
         IsDefaultUiCamera,
@@ -1327,10 +1426,7 @@ fn setup(
                 ..default()
             })
             .with_children(|row| {
-                for (i, label) in ["Body", "Hair", "Face", "Eyes", "Nose", "Skin", "Dye"]
-                    .iter()
-                    .enumerate()
-                {
+                for (i, label) in phalanx::appearance::FEATURES.iter().enumerate() {
                     button(row, label, Control::Appearance(i));
                 }
                 button(
@@ -1455,6 +1551,12 @@ fn apply(control: Control, session: &mut Session) {
                 | Control::ConfirmFounders
                 | Control::FoundingStep
                 | Control::FounderLook(..)
+                | Control::FounderLookBack(..)
+                | Control::FounderView(_)
+                | Control::FounderTurn(_)
+                | Control::FounderAttribute(..)
+                | Control::CreatorMenu
+                | Control::Load
                 | Control::Quit
         )
     {
@@ -1509,6 +1611,14 @@ fn apply(control: Control, session: &mut Session) {
         let _ = session.campaign.capture_minds(&session.battle);
     }
     match control {
+        Control::NewGame => front::new_game(session),
+        Control::CreatorMenu => {
+            session.founding.open = false;
+            session.menu = true;
+            session.running = false;
+            session.save_notice =
+                "Character creation paused. Continue resumes it; New Game starts over.".into();
+        }
         Control::FocusFounderField(i) => {
             if session.founding.open {
                 session.founding.focus = i.min(4);
@@ -1755,7 +1865,9 @@ fn apply(control: Control, session: &mut Session) {
         }
         Control::Continue => {
             session.camp_page = None;
-            session.menu = false;
+            let creating = session.battle.founders && !session.campaign.founders_prepared;
+            session.founding.open = creating;
+            session.menu = creating;
         }
         Control::Quit => {} // handled by the front-end AppExit writer
         Control::FlagEmblem
@@ -1914,21 +2026,10 @@ fn apply(control: Control, session: &mut Session) {
                 let slot = u.id % session.battle.team_size();
                 let look = &mut session.campaign.teams[u.team].fighters[slot].appearance;
                 *look = look.resolved(u.team, slot);
-                match choice {
-                    0 => {
-                        look.female = Some(
-                            !look
-                                .female
-                                .unwrap_or(u.command_title == Some(CommandTitle::Queen)),
-                        )
-                    }
-                    1 => look.hair = (look.hair + 1) % 11,
-                    2 => look.face = (look.face + 1) % 17,
-                    3 => look.eyes = (look.eyes + 1) % 16,
-                    4 => look.nose = (look.nose + 1) % 17,
-                    5 => look.skin = (look.skin + 1) % 8,
-                    _ => look.hair_color = (look.hair_color + 1) % 7,
+                if look.female.is_none() {
+                    look.female = Some(u.command_title == Some(CommandTitle::Queen));
                 }
+                look.cycle(choice, 1);
                 if session.autosave {
                     session.save_campaign();
                 }
@@ -1987,25 +2088,11 @@ fn apply(control: Control, session: &mut Session) {
             session.autosave = true;
             session.save_campaign();
         }
-        Control::Load => match Campaign::load(std::path::Path::new("outputs/phalanx-save.json")) {
-            Ok(c) => {
-                session.campaign = c;
-                let arena =
-                    phalanx::pressure::generate(&session.campaign.teams, session.battle.seed);
-                session.restart_founders(session.battle.seed, arena, controller);
-                if !session.battle.pressure_note.is_empty() {
-                    session.save_notice = session.battle.pressure_note.clone();
-                }
-                session.running = false;
-                session.accumulator = 0.0;
-                session.autosave = true;
-                session.save_notice = "Loaded squads; fresh battle".into();
-            }
-            Err(e) => {
-                session.save_notice = format!("Load failed: {e}");
+        Control::Load => {
+            if !front::load_game(session) {
                 return;
             }
-        },
+        }
         Control::TeamColor(i) => {
             if session.battle.founders {
                 let team = session.battle.units[session.selected].team;
@@ -2153,18 +2240,36 @@ fn apply(control: Control, session: &mut Session) {
                 _ => {}
             }
         }
-        Control::FounderLook(slot, choice) => {
+        Control::FounderAttribute(slot, attribute, delta) => {
+            if session.founding.open && slot < 3 && session.founding.revealed[slot] {
+                let founder = &mut session.founding.cards[slot];
+                let sheet = founder.theus.get_or_insert_with(Default::default);
+                if !sheet.adjust(attribute, delta) {
+                    session.save_notice="Theus attributes range from 6 to 16. Reduce another attribute to free points.".into();
+                }
+            }
+        }
+        Control::FounderView(slot) => {
+            if session.founding.open && slot < 3 {
+                session.founding.closeup[slot] = !session.founding.closeup[slot];
+            }
+        }
+        Control::FounderTurn(slot) => {
+            if session.founding.open && slot < 3 {
+                session.founding.angle[slot] = (session.founding.angle[slot] + 1) % 5;
+            }
+        }
+        Control::FounderLook(slot, choice) | Control::FounderLookBack(slot, choice) => {
             if session.founding.open && slot < 3 && session.founding.revealed[slot] {
                 let look = &mut session.founding.cards[slot].appearance;
-                match choice {
-                    0 => look.female = Some(!look.female.unwrap_or(false)),
-                    1 => look.hair = (look.hair + 1) % 11,
-                    2 => look.face = (look.face + 1) % 17,
-                    3 => look.eyes = (look.eyes + 1) % 16,
-                    4 => look.nose = (look.nose + 1) % 17,
-                    5 => look.skin = (look.skin + 1) % 8,
-                    _ => look.hair_color = (look.hair_color + 1) % 7,
-                }
+                look.cycle(
+                    choice,
+                    if matches!(control, Control::FounderLookBack(..)) {
+                        -1
+                    } else {
+                        1
+                    },
+                );
             }
         }
     }
@@ -2202,7 +2307,6 @@ fn apply(control: Control, session: &mut Session) {
             | Control::NextBattle
             | Control::NextTutorial
             | Control::GenerateArena
-            | Control::Load
             | Control::ChooseRival(_)
     ) {
         if matches!(control, Control::Arena) {
@@ -2249,9 +2353,15 @@ fn controls(
                 || matches!(
                     control,
                     Control::Continue
+                        | Control::NewGame
+                        | Control::CreatorMenu
                         // The creator keeps the menu open until founders are accepted.
                         | Control::FoundingStep
                         | Control::FounderLook(..)
+                        | Control::FounderLookBack(..)
+                        | Control::FounderView(_)
+                        | Control::FounderTurn(_)
+                        | Control::FounderAttribute(..)
                         | Control::FocusFounderField(_)
                         | Control::RevealFounder(_)
                         | Control::RenameFighter
@@ -2294,6 +2404,23 @@ fn controls(
             apply(*control, &mut session);
         }
         latch.0 = *interaction == Interaction::Pressed;
+    }
+}
+fn audit_ui_pointer(
+    mouse: Res<ButtonInput<MouseButton>>,
+    windows: Query<&Window>,
+    buttons: Query<(&Interaction, &Control)>,
+) {
+    if mouse.just_pressed(MouseButton::Left) {
+        eprintln!(
+            "PHALANX_UI_AUDIT cursor={:?} controls={:?}",
+            windows.iter().next().and_then(Window::cursor_position),
+            buttons
+                .iter()
+                .filter(|(i, _)| **i != Interaction::None)
+                .map(|(i, c)| (i, *c))
+                .collect::<Vec<_>>()
+        );
     }
 }
 fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
@@ -2663,6 +2790,11 @@ fn camera_motion(
         );
         session.zoom = aim.zoom;
         session.pitch = aim.pitch;
+        if let Some((target, zoom)) = visuals::team_actions::focus(&session) {
+            session.camera_target = target;
+            session.zoom = zoom;
+            session.pitch = 0.20;
+        }
         session.orbit += aim.orbit_rate * dt;
     }
     if session.camera_follow {
@@ -2683,6 +2815,10 @@ fn camera_motion(
     eye.y = eye
         .y
         .max(session.battle.arena.elevation([eye.x, eye.z]) + 0.22);
+    let automatic = session.cinematic_playing();
+    if automatic {
+        eye = cinema_eye(session.battle.arena, session.camera_target, eye);
+    }
     let wanted = Transform::from_translation(eye).looking_at(session.camera_target, Vec3::Y);
     let blend = if *initialized {
         1.0 - (-dt * 18.0).exp()
@@ -2692,6 +2828,49 @@ fn camera_motion(
     *initialized = true;
     camera.translation = camera.translation.lerp(wanted.translation, blend);
     camera.rotation = camera.rotation.slerp(wanted.rotation, blend);
+    if automatic
+        && !framing_clear(
+            session.battle.arena,
+            session.camera_target,
+            camera.translation,
+        )
+    {
+        **camera = wanted;
+    }
+}
+/// Test the whole sightline, including the camera itself, against solid scenery.
+fn framing_clear(arena: Arena, target: Vec3, eye: Vec3) -> bool {
+    let steps = (target.distance(eye) / 0.15).ceil().max(1.) as usize;
+    let walls = arena.walls();
+    (1..=steps).all(|i| {
+        let p = target.lerp(eye, i as f32 / steps as f32);
+        p.y > arena.elevation([p.x, p.z]) + 0.12
+            && !walls.iter().any(|(centre, size)| {
+                (p.x - centre[0]).abs() < size[0] * 0.5 + 0.18
+                    && (p.z - centre[1]).abs() < size[1] * 0.5 + 0.18
+                    && p.y < arena.elevation(*centre) + 2.6
+            })
+    })
+}
+fn cinema_eye(arena: Arena, target: Vec3, eye: Vec3) -> Vec3 {
+    let offset = eye - target;
+    // Keep the requested close shot when another side of the duel is visible.
+    for step in 0..16 {
+        let side = if step % 2 == 0 { 1. } else { -1. };
+        let angle = side * ((step + 1) / 2) as f32 * std::f32::consts::PI / 8.;
+        let candidate = target + Quat::from_rotation_y(angle) * offset;
+        if framing_clear(arena, target, candidate) {
+            return candidate;
+        }
+    }
+    // Dense ruins need an elevated shot rather than an orbit inside a wall.
+    for height in 1..=24 {
+        let candidate = eye + Vec3::Y * height as f32 * 0.75;
+        if framing_clear(arena, target, candidate) {
+            return candidate;
+        }
+    }
+    eye + Vec3::Y * 18.
 }
 fn camera_input_enabled(session: &Session) -> bool {
     !session.menu && !session.founding.open && session.renaming.is_none()
@@ -2700,6 +2879,46 @@ fn camera_input_enabled(session: &Session) -> bool {
 #[cfg(test)]
 mod camera_regressions {
     use super::*;
+
+    #[test]
+    fn wall_motion_is_continuous_between_ticks_and_pause_preserves_physics() {
+        let mut session = Session::new(Battle::new(6, false));
+        session.autosave = false;
+        session.battle.arena = Arena::Choke;
+        session.battle.units[0].position = [-2., -5.];
+        let leap =
+            phalanx::ninjutsu::wall_plan(&session.battle.units[0], Arena::Choke, [4., -5.], 0)
+                .unwrap();
+        let a = leap.sample(8.);
+        let b = leap.sample(9.);
+        session.battle.units[0].position = [a[0], a[2]];
+        session.battle.units[0].ninja = Some(phalanx::ninjutsu::Fighter {
+            leap: Some(leap),
+            ..default()
+        });
+        session.battle.tick = 9;
+        session.remember_positions();
+        session.running = true;
+        session.accumulator = DT * 0.5;
+        let physics = serde_json::to_string(&session.battle).unwrap();
+        let visible = session.presented(0);
+        assert!(visible[0] > a[0] + 0.05 && visible[0] < b[0] - 0.05);
+        session.running = false;
+        assert_eq!(session.presented(0), [a[0], a[2]]);
+        assert_eq!(serde_json::to_string(&session.battle).unwrap(), physics);
+    }
+
+    #[test]
+    fn cinematic_close_shots_find_a_visible_side_of_solid_walls() {
+        let arena = Arena::Choke;
+        let (centre, size) = arena.walls()[0];
+        let target = Vec3::new(centre[0] - size[0] * 0.5 - 0.5, 1.1, centre[1]);
+        let blocked = target + Vec3::new(8., 1., 0.);
+        assert!(!framing_clear(arena, target, blocked));
+        let safe = cinema_eye(arena, target, blocked);
+        assert!(framing_clear(arena, target, safe));
+        assert!(target.distance(safe) > 3.);
+    }
 
     #[test]
     fn typing_names_cannot_disable_cinema_and_the_button_restores_manual_camera() {

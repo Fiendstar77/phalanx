@@ -154,7 +154,13 @@ pub(crate) fn prepared(session: &Session, id: usize) -> phalanx::Unit {
     let mut unit = session.battle.units[id].clone();
     let fighter = &session.campaign.teams[unit.team].fighters[id % session.battle.team_size()];
     unit.command_title = Some(fighter.title);
+    unit.ninja = Some(Default::default());
     unit.mastery = fighter.mastery;
+    unit.theus = Some(phalanx::theus::Actor::new(
+        fighter
+            .theus
+            .unwrap_or_else(|| phalanx::theus_combat::sheet(&unit)),
+    ));
     unit.skills = fighter.skills;
     unit.carries_standard =
         id % session.battle.team_size() == session.campaign.teams[unit.team].standard_bearer;

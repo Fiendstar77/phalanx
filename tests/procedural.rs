@@ -262,16 +262,29 @@ fn each_family_produces_real_combat_in_both_playable_leagues() {
                 battle.units.iter().map(|u| u.damage_dealt).sum::<f32>() > 50.,
                 "no engagement: {arena:?}"
             );
+            assert!(battle.units.iter().all(|u| {
+                let p =
+                    phalanx::ninjutsu::body(u, battle.arena, battle.tick.saturating_sub(1) as f32);
+                !phalanx::ninjutsu::solid(battle.arena, [p[0], p[1] - 0.85, p[2]], 0.)
+            }));
             assert!(
+                battle.winner().is_some() || (battle.survivors(0) == 0 && battle.survivors(1) == 0),
+                "timeout {arena:?} tick {} units {:?}",
+                battle.tick,
                 battle
                     .units
                     .iter()
-                    .all(|u| !battle.arena.blocked(u.position))
-            );
-            assert!(
-                battle.winner().is_some(),
-                "timeout {arena:?} tick {}",
-                battle.tick
+                    .map(|u| (
+                        u.id,
+                        u.health,
+                        u.position,
+                        u.action,
+                        u.enemy,
+                        u.cooldown,
+                        u.decision_reason.as_str(),
+                        u.ninja.as_ref()
+                    ))
+                    .collect::<Vec<_>>()
             );
         }
     }

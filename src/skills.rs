@@ -15,9 +15,12 @@ pub enum Skill {
     Bloodrage,
     WeaponDrill,
     Quickdraw,
+    WallDance,
+    SmokeBomb,
+    ShadowSeal,
 }
 impl Skill {
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 15] = [
         Self::Heal,
         Self::Bless,
         Self::Rally,
@@ -30,6 +33,9 @@ impl Skill {
         Self::Bloodrage,
         Self::WeaponDrill,
         Self::Quickdraw,
+        Self::WallDance,
+        Self::SmokeBomb,
+        Self::ShadowSeal,
     ];
     pub fn class(self) -> C {
         match self {
@@ -43,6 +49,8 @@ impl Skill {
             Self::Fleetfoot => C::Scout,
             Self::Bloodrage => C::Berserker,
             Self::WeaponDrill => C::Warrior,
+            Self::WallDance | Self::SmokeBomb => C::Scout,
+            Self::ShadowSeal => C::Hexer,
         }
     }
     pub fn passive(self) -> bool {
@@ -65,6 +73,9 @@ impl Skill {
             Self::Bloodrage => "Bloodrage",
             Self::WeaponDrill => "Weapon drill",
             Self::Quickdraw => "Quickdraw",
+            Self::WallDance => "Wall dance",
+            Self::SmokeBomb => "Smoke bombs",
+            Self::ShadowSeal => "Grave binding",
         }
     }
     pub fn description(self) -> &'static str {
@@ -81,10 +92,17 @@ impl Skill {
             Self::Bloodrage => "Damage rises as HP falls; +15% incoming damage",
             Self::WeaponDrill => "+5% damage after 100 Warrior practice",
             Self::Quickdraw => "37.5% shorter projectile recovery",
+            Self::WallDance => "Climb and vault nearby walls; costs 7 effort; intact legs required",
+            Self::SmokeBomb => "Two bombs per battle; smoke obscures both teams and enables escape",
+            Self::ShadowSeal => {
+                "Resisted shadow binding slows and exposes a visible enemy; costs 8 effort"
+            }
         }
     }
     pub fn unlocked(self, current: C, mastery: Mastery) -> bool {
-        self.class() == current || mastery.retained(self.class())
+        matches!(self, Self::WallDance | Self::SmokeBomb | Self::ShadowSeal)
+            || self.class() == current
+            || mastery.retained(self.class())
     }
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

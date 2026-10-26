@@ -14,6 +14,9 @@ fn archer() -> Battle {
         .begin_battle(42, Arena::OpenField, Controller::Utility)
         .unwrap();
     for u in &mut b.units {
+        // Isolate physical bow/sidearm behaviour from Theus dice and wind-ups.
+        // Persistent-campaign Theus combat has separate integration coverage.
+        u.theus = None;
         u.health = 0.;
         u.action = 6;
         u.cooldown = 999.;
@@ -204,13 +207,35 @@ fn archer_battles_make_progress_without_clipping_or_endless_retreat() {
                 f.class = C::Ranger;
             }
             let (_, mut b) = c.begin_battle(seed, arena, Controller::Utility).unwrap();
-            for _ in 0..600 {
+            // Intact fighters now last longer: HP thresholds no longer cripple
+            // their arms and legs. Require a real result before the match limit.
+            for _ in 0..phalanx::BATTLE_TICK_LIMIT {
                 b.step();
                 for (i, a) in b.units.iter().enumerate().filter(|(_, u)| u.health > 0.) {
-                    assert!(!b.arena.blocked(a.position));
+                    let p = phalanx::ninjutsu::body(a, b.arena, b.tick.saturating_sub(1) as f32);
+                    assert!(
+                        !phalanx::ninjutsu::solid(b.arena, [p[0], p[1] - 0.85, p[2]], 0.),
+                        "point {:?} unit {} tick {} ninja {:?} arena {:?}",
+                        p,
+                        a.id,
+                        b.tick,
+                        a.ninja,
+                        b.arena
+                    );
                     for v in b.units.iter().skip(i + 1).filter(|u| u.health > 0.) {
                         assert!(
-                            phalanx::distance(a.position, v.position)
+                            (phalanx::distance(a.position, v.position).powi(2)
+                                + (phalanx::ninjutsu::physical_height(
+                                    a,
+                                    b.arena,
+                                    b.tick.saturating_sub(1) as f32
+                                ) - phalanx::ninjutsu::physical_height(
+                                    v,
+                                    b.arena,
+                                    b.tick.saturating_sub(1) as f32
+                                ))
+                                .powi(2))
+                            .sqrt()
                                 >= phalanx::collision::BODY_DIAMETER - 0.0003
                         );
                     }
@@ -220,6 +245,10 @@ fn archer_battles_make_progress_without_clipping_or_endless_retreat() {
                 }
             }
             assert!(b.finished, "unfinished {arena:?}, seed {seed}");
+            assert!(
+                b.tick < phalanx::BATTLE_TICK_LIMIT,
+                "archers stalled until timeout in {arena:?}, seed {seed}"
+            );
             assert!(b.units.iter().map(|u| u.damage_dealt).sum::<f32>() > 100.);
         }
     }

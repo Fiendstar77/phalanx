@@ -91,6 +91,7 @@ pub fn initialize(c: &mut Campaign) {
             );
             f.class = style.primary()[slot % 3];
             f.experience = 0;
+            f.theus = None;
             f.battles = 0;
             f.wins = 0;
             f.history.clear();

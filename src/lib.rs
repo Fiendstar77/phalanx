@@ -1,5 +1,6 @@
 //! Fixed-step combat model, independent of rendering and wall-clock time.
 use serde::{Deserialize, Serialize};
+pub mod appearance;
 pub mod archery;
 pub mod async_exchange;
 pub mod challenges;
@@ -9,10 +10,12 @@ pub mod collision;
 pub mod equipment;
 pub mod genesis;
 pub mod heraldry;
+mod injuries;
 pub mod inventory;
 pub mod learned;
 pub mod mastery;
 pub mod navigation;
+pub mod ninjutsu;
 pub mod perception;
 pub mod pressure;
 pub mod procedural;
@@ -23,6 +26,8 @@ pub mod skills;
 pub mod styles;
 pub mod telemetry;
 pub mod terrain;
+pub mod theus;
+pub mod theus_combat;
 pub mod tutorial;
 pub mod weapons;
 use learned::{Comparison, ComparisonSummary, Controller, LearnedPolicy};
@@ -237,6 +242,10 @@ pub struct Rock {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Unit {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ninja: Option<ninjutsu::Fighter>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theus: Option<theus::Actor>,
     pub skills: Option<skills::SkillLoadout>,
     pub id: usize,
     pub team: usize,
@@ -373,6 +382,11 @@ impl Unit {
         }
     }
     pub fn projectile_weapon(&self) -> Option<ProjectileWeapon> {
+        if self.equipment.has(equipment::Gear::Kusarigama)
+            || self.equipment.has(equipment::Gear::RazorWheel)
+        {
+            return None;
+        }
         self.equipment.projectile_weapon().or_else(|| {
             (self.role == Role::RockThrower || self.trained_role() == Role::RockThrower).then_some(
                 if self.has_skill(FighterClass::Ranger) {
@@ -409,6 +423,12 @@ impl Unit {
             && (self.projectile_weapon() != Some(ProjectileWeapon::Bow) || self.bow_available())
     }
     pub fn attack_range(&self) -> f32 {
+        if self.equipment.has(equipment::Gear::Kusarigama) {
+            return 3.3;
+        }
+        if self.equipment.has(equipment::Gear::RazorWheel) {
+            return 5.5;
+        }
         self.projectile_weapon()
             .filter(|_| self.is_ranged())
             .map(ProjectileWeapon::range)
@@ -426,6 +446,11 @@ impl Unit {
         self.last_shot_target = None;
     }
     pub fn weapon_status(&self) -> String {
+        if let Some(gear) = self.equipment.slots[0]
+            .filter(|g| matches!(g, equipment::Gear::Kusarigama | equipment::Gear::RazorWheel))
+        {
+            return format!("{} | {}", gear.name(), gear.effect());
+        }
         match self.projectile_weapon() {
             None => "Melee weapon".into(),
             Some(w) => format!(
@@ -539,6 +564,16 @@ impl Unit {
             }
             * 0.65_f32.powi(((self.lost_limbs & !self.prosthetics) & 12).count_ones() as i32)
             * if self.prosthetics & 3 != 0 { 0.85 } else { 1.0 }
+            * self.theus.as_ref().map_or(1., theus::Actor::movement)
+            * if self
+                .ninja
+                .as_ref()
+                .is_some_and(|n| n.bound_until > self.theus.as_ref().map_or(0, |a| a.clock))
+            {
+                0.2
+            } else {
+                1.0
+            }
     }
     pub fn damage_multiplier(&self) -> f32 {
         self.equipment.damage()
@@ -602,6 +637,8 @@ pub struct HealEvent {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Battle {
+    #[serde(skip_serializing_if = "ninjutsu::Field::empty")]
+    pub ninjutsu: ninjutsu::Field,
     #[serde(skip)]
     pub motion: collision::Motion,
     pub seed: u64,
@@ -616,6 +653,8 @@ pub struct Battle {
     pub rocks: Vec<Rock>,
     pub heals: Vec<HealEvent>,
     pub damage_events: Vec<DamageEvent>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub theus_events: Vec<theus::Event>,
     pub next_damage_event: u64,
     pub initial_arena: Arena,
     pub barricade_health: [f32; 4],
@@ -710,6 +749,8 @@ impl Battle {
                     arena.spawn(team, id % team_size)
                 };
                 Unit {
+                    ninja: None,
+                    theus: None,
                     id,
                     team,
                     command_title: if founders {
@@ -830,6 +871,8 @@ impl Battle {
             rocks: Vec::new(),
             heals: Vec::new(),
             damage_events: Vec::new(),
+            theus_events: Vec::new(),
+            ninjutsu: Default::default(),
             next_damage_event: 0,
             initial_arena: arena,
             barricade_health: if matches!(arena,Arena::Pressure(f) if f.layout>0) {
@@ -883,6 +926,8 @@ impl Battle {
         if self.finished {
             return;
         }
+        theus_combat::recover(self);
+        ninjutsu::prepare(self);
         let aura: Vec<_> = self
             .units
             .iter()
@@ -901,7 +946,7 @@ impl Battle {
         for (unit, blessed) in self.units.iter_mut().zip(aura) {
             unit.blessed = blessed;
         }
-        perception::update(&mut self.units, self.arena, self.tick);
+        perception::update_in_field(&mut self.units, self.arena, self.tick, &self.ninjutsu);
         let snapshot = self.units.clone();
         let mut damage = vec![0.0; self.units.len()];
         let mut impacts = Vec::new();
@@ -918,6 +963,7 @@ impl Battle {
                 for target in &snapshot {
                     if target.team != rock.team
                         && target.health > 0.0
+                        && ninjutsu::physical_height(target, arena, self.tick as f32) < 1.4
                         && distance(target.position, rock.to) < 0.75
                     {
                         let dealt = rock.damage
@@ -948,6 +994,9 @@ impl Battle {
             unit.bow_release = (unit.bow_release - DT).max(0.0);
             unit.impact_cooldown = (unit.impact_cooldown - DT).max(0.0);
             unit.heal_cooldown = (unit.heal_cooldown - DT).max(0.0);
+            if ninjutsu::in_transit(unit) {
+                continue;
+            }
             let allies: Vec<_> = snapshot
                 .iter()
                 .filter(|a| {
@@ -960,6 +1009,11 @@ impl Battle {
                 })
                 .collect();
             let mut enemy = cognition::focus_target(unit, &allies, self.tick);
+            if let Some(priority) = theus_combat::priority_contact(unit, &snapshot, self.tick) {
+                enemy = Some(priority);
+                unit.decision_reason = "Theus: seize an ally's opening".into();
+            }
+            theus_combat::mobility(unit, enemy.as_ref(), arena, self.tick);
             let bow = unit.bow_available();
             if bow {
                 let nearest = unit
@@ -1618,9 +1672,16 @@ impl Battle {
                     .into();
                 }
             }
+            theus_combat::cancel_windup(unit, enemy.as_ref(), d, shot_clear);
             if unit.action == 1
                 && enemy.as_ref().is_some_and(|e| e.visible)
                 && d < unit.attack_range()
+                && (unit.is_ranged()
+                    || d.hypot(ninjutsu::physical_height(
+                        &snapshot[enemy.as_ref().unwrap().enemy],
+                        arena,
+                        self.tick as f32,
+                    )) < unit.attack_range())
                 && shot_clear
                 && unit.cooldown <= 0.0
                 && unit.windup.is_none()
@@ -1646,7 +1707,14 @@ impl Battle {
                     } else {
                         release = Some(weapon);
                     }
-                } else {
+                } else if !unit.equipment.has(equipment::Gear::RazorWheel)
+                    && theus_combat::melee_ready(
+                        unit,
+                        enemy.as_ref().unwrap().enemy,
+                        &snapshot,
+                        self.tick,
+                    )
+                {
                     let dealt = (if unit.projectile_weapon().is_some() {
                         8.0
                     } else {
@@ -1725,6 +1793,10 @@ impl Battle {
                         1.0
                     };
                 unit.decision_reason = format!("Released {}", weapon.name());
+            }
+            if let Some(exit) = ninjutsu::smoke_exit(unit, arena, &self.ninjutsu, self.tick) {
+                unit.target = exit;
+                unit.decision_reason = "Leave smoke by an obscured flank".into();
             }
             if bow && (unit.windup.is_some() || released) {
                 unit.target = enemy_position;
@@ -1812,6 +1884,7 @@ impl Battle {
                 }
             }
         }
+        ninjutsu::pulls(self);
         self.motion = collision::resolve(arena, &mut self.units, &snapshot);
         // Spear/dart interception uses accepted body motion, including collision stops.
         for projectile in &mut self.rocks {
@@ -1831,6 +1904,7 @@ impl Battle {
                 .iter()
                 .filter(|u| {
                     u.id != projectile.shooter
+                        && ninjutsu::physical_height(u, arena, self.tick as f32) < 1.4
                         && (u.team != projectile.team || projectile.weapon == ProjectileWeapon::Bow)
                         && snapshot[u.id].health > 0.0
                 })
@@ -1943,13 +2017,15 @@ impl Battle {
                 ));
             }
         }
+        ninjutsu::wheels(self, &mut impacts);
+        theus_combat::exchanges(self, &snapshot, &mut damage, &mut impacts);
+        ninjutsu::hooks(self);
         // Simultaneous damage avoids giving the first team update-order immunity.
         for unit in &mut self.units {
             if damage[unit.id] >= 12.0 && unit.windup.take().is_some() {
                 unit.cooldown = unit.cooldown.max(0.35);
                 unit.decision_reason = "Heavy impact interrupted the throw".into();
             }
-            let before = unit.health;
             unit.health = (unit.health - damage[unit.id]).max(0.0);
             if unit.health > 0.0 {
                 let restored = healing[unit.id].min((unit.max_health() - unit.health).max(0.0));
@@ -1968,18 +2044,6 @@ impl Battle {
                     }
                 }
             }
-            // Founders may survive a severe wound. Lab mechanics stay unchanged.
-            if self.founders && unit.health > 0.0 && damage[unit.id] > 0.0 {
-                let side = ((self.seed as usize + unit.id) % 2) as u8;
-                if before > unit.max_health() * 0.5 && unit.health <= unit.max_health() * 0.5 {
-                    unit.lost_limbs |= 1 << side;
-                    unit.prosthetics &= !(1 << side);
-                }
-                if before > unit.max_health() * 0.25 && unit.health <= unit.max_health() * 0.25 {
-                    unit.lost_limbs |= 1 << (side + 2);
-                    unit.prosthetics &= !(1 << (side + 2));
-                }
-            }
             if unit.health <= 0.0 {
                 unit.windup = None;
                 unit.visible_enemies = 0;
@@ -1991,6 +2055,21 @@ impl Battle {
         for (attacker, defender, amount, blunt, speed, contact) in impacts {
             let a = &snapshot[attacker];
             let b = &snapshot[defender];
+            // A rare, severe individual cutting hit can sever a living fighter's
+            // limb. Crossing an HP threshold alone never amputates anything.
+            let severed = if self.founders {
+                injuries::sever(
+                    self.seed,
+                    self.next_damage_event,
+                    &self.units[defender],
+                    amount,
+                    !blunt && contact.is_none(),
+                )
+            } else {
+                0
+            };
+            self.units[defender].lost_limbs |= severed;
+            self.units[defender].prosthetics &= !severed;
             let delta = [b.position[0] - a.position[0], b.position[1] - a.position[1]];
             let length = distance(a.position, b.position).max(0.001);
             let velocity = std::array::from_fn(|axis| {
@@ -2012,7 +2091,7 @@ impl Battle {
                 amount,
                 velocity,
                 position,
-                severed: self.units[defender].lost_limbs & !b.lost_limbs,
+                severed,
                 blunt,
             });
             self.next_damage_event += 1;
@@ -2039,6 +2118,11 @@ impl Battle {
         }
         for (unit, credit) in self.units.iter_mut().zip(healing_credit) {
             unit.healing_done += credit;
+            if credit > 0.
+                && let Some(actor) = &mut unit.theus
+            {
+                actor.sheet.train(5, 2);
+            }
         }
         if self.heals.len() > 64 {
             self.heals.drain(..self.heals.len() - 64);
@@ -2065,7 +2149,9 @@ impl Battle {
         self.tick += 1;
         let a = self.survivors(0);
         let b = self.survivors(1);
-        if ((a == 0 || b == 0) && self.rocks.is_empty()) || self.tick >= BATTLE_TICK_LIMIT {
+        if ((a == 0 || b == 0) && self.rocks.is_empty() && self.ninjutsu.wheels.is_empty())
+            || self.tick >= BATTLE_TICK_LIMIT
+        {
             self.finished = true;
             self.result = if a == 0 && b == 0 {
                 "Draw"

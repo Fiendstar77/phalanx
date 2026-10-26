@@ -18,10 +18,11 @@ python tools/validate_face_assets.py
 ```
 
 The preparation step normalizes centered bases to feet-at-zero coordinates
-and bakes twenty-two clips in stable order: the original Idle, Walk, Run, Attack,
+and bakes 52 clips in stable order. The first twenty-two are Idle, Walk, Run, Attack,
 Throw, Hit and Death, plus AttackQuick, AttackHeavy, AttackDesperate,
 ThrowUnderhand, HitHeavy, LimbRecoil, DeathBackward, DeathDelayed, NearDeathPanic,
 WoundedStagger, WireLunge, WhirlwindCut, VaultStrike, WireRecoil and WireDeath.
+Thirty further Theus clips are described below; the generated manifest records their names.
 Both sexes retain their own artist-authored skin weights; no weight transfer
 from the older male or decimation of the female is performed.
 
@@ -34,16 +35,22 @@ head with primitive geometry. The original source GLBs and eyed Blends remain
 unchanged. Editable sources are `male-facial-rig.blend` / `female-facial-rig.blend`.
 
 Six live controls provide rage, asymmetric pain, fear, grin/laughter, shout and
-blink. Four smaller controls provide nose length/width, jaw width and cheek
-variation. Eye bones carry the real eyeballs and curved irises. Faces and skin
+blink. Eleven identity shapes provide visible nose length/width/upturn, jaw,
+cheeks, round/tall silhouettes, sweet/pouting mouths and brow shape. The creator
+offers 17 named faces, 17 named noses, separate cheeks/mouth/brows, 16 iris colours,
+ten hair styles plus bald, skin and dye. Previous/next arrows, face/body framing
+and portrait turns make the choices inspectable before class selection. Existing
+saves default the three new cosmetic fields. Neutral mouths hide teeth and tongue
+until an expression opens the mouth.
+Eye bones carry the real eyeballs and curved irises. Faces and skin
 materials update after body animation, before transform propagation; combat
 clips contain no morph-weight channels that could overwrite those controls.
 Damage, attack cooldown, retreat, low health, victory and barks drive the poses.
 Time freezes on pause and advances when stepping. Expressions are presentation
 only and do not consume the combat RNG.
 
-Eight skin tones, six hair dyes plus automatic black/copper, five iris colours,
-six volumetric hair styles and subtle face/nose variations are available. Skin
+Eight skin tones, six hair dyes plus automatic black/copper, sixteen iris colours,
+ten volumetric hair styles and sculpted face/nose variations are available. Skin
 and Dye buttons save by fighter identity, alongside existing appearance choices;
 older saves default the new fields. The portrait photographs the actual fighter.
 Warrior steel, Guardian blue steel, Ranger green, Scout dark leather, Healer
@@ -62,9 +69,9 @@ paused. J now cycles filtered disagreements, freeing D for camera movement.
 
 ## Blood, limbs and prosthetics
 
-Real mesh triangles supply detached arm, leg and head pieces. Nonfatal Founders wounds remove the affected organic section; the fighter keeps acting with the persistent penalties documented in [progression](progression.md). Fatal decapitation/additional dismemberment is presentation only. Flying pieces tumble under simple gravity and terrain collision; these are rigid visual pieces, not articulated ragdolls. Cutting uses authored position bands with approximate open seams, not arbitrary plane-cut surgery or watertight capped stumps.
+Real mesh triangles supply detached arm, leg and head pieces. Nonfatal Founders wounds remove the affected organic section; the fighter keeps acting with the persistent penalties documented in [progression](progression.md). Fatal extra limb loss is presentation only and occurs for one fifth of seeded deaths, with at most one extra detached limb; ordinary deaths keep the head and remaining limbs. Flying pieces tumble under simple gravity and terrain collision; these are rigid visual pieces, not articulated ragdolls. Cutting uses authored position bands. Edges shared by retained and removed triangles are welded across position seams and closed with a flesh rim, muscle and bone-coloured center. Live caps retain joint indices and normalized skin weights; detached pieces receive rigid interior caps. This closes the authored cut instead of leaving a hollow shell.
 
-Blood emits on real damage, with larger death bursts and a short continuing spray. Particles use substepped gravity, drag, arena-edge and wall response, terrain impacts and bouncing larger debris. Wet flattened puddles expand and orient to the terrain slope. This remains bounded presentation physics, not a fluid solver. Lobes and loops suggest spilled organs/guts; this is stylized gore, not an anatomical organ simulation. There are at most **1,536 particle instances and 128 detached pieces**. Resets clear presentation debris; effects do not change collision, pathfinding or utility scores.
+Blood emits on every real damaging hit, independently of amputation. Deep hits and rare severing events also create pulsed jets. A separate artistic blood reservoir is eight times larger than the preceding pass; ordinary hit deposits are ten times larger. Droplets use substepped gravity and swept contacts against triangle meshes for walls, bridge decks/rails/supports, scenery, equipment and detached pieces. Moving skin uses animated bone-sphere contact proxies. Impacts create wet projected splashes and drip marks that follow the receiver and disappear with destroyed or hidden geometry. Ground impacts feed persistent stains and downhill pools. Wet flattened puddles expand and orient to the terrain slope. This remains bounded presentation physics, not a fluid solver. Lobes and loops suggest spilled organs/guts; this is stylized gore, not an anatomical organ simulation. There are at most **12,288 blood droplets, 512 surface stains and 128 detached pieces**. Nearby surface marks merge; the oldest marks are reused when the fixed pool fills. Resets clear presentation debris; effects do not change collision, pathfinding or utility scores.
 
 Iron I prosthetics attach to the animated limb bones. The first crafting recipe, salvage flow and 3× damage / 15% movement tradeoff are real Founders mechanics. Higher tiers, crafting stations and the reserve roster are proposals.
 
@@ -144,7 +151,7 @@ observed fourteen of fifteen clips during a completed battle, including both
 sexes moving and all three death variants. HitHeavy was checked with a forced
 review pose; that battle did not produce a hit above its 16% health threshold.
 
-The RPG character-sheet preview reuses the actual body masking, armor, equipment, flag and fitted iron-limb renderers from saved member state. Unfitted missing limbs remain absent. Blood bursts now emit ten times the previous counts, within an 8,192-droplet pool, with larger splats/pools and wound trails every 0.1 simulated seconds. See [RPG workshop](rpg-workshop.md).
+The RPG character-sheet preview reuses the actual body masking, armor, equipment, flag and fitted iron-limb renderers from saved member state. Unfitted missing limbs remain absent. Blood bursts now emit ten times the previous counts, within a 12,288-droplet pool, with larger splats/pools and wound trails every 0.1 simulated seconds. See [RPG workshop](rpg-workshop.md).
 
 ## Wire-fu presentation pass
 
@@ -161,3 +168,36 @@ For a disposable rendered review, make a fresh directory with an `assets` symlin
 ```
 
 The fixture uses six actual fighters and real combat at normal speed. It writes 24 FPS PNGs and an audit under `outputs/wirefu-demo`, with observed camera shots, aerial clips, impacts, trails, landings and music-layer peaks. It disables campaign autosave. The fixture is an authored review setup, not a player playtest or a completed fight. `--audio-witness --seed 6` exports the new score and each individual part for listening.
+
+
+## Theus choreography and receiver geometry
+
+The current derived rigs contain 52 clips. Thirty additional clips cover idle
+shifts, guarded and low gaits, sidesteps, parries, cartwheels, butterfly kicks,
+corkscrew cuts, wall kicks, launchers, aerial pursuit and slams, recovery,
+hit reactions and victory/defeat. Runtime transitions blend over 0.14 seconds.
+Theus wind-ups start strikes before their resolution; actual defensive and
+combination receipts select the corresponding reactions. Missing legs retain
+grounded alternatives. These remain authored procedural animation, with contact
+and foot placement still requiring further art work.
+
+Automatic cinema follows successful combinations and tries clear views around
+solid walls before lifting above dense scenery. Captions name the actual
+participants. Weapon ribbons, parry sparks and combination rings use the
+bounded presentation pool. The earlier wire-fu clips remain available for Lab
+characters; campaign combat now uses the Theus statuses and opportunities
+documented in [the shared rules](design/shared-rules.md).
+
+The face pipeline welds the sculpt's seams and subdivides once for continuous
+shape deformation: roughly 27,000 head vertices per body. All four eyelid
+surfaces now face outward. The Pain warp is continuous, and eyelid poses use
+one bounded closure instead of stacking several collapsing expressions.
+Four closure stages keep interpolated lids outside the eyeballs. The
+previous 15% head reduction is retained. Original body sources are preserved.
+
+Blood retains its 12,288-droplet pool and rare cutting severs. Rigid receiver
+stains now clip to the actual triangles and carry local UVs, with a 2 mm world
+normal offset. This replaces depth projection on scenery and equipment, so a
+camera change cannot stretch a mark onto unrelated geometry. Moving skin still
+uses small, shallow projected stains. Blood sources follow Theus aerial height.
+Receiver marks reuse 512 mesh slots; they do not allocate a new mesh per drop.

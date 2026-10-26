@@ -402,8 +402,9 @@ fn update(
             "BUILD IDEA: Class, mind, equipped skills, gear and scars combine. Master a discipline, then try retraining."
         }
     };
+    let rules = phalanx::theus_combat::description(u);
     let detail = format!(
-        "{}\n{} / {}\n{:.0} / {:.0} HP · {}\n\n{}\n{synergy}",
+        "{}\n{} / {}\n{:.0} / {:.0} HP · {}\n{rules}\n{}\n{synergy}",
         f.name,
         f.title.name(),
         f.class.name(),

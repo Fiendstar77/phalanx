@@ -20,9 +20,13 @@ Every starting squad has a **King, Queen, and General**. King and Queen wear bas
 
 The squads now persist locally: fighter IDs, minds, classes, XP, battle history, psychological scars, and chosen team colors survive save/load. Completed battles award XP, small habit changes, and personality-specific reactions to isolation, encirclement, a fallen ally, or a failed charge. **Next battle** continues with the same fighters. [Play the progression loop and see its current limits](docs/progression.md). Recruitment and the wider game follow the [commercial roadmap](PHALANX_COMMERCIAL_GAME_ROADMAP_v0.1.md). **Founders/Lab** switches setups; launch with `--lab` for the original experimental rosters. Both share the same simulation, controllers, telemetry, and inspector.
 
+**Theus** now resolves campaign attacks, active defences, effort and critical openings, with persistent skill practice and creator attributes. Cooperative fighters can launch targets, chain aerial finishers, pincer or crossfire. The original Lab baseline is retained. [Rules, integration and current limits](docs/design/shared-rules.md).
+
+**Ninjutsu and occult weapons:** equip wall vaults, sight-blocking smoke bombs and resisted grave bindings in Skills. Craft a chain-sickle or a returning razor wheel in Forge. These abilities change traversal, perception, exposure and physical hits. [Controls, rules and current limits](docs/ninjutsu.md).
+
 ## Visual combat and wounded veterans
 
-The supplied male/female bases now have derived game-ready rigs with seventeen animation clips, including near-death panic and wounded staggering. Appearance uses real 3D hair, painted skin textures and an actual on-field camera portrait. Founders can survive limb loss, carry wounds across battles, earn salvage and craft Iron I prosthetics. The first iron arm grants **3× damage with a 15% movement penalty**. Blood sprays, spreading puddles, stylized organ debris and flying body pieces follow actual combat events.
+The supplied male/female bases now have derived game-ready rigs with fifty-two animation clips, including near-death panic and wounded staggering. Appearance uses real 3D hair, painted skin textures and an actual on-field camera portrait. Founders can survive limb loss, carry wounds across battles, earn salvage and craft Iron I prosthetics. The first iron arm grants **3× damage with a 15% movement penalty**. Blood sprays, spreading puddles, stylized organ debris and flying body pieces follow actual combat events.
 
 ![Characters, blood and wounded veterans](docs/images/veteran-combat.png)
 

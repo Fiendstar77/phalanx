@@ -5,10 +5,10 @@ use bevy::{
     mesh::{Indices, PrimitiveTopology},
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
-const COUNT: usize = 8192;
-const INTENSITY: usize = 6;
-const MAX_FOUNTAINS: usize = 5;
-const BLOOD_VOLUME: usize = 8;
+const COUNT: usize = 12288;
+const INTENSITY: usize = 12;
+const MAX_FOUNTAINS: usize = 24;
+const BLOOD_VOLUME: usize = 12;
 const EMISSION_STEP: f32 = 0.025;
 const SIZE: usize = 512;
 #[derive(Component)]
@@ -42,16 +42,30 @@ impl Fountain {
         let wound = phalanx::procedural::hash(seed ^ event.sequence.wrapping_mul(131));
         let heart = phalanx::procedural::hash(seed ^ event.defender as u64);
         let variation = (wound & 65535) as f32 / 65535.;
-        let duration = 8.0 + variation * 2.0;
+        let duration = if event.severed != 0 {
+            10.0 + variation * 3.0
+        } else {
+            1.5 + variation * 1.5
+        };
         let period = 0.62 + (heart & 65535) as f32 / 65535. * 0.16;
-        let side = if event.severed.trailing_zeros() % 2 == 0 {
+        let side = if (if event.severed != 0 {
+            event.severed.trailing_zeros()
+        } else {
+            wound as u32
+        }) % 2
+            == 0
+        {
             -1.
         } else {
             1.
         };
         Self {
             unit: event.defender,
-            limb: 1 << event.severed.trailing_zeros(),
+            limb: if event.severed != 0 {
+                1 << event.severed.trailing_zeros()
+            } else {
+                0
+            },
             height: if event.severed & 12 != 0 { 0.30 } else { 0.90 },
             side,
             life: duration,
@@ -78,6 +92,7 @@ pub(super) struct Droplet {
     v: Vec3,
     scale: Vec3,
     volume: f32,
+    source: usize,
     pub(super) life: f32,
 }
 #[derive(Resource)]
@@ -257,7 +272,7 @@ fn setup(
         image,
         wet_image,
         pools,
-        remaining: vec![0.04; session.battle.units.len()],
+        remaining: vec![0.32; session.battle.units.len()],
         wounds: vec![0.; session.battle.units.len()],
         flow_clock: 0.,
         pixels: vec![0; SIZE * SIZE * 4],
@@ -321,6 +336,7 @@ impl Fx {
         severe: bool,
         blunt: bool,
         volume: f32,
+        source: usize,
     ) {
         let count = INTENSITY
             * if severe {
@@ -346,18 +362,18 @@ impl Fx {
             };
             let a = (m - 0.5) * fan;
             let speed = if severe {
-                3.5 + n * 3.0
+                5.0 + n * 5.0
             } else if blunt {
-                1.1 + n * 1.6
+                2.0 + n * 3.0
             } else {
-                2.0 + n * 2.5
+                3.0 + n * 4.0
             };
             let radius = if severe {
-                0.009 + k * 0.024
+                0.014 + k * 0.034
             } else if blunt {
                 0.035 + n * 0.035
             } else {
-                0.018 + n * 0.028
+                0.024 + n * 0.040
             };
             self.particles[index] = Droplet {
                 p: p + Vec3::new((m - 0.5) * 0.035, (k - 0.5) * 0.025, (n - 0.5) * 0.035),
@@ -366,6 +382,7 @@ impl Fx {
                 scale: Vec3::new(radius, radius * if blunt { 1.2 } else { 2.5 }, radius),
                 life: 3.0,
                 volume: volume / count as f32,
+                source,
             };
         }
     }
@@ -378,6 +395,7 @@ impl Fx {
         motion: Vec3,
         seed: u64,
         volume: f32,
+        source: usize,
     ) {
         for j in 0..2 * BLOOD_VOLUME {
             let bits = phalanx::procedural::hash(self.cursor as u64 ^ seed);
@@ -405,6 +423,7 @@ impl Fx {
                 scale: Vec3::new(radius, radius * (1.3 + m), radius),
                 life: 1.8 + n,
                 volume: volume / (2 * BLOOD_VOLUME) as f32,
+                source,
             };
         }
     }
@@ -420,6 +439,8 @@ pub(super) fn effects(
     sockets: Query<(&Socket, &GlobalTransform)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut images: ResMut<Assets<Image>>,
+    receivers: super::stains::Receivers,
+    mut stains: ResMut<super::stains::Stains>,
 ) {
     let arena = session.battle.arena;
     if fx.run != Some(session.run_id) {
@@ -429,7 +450,8 @@ pub(super) fn effects(
         fx.streams_started = 0;
         fx.peak_streams = 0;
         fx.pools = super::pooling::Pools::new(arena);
-        fx.remaining = vec![0.04; session.battle.units.len()];
+        fx.remaining = vec![0.32; session.battle.units.len()];
+        stains.clear();
         fx.wounds = vec![0.; session.battle.units.len()];
         fx.flow_clock = 0.;
         fx.pixels.fill(0);
@@ -449,13 +471,19 @@ pub(super) fn effects(
         }
         let pos = Vec3::new(
             event.position[0],
-            arena.elevation(event.position) + if event.severed & 12 != 0 { 0.36 } else { 0.72 },
+            arena.elevation(event.position)
+                + if event.severed & 12 != 0 { 0.36 } else { 0.72 }
+                + phalanx::ninjutsu::visual_height(
+                    &session.battle.units[event.defender],
+                    arena,
+                    session.battle.tick as f32,
+                ),
             event.position[1],
         );
         let direction = Vec3::new(event.velocity[0], 0., event.velocity[1]);
         let volume = fx.bleed(
             event.defender,
-            if event.severed != 0 { 0.0015 } else { 0.00012 },
+            if event.severed != 0 { 0.015 } else { 0.0012 },
         );
         fx.emit(
             pos,
@@ -464,19 +492,25 @@ pub(super) fn effects(
             event.severed != 0 || event.amount >= 25.0,
             event.blunt,
             volume,
+            event.defender,
         );
-        if event.severed != 0 {
-            fx.wounds[event.defender] = (fx.wounds[event.defender] + 0.5).min(1.);
+        fx.wounds[event.defender] = (fx.wounds[event.defender]
+            + event.amount / session.battle.units[event.defender].max_health() * 2.5)
+            .min(1.);
+        if event.severed != 0 || event.amount >= 12.0 {
             let same = fx
                 .fountains
                 .iter()
-                .filter(|j| j.unit == event.defender)
+                .filter(|jet| jet.unit == event.defender)
                 .count();
-            if same < 2 && fx.fountains.len() < MAX_FOUNTAINS {
+            if same < 3 && fx.fountains.len() < MAX_FOUNTAINS {
                 fx.fountains.push(Fountain::new(event, session.battle.seed));
                 fx.streams_started += 1;
                 fx.peak_streams = fx.peak_streams.max(fx.fountains.len());
             }
+        }
+        if event.severed != 0 {
+            fx.wounds[event.defender] = (fx.wounds[event.defender] + 0.5).min(1.);
         }
         if event.severed != 0 || session.battle.units[event.defender].health <= 0.0 {
             fx.stamp(
@@ -516,7 +550,9 @@ pub(super) fn effects(
         let collapsed = unit.health <= 0.;
         let origin = Vec3::new(
             p[0],
-            arena.elevation(p) + jet.height * if collapsed { 0.25 } else { 1. },
+            arena.elevation(p)
+                + jet.height * if collapsed { 0.25 } else { 1. }
+                + phalanx::ninjutsu::visual_height(unit, arena, session.battle.tick as f32),
             p[1],
         ) + lateral;
         let source = sockets
@@ -554,7 +590,7 @@ pub(super) fn effects(
                 let beat = ((jet.sample + jet.phase) / jet.period).floor() as u64;
                 let sway =
                     (phalanx::procedural::hash(jet.seed ^ beat) & 65535) as f32 / 65535. - 0.5;
-                let volume = fx.bleed(jet.unit, 0.00007 * pressure);
+                let volume = fx.bleed(jet.unit, 0.00025 * pressure);
                 fx.spurt(
                     origin,
                     angle + sway * 0.6 + (jet.sample * 6.7).sin() * 0.10,
@@ -563,6 +599,7 @@ pub(super) fn effects(
                     motion,
                     jet.seed ^ beat,
                     volume,
+                    jet.unit,
                 );
             }
             jet.sample += EMISSION_STEP;
@@ -575,9 +612,9 @@ pub(super) fn effects(
             fx.wounds[u.id] = 1.;
         }
         let flow = if u.health <= 0. {
-            0.0008
+            0.004
         } else {
-            fx.wounds[u.id] * 0.00035
+            fx.wounds[u.id] * 0.0014
         };
         let volume = fx.bleed(u.id, flow * dt);
         if volume > 0. {
@@ -621,6 +658,7 @@ pub(super) fn effects(
             }
         }
     }
+    let contacts = receivers.contacts(&session);
     let mut landed = Vec::new();
     for p in &mut fx.particles {
         if p.life <= 0.0 {
@@ -633,14 +671,20 @@ pub(super) fn effects(
             p.v.y -= 9.81 * step;
             p.v *= (-0.15 * step).exp();
             let next = p.p + p.v * step;
-            if arena.blocked([next.x, next.z]) {
-                p.v.x *= -0.12;
-                p.v.z *= -0.12;
+            let ground = arena.elevation([next.x, next.z]) + 0.025;
+            let ground_t = if next.y <= ground {
+                ((p.p.y - ground) / (p.p.y - next.y).max(0.0001)).clamp(0., 1.)
             } else {
-                p.p.x = next.x;
-                p.p.z = next.z;
+                f32::INFINITY
+            };
+            if let Some(hit) = contacts.hit(p.p, next, p.source, &meshes)
+                && hit.fraction() <= ground_t
+            {
+                stains.contact(&hit, (p.scale.x * 4.5).clamp(0.09, 0.34), p.v, &mut meshes);
+                p.life = 0.;
+                break;
             }
-            p.p.y = next.y;
+            p.p = next;
             if p.p.y <= arena.elevation([p.p.x, p.p.z]) + 0.025 {
                 let speed = p.v.xz().length();
                 landed.push((
@@ -656,7 +700,7 @@ pub(super) fn effects(
         }
     }
     for (p, r, stretch, angle, volume) in landed {
-        fx.stamp(arena, p, r * 0.5, stretch.min(1.5), angle, 0.4);
+        fx.stamp(arena, p, r * 0.9, stretch.min(2.0), angle, 0.75);
         fx.pools.deposit([p.x, p.z], volume);
     }
     fx.upload += time.delta_secs();
@@ -692,6 +736,25 @@ pub(super) fn effects(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn a_deep_hit_can_bleed_without_cutting_off_a_limb() {
+        let event = phalanx::DamageEvent {
+            sequence: 4,
+            tick: 40,
+            attacker: 0,
+            defender: 3,
+            amount: 20.,
+            velocity: [1., 0.],
+            position: [0., 0.],
+            severed: 0,
+            blunt: false,
+        };
+        let jet = Fountain::new(&event, 42);
+        assert_eq!(jet.limb, 0);
+        assert!((1.5..=3.0).contains(&jet.duration));
+        assert!((0..100).any(|i| jet.pressure(i as f32 * jet.duration / 100.) > 0.4));
+        assert_eq!(jet.pressure(jet.duration), 0.);
+    }
     #[test]
     fn wounds_share_a_heart_but_have_distinct_sources_and_quiet_intervals() {
         let mut event = phalanx::DamageEvent {

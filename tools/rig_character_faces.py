@@ -8,7 +8,8 @@ from mathutils import Vector, Matrix
 
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'assets/characters'
-KEYS=['Rage','Pain','Fear','Grin','Shout','Blink','NoseLong','NoseWide','JawWide','CheekSoft']
+KEYS=['Rage','Pain','Fear','Grin','Shout','Blink','NoseLong','NoseWide','JawWide','CheekSoft',
+      'FaceRound','FaceTall','NoseUpturned','MouthSweet','MouthPout','BrowSoft','BrowArch']
 
 def mat(name,color,rough=.6):
  m=bpy.data.materials.new(name);m.diffuse_color=(*color,1);m.use_nodes=True
@@ -23,11 +24,12 @@ def bone_parent(obj,rig):
  world=obj.matrix_world.copy();obj.parent=rig;obj.parent_type='BONE';obj.parent_bone='mixamorigHead'
  bpy.context.view_layer.update();obj.matrix_world=world
 
-def shapes(obj,warp):
+def shapes(obj,warp,world_identity=True):
  obj.shape_key_add(name='Basis')
  for name in KEYS:
   key=obj.shape_key_add(name=name);key.value=0.0
-  for src,dest in zip(obj.data.vertices,key.data):dest.co=warp(src.co.copy(),name)
+  for src,dest in zip(obj.data.vertices,key.data):
+   p=warp(src.co.copy(),name);dest.co=identity(p,name) if world_identity else p
  for p in obj.data.polygons:p.use_smooth=True
 
 for sex in ['male','female']:
@@ -49,6 +51,13 @@ for sex in ['male','female']:
  for v in head.data.vertices:v.co=world@v.co
  head.parent=None;head.matrix_world=Matrix.Identity(4)
  skin=mat('Face skin',(1,.65,.43),.78);head.data.materials.clear();head.data.materials.append(skin)
+ # Add deformation support without changing the authored silhouette or neck
+ # boundary. Weld normal seams first, subdivide once, then recompute winding.
+ bm=bmesh.new();bm.from_mesh(head.data)
+ bmesh.ops.remove_doubles(bm,verts=list(bm.verts),dist=.00001)
+ bmesh.ops.subdivide_edges(bm,edges=list(bm.edges),cuts=1,use_grid_fill=True)
+ bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces))
+ bm.to_mesh(head.data);bm.free()
  # Integrate a rounder nose and soften the brow ridge; no replacement primitive head.
  cx=-.008 if sex=='male' else 0
  mz=.369 if sex=='male' else .403
@@ -58,8 +67,23 @@ for sex in ['male','female']:
  for v in head.data.vertices:
   p=v.co;front=smooth((-p.y-.16)/.12)
   nose=gauss(p.x,p.z,cx,mz+.069,.052,.048)*front
-  p.y-=nose*(.060 if sex=='male' else .032)
-  p.x+=((p.x-cx)*.32*nose)
+  p.y+=nose*.012
+  p.x-=((p.x-cx)*.16*nose)
+ def identity(p,key):
+  # Apply identity changes to the sculpt AND its lips/teeth/tongue. A taller
+  # face must not leave the mouth floating in the old position.
+  front=smooth((-p.y-.12)/.12)
+  lower=smooth((ez-.055-p.z)/.17)
+  if key=='FaceRound':p.x+=(p.x-cx)*.22*lower*front
+  if key=='FaceTall':p.z-=.085*lower
+  mouth_area=math.exp(-(abs(p.x-cx)/.16)**4-(abs(p.z-mz)/.085)**4)*front
+  if key=='MouthSweet':
+   p.x-=(p.x-cx)*.28*mouth_area
+   p.z+=.024*(abs(p.x-cx)/.10)**1.5*mouth_area
+  if key=='MouthPout':
+   p.y-=.030*mouth_area
+   p.z-=.016*(abs(p.x-cx)/.10)**1.4*mouth_area
+  return p
  # Open the sculpt's existing lip seam; project the boundary to a clean ellipse.
  rx=.087 if sex=='male' else .082;rz=.014
  bm=bmesh.new();bm.from_mesh(head.data)
@@ -87,18 +111,21 @@ for sex in ['male','female']:
   return p
  def facial(p,key):
   orig=p.copy();front=smooth((-p.y-.13)/.11);p=mouth(p,key)
-  if key in ['NoseLong','NoseWide']:
-   n=gauss(orig.x,orig.z,cx,mz+.070,.058,.050)*front
-   if key=='NoseLong':p.y-=.015*n
-   else:p.x+=(orig.x-cx)*.18*n
-  if key=='JawWide':p.x+=(orig.x-cx)*.065*gauss(orig.x,orig.z,cx,mz-.03,.22,.09)*front
-  if key=='CheekSoft':p.y-=.010*gauss(abs(orig.x),orig.z,.22,mz+.04,.08,.08)*front
+  if key in ['NoseLong','NoseWide','NoseUpturned']:
+   n=gauss(orig.x,orig.z,cx,mz+.070,.073,.060)*front
+   if key=='NoseLong':p.y-=.075*n
+   elif key=='NoseWide':p.x+=(orig.x-cx)*.95*n;p.y-=.012*n
+   else:p.z+=.045*n;p.y+=.020*n
+  if key=='JawWide':p.x+=(orig.x-cx)*.26*gauss(orig.x,orig.z,cx,mz-.03,.25,.12)*front
+  if key=='CheekSoft':
+   cheek=gauss(abs(orig.x),orig.z,.22,mz+.05,.11,.11)*front
+   p.y-=.050*cheek;p.x+=math.copysign(.025*cheek,orig.x-cx)
   for side in [-1,1]:
    dx=orig.x-side*ex;dz=orig.z-ez
    lid=gauss(orig.x,orig.z,side*ex,ez,.125,.13)*front
    if key=='Blink':pass # The separate spherical lids close over the eyes.
    if key=='Rage':p.z-=.016*lid*(1 if dx*side<0 else -.4)
-   if key=='Pain' and side<0:p.z-=math.copysign(.025,dz)*lid
+   if key=='Pain' and side<0:p.z-=.025*math.tanh(dz/.035)*lid
   return p
  shapes(head,facial);bone_parent(head,rig)
  black=mat('Ink brows',(0.009,.005,.003),.85)
@@ -161,36 +188,36 @@ for sex in ['male','female']:
   def brow(p,key,side=side):
    inner=clamp((.32-abs(p.x))/.22)
    p.z+={'Rage':-.055*inner+.015*(1-inner),'Pain':.040*inner if side>0 else -.030,'Fear':.050*inner+.020,'Grin':-.020 if side<0 else .025*inner,'Shout':-.042*inner,'Blink':-.010}.get(key,0)
+   if key=='BrowSoft':p.z+=.038*inner-.018*(1-inner)
+   if key=='BrowArch':p.z+=.040*math.sin(clamp((abs(p.x)-.105)/.205)*math.pi)
    return p
   shapes(obj,brow);bone_parent(obj,rig)
  # Blinking lids are actual skin shells over the upper half of each sphere.
  for side,center in zip(['L','R'],[bpy.data.objects['Eyeball_L'].matrix_world.translation,bpy.data.objects['Eyeball_R'].matrix_world.translation]):
   radius=.134 if sex=='male' else .139
-  verts=[];faces=[];rows=12;cols=32
-  for j in range(rows+1):
-   t=j/rows
-   for i in range(cols+1):
-    phi=math.pi*i/cols;alpha=.08+t*.03
-    # Rest is a thin strip above the socket; Blink unfolds it over the sphere.
-    verts.append((center.x+radius*math.cos(phi)*math.cos(alpha),center.y-radius*math.sin(phi)*math.cos(alpha),center.z+radius*math.sin(alpha)))
-  for j in range(rows):
-   for i in range(cols):a=j*(cols+1)+i;faces.append((a,a+1,a+cols+2,a+cols+1))
-  mesh=bpy.data.meshes.new('Lid');mesh.from_pydata(verts,[],faces);mesh.update();obj=bpy.data.objects.new('Lid_'+side,mesh);bpy.context.collection.objects.link(obj);mesh.materials.append(skin)
-  def lid(p,key,center=center):
-   # Lids are left hidden behind the upper rim except on Blink/Pain.
-   return p
-  # Rebuild upper hemisphere strips: neutral at top pole; unfold to below equator.
-  for j in range(rows+1):
-   for i in range(cols+1):
-    phi=math.pi*i/cols;alpha=1.35+(math.pi/2-1.35)*j/rows
-    mesh.vertices[j*(cols+1)+i].co=(center.x+radius*math.cos(phi)*math.cos(alpha),center.y-radius*math.sin(phi)*math.cos(alpha),center.z+radius*math.sin(alpha))
-  shapes(obj,lid)
-  for keyname,amount in [('Blink',1),('Pain',.80 if side=='L' else .20),('Rage',.25),('Grin',.30)]:
+  rows=12;cols=32
+  # A single pole closes the shell. Duplicate pole vertices produced tiny
+  # inverted slivers after triangulation and export rounding.
+  samples=[(j,i)for j in range(rows)for i in range(cols+1)]+[(rows,0)]
+  def lid_point(j,i,amount):
+   phi=math.pi*i/cols
+   lower=1.35*(1-amount)-1.48*amount
+   alpha=lower+(math.pi/2-lower)*j/rows
+   return (center.x+radius*math.cos(phi)*math.cos(alpha),center.y-radius*math.sin(phi)*math.cos(alpha),center.z+radius*math.sin(alpha))
+  verts=[lid_point(j,i,0)for j,i in samples];faces=[];pole=len(verts)-1
+  for j in range(rows-1):
+   for i in range(cols):
+    a=j*(cols+1)+i;faces.append((a,a+cols+1,a+cols+2,a+1))
+  for i in range(cols):
+   a=(rows-1)*(cols+1)+i;faces.append((a,pole,a+1))
+  mesh=bpy.data.meshes.new('Lid');mesh.from_pydata(verts,[],faces);mesh.update()
+  obj=bpy.data.objects.new('Lid_'+side,mesh);bpy.context.collection.objects.link(obj);mesh.materials.append(skin)
+  shapes(obj,lambda p,key:p)
+  # Runtime interpolates adjacent quarter-closure shapes. Interpolating
+  # straight from the top pole to a closed hemisphere crosses the eyeball.
+  for keyname,amount in [('Rage',.25),('Grin',.50),('Pain',.75),('Blink',1.)]:
    key=obj.data.shape_keys.key_blocks[keyname]
-   for j in range(rows+1):
-    for i in range(cols+1):
-     phi=math.pi*i/cols;alpha=(1.35*(1-amount)-1.48*amount)+(math.pi/2-(1.35*(1-amount)-1.48*amount))*j/rows
-     key.data[j*(cols+1)+i].co=(center.x+radius*math.cos(phi)*math.cos(alpha),center.y-radius*math.sin(phi)*math.cos(alpha),center.z+radius*math.sin(alpha))
+   for vertex,(j,i) in zip(key.data,samples):vertex.co=lid_point(j,i,amount)
   bone_parent(obj,rig)
  # Fear contracts the iris along the spherical surface, avoiding floating
  # flat discs or scaling it behind the white eyeball.
@@ -201,7 +228,7 @@ for sex in ['male','female']:
     radius=p.length;angle=math.atan2(math.hypot(p.x,p.z),-p.y);phi=math.atan2(p.z,p.x)
     angle*=.55;p=Vector((radius*math.sin(angle)*math.cos(phi),-radius*math.cos(angle),radius*math.sin(angle)*math.sin(phi)))
    return p
-  shapes(iris,iris_pose)
+  shapes(iris,iris_pose,False)
  for obj in bpy.context.scene.objects:
   if obj.type=='MESH':
    for poly in obj.data.polygons:poly.use_smooth=True

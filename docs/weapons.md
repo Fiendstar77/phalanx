@@ -59,3 +59,6 @@ Archery checks: `cargo test --no-default-features --test archery`. Staged close 
 [Draw pose](images/bow-draw-witness.png) · [Other rig](images/bow-male-draw-witness.png) · [Hybrid battle](images/bow-battle-witness.png) · [Workshop](images/bow-workshop-witness.png)
 
 Null's counter-building reads equipped ranged weapons and retained training, so a squad of Warriors carrying bows is recognized as a ranged build.
+
+
+The [occult arsenal](ninjutsu.md) adds two physical weapon-slot items: the chain-sickle, with 3.3 m reach and hit-triggered snares, and an eight-bladed returning wheel with real outgoing/return sweeps. Both starter recipes cost 5 gold and no salvage. They use the existing inventory, equipping, forging and save flow.
