@@ -29,7 +29,6 @@ pub(super) struct IronAssets {
     joint: Handle<Mesh>,
     metal: Handle<StandardMaterial>,
     wood: Handle<StandardMaterial>,
-    wound: Handle<StandardMaterial>,
 }
 #[derive(Component)]
 pub(super) struct Gib {
@@ -60,11 +59,6 @@ pub(super) fn setup(
             base_color: Color::srgb(0.45, 0.28, 0.14),
             metallic: 0.0,
             perceptual_roughness: 0.86,
-            ..default()
-        }),
-        wound: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.55, 0.012, 0.027),
-            perceptual_roughness: 0.25,
             ..default()
         }),
     });

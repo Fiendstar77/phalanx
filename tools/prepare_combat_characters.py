@@ -1,4 +1,4 @@
-"""Bake seventeen combat clips on the artist-rigged, eye-equipped bases.
+"""Bake combat and wire-fu clips on the artist-rigged, eye-equipped bases.
 Run with blender -b --python tools/prepare_combat_characters.py.
 Original source models and editable eyed Blends are preserved.
 """
@@ -8,6 +8,7 @@ from mathutils import Vector, Quaternion, Matrix
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'assets/characters';OUT.mkdir(exist_ok=True)
 CLIPS=[('Idle',1.6),('Walk',.9),('Run',.6),('Attack',.65),('Throw',1.1),('Hit',.38),('Death',1.1),('AttackQuick',.42),('AttackHeavy',.95),('AttackDesperate',.60),('ThrowUnderhand',.85),('HitHeavy',.70),('LimbRecoil',.85),('DeathBackward',1.35),('DeathDelayed',1.90),('NearDeathPanic',1.4),('WoundedStagger',1.1)]
+CLIPS += [('WireLunge',.82),('WhirlwindCut',1.05),('VaultStrike',1.10),('WireRecoil',.85),('WireDeath',1.45)]
 def clean():bpy.ops.wm.read_factory_settings(use_empty=True)
 def rot(rig,name,axis,angle):
  b=rig.pose.bones.get('mixamorig'+name)
@@ -18,6 +19,111 @@ def ease(x):
  x=max(0,min(1,x));return x*x*(3-2*x)
 def pulse(u,peak=.35):
  return ease(u/peak) if u<peak else 1-ease((u-peak)/(1-peak))
+def root_offset(rig,height=0.,forward=0.,side=0.):
+ hips=rig.pose.bones['mixamorigHips']
+ hips.location=hips.bone.matrix_local.to_quaternion().inverted()@Vector((side,-forward,height))
+def aim_bone(rig,bone,direction):
+ # Rotate the current bone in armature space, then recover its local basis.
+ # This retains the authored roll instead of guessing an Euler bend axis.
+ bpy.context.view_layer.update()
+ current=bone.matrix.to_quaternion()
+ wanted=(current@Vector((0,1,0))).rotation_difference(direction.normalized())@current
+ parent=bone.parent.matrix@bone.parent.bone.matrix_local.inverted()@bone.bone.matrix_local
+ bone.rotation_quaternion=parent.to_quaternion().inverted()@wanted
+ bpy.context.view_layer.update()
+def guard_hand(rig,side,sign):
+ upper=rig.pose.bones['mixamorig'+side+'Arm']
+ lower=rig.pose.bones['mixamorig'+side+'ForeArm']
+ hand=rig.pose.bones['mixamorig'+side+'Hand']
+ bpy.context.view_layer.update()
+ shoulder=upper.head.copy()
+ goal=Vector((sign*.25,-.24,shoulder.z-.20))
+ a=upper.length;b=lower.length;delta=goal-shoulder
+ distance=max(abs(a-b)+.001,min(delta.length,(a+b)*.985))
+ axis=delta.normalized();hint=Vector((sign,-.05,-.6))
+ bend=(hint-axis*hint.dot(axis)).normalized()
+ along=(a*a-b*b+distance*distance)/(2*distance)
+ elbow=shoulder+axis*along+bend*math.sqrt(max(0,a*a-along*along))
+ aim_bone(rig,upper,elbow-shoulder)
+ aim_bone(rig,lower,shoulder+axis*distance-elbow)
+def orient_grip(rig,hand,sign):
+ bpy.context.view_layer.update()
+ current=hand.matrix.to_quaternion()
+ blade=current@Vector((sign,0,0))
+ # Keep the blade outside the oversized head silhouette on both bodies.
+ wanted=blade.rotation_difference(Vector((sign*.30,-.15,1.)).normalized())@current
+ parent=hand.parent.matrix@hand.parent.bone.matrix_local.inverted()@hand.bone.matrix_local
+ hand.rotation_quaternion=parent.to_quaternion().inverted()@wanted
+def fighting_stance(rig):
+ # A bent-elbow guard, a split stance, and a closed index/thumb grip. The
+ # imported rigs use these chains to deform their grouped fingers as a fist.
+ for side,sign in [('Left',1),('Right',-1)]:
+  rot(rig,side+'Arm',(0,1,0),sign*1.10)
+  rot(rig,side+'Arm',(1,0,0),-.35 if side=='Right' else -.55)
+  rot(rig,side+'ForeArm',(1,0,0),-.90 if side=='Right' else -1.05)
+  rot(rig,side+'UpLeg',(0,1,0),sign*.10)
+  rot(rig,side+'UpLeg',(1,0,0),sign*.12)
+  rot(rig,side+'Leg',(1,0,0),.16)
+  for joint,angle in [(1,-.75),(2,-1.25),(3,-.85)]:
+   bone=rig.pose.bones.get('mixamorig'+side+'HandIndex'+str(joint))
+   if bone:bone.rotation_quaternion=Quaternion((1,0,0),angle)
+  for joint,angle in [(1,-.18),(2,-.42),(3,-.48)]:
+   bone=rig.pose.bones.get('mixamorig'+side+'HandThumb'+str(joint))
+   if bone:bone.rotation_quaternion=Quaternion((1,0,0),angle)
+ rot(rig,'Spine2',(0,0,1),-.12)
+ root_offset(rig,-.025)
+ for side,sign in [('Left',1),('Right',-1)]:
+  guard_hand(rig,side,sign)
+  hand=rig.pose.bones['mixamorig'+side+'Hand']
+  hand.rotation_quaternion=hand.rotation_quaternion@Quaternion((0,1,0),sign*math.pi/2)
+  orient_grip(rig,hand,sign)
+def wire_pose(rig,name,u):
+ arc=math.sin(math.pi*u)**.85
+ strike=pulse(u,.46)
+ if name=='WireLunge':
+  root_offset(rig,.95*arc,.24*arc)
+  rot(rig,'Spine2',(0,0,1),-.65*strike)
+  rot(rig,'RightArm',(1,0,0),-1.25*pulse(u,.25)+1.0*ease((u-.30)/.22)*(1-ease((u-.7)/.3)))
+  rot(rig,'RightArm',(0,0,1),-.75*strike)
+  rot(rig,'LeftArm',(1,0,0),-.45*arc)
+  rot(rig,'RightUpLeg',(1,0,0),-.85*arc)
+  rot(rig,'LeftUpLeg',(1,0,0),.55*arc)
+  rot(rig,'LeftLeg',(1,0,0),.85*arc)
+ elif name=='WhirlwindCut':
+  root_offset(rig,.48*arc)
+  rot(rig,'Hips',(0,0,1),-math.tau*ease(u))
+  rot(rig,'RightArm',(0,1,0),.78*arc)
+  rot(rig,'RightForeArm',(1,0,0),.60*arc)
+  rot(rig,'LeftArm',(0,1,0),-.50*arc)
+  rot(rig,'Spine2',(0,0,1),-.45*math.sin(math.pi*u))
+  rot(rig,'LeftUpLeg',(1,0,0),.72*arc)
+  rot(rig,'RightLeg',(1,0,0),.45*arc)
+ elif name=='VaultStrike':
+  root_offset(rig,1.8*arc,.15*arc)
+  rot(rig,'Hips',(1,0,0),-math.tau*ease(u))
+  rot(rig,'RightUpLeg',(1,0,0),-1.10*arc)
+  rot(rig,'RightLeg',(1,0,0),1.1*arc)
+  rot(rig,'LeftUpLeg',(1,0,0),.75*arc)
+  rot(rig,'LeftLeg',(1,0,0),.6*arc)
+  rot(rig,'RightArm',(1,0,0),-1.10*arc)
+  rot(rig,'LeftArm',(0,1,0),-.7*arc)
+ elif name=='WireRecoil':
+  root_offset(rig,.75*arc,-.30*arc)
+  rot(rig,'Spine',(1,0,0),.65*arc)
+  rot(rig,'Head',(1,0,0),.35*arc)
+  rot(rig,'LeftArm',(0,1,0),-.65*arc)
+  rot(rig,'RightArm',(0,1,0),.65*arc)
+  rot(rig,'LeftUpLeg',(1,0,0),-.65*arc)
+  rot(rig,'RightLeg',(1,0,0),.70*arc)
+ elif name=='WireDeath':
+  fall=ease((u-.35)/.6)
+  root_offset(rig,1.2*arc-.65*fall,-.28*arc)
+  rot(rig,'Hips',(1,0,0),1.48*fall)
+  rot(rig,'Hips',(0,0,1),.9*fall)
+  rot(rig,'LeftArm',(0,1,0),-.70*arc)
+  rot(rig,'RightArm',(0,1,0),.70*arc)
+  rot(rig,'LeftLeg',(1,0,0),.75*arc)
+  rot(rig,'RightUpLeg',(1,0,0),-.55*arc)
 def varied_pose(rig,name,u):
  hips=rig.pose.bones['mixamorigHips']
  if name=='AttackQuick':
@@ -94,10 +200,10 @@ def bake(rig):
   for frame in range(frames+1):
    u=frame/frames;phase=u*math.tau;wave=math.sin(phase)
    for b in rig.pose.bones:b.rotation_mode='QUATERNION';b.rotation_quaternion=Quaternion();b.location=Vector()
-   for side,sign in [('Left',1),('Right',-1)]:
-    rot(rig,side+'Arm',(0,1,0),sign*1.18)
-    rot(rig,side+'ForeArm',(1,0,0),-.28)
-   if name in [n for n,_ in CLIPS[7:]]:
+   fighting_stance(rig)
+   if name in [n for n,_ in CLIPS[17:]]:
+    wire_pose(rig,name,u)
+   elif name in [n for n,_ in CLIPS[7:17]]:
     varied_pose(rig,name,u)
    elif name in ['Walk','Run']:
     stride=.46 if name=='Walk' else .78
@@ -108,11 +214,12 @@ def bake(rig):
     rig.pose.bones['mixamorigHips'].location.z=abs(wave)*.018
     rot(rig,'Spine',(1,0,0),-.08 if name=='Run' else -.025)
    elif name in ['Attack','Throw']:
-    pulse=math.sin(math.pi*u)**2
-    rot(rig,'Spine2',(0,0,1),pulse*.30)
-    rot(rig,'RightArm',(1,0,0),-pulse*(2.25 if name=='Throw' else 1.4))
+    power=math.sin(math.pi*u)**2
+    rot(rig,'Spine2',(0,0,1),power*.70)
+    rot(rig,'RightArm',(1,0,0),-power*(1.6 if name=='Throw' else .75))
     rot(rig,'RightForeArm',(1,0,0),-math.sin(math.pi*u)*.8)
-    rot(rig,'LeftArm',(1,0,0),-.3*pulse)
+    rot(rig,'RightArm',(0,0,1),-.85*power if name=='Attack' else 0.)
+    rot(rig,'LeftArm',(1,0,0),-.3*power)
    elif name=='Hit':
     pulse=math.sin(math.pi*u);rot(rig,'Spine',(1,0,0),.30*pulse);rot(rig,'Head',(1,0,0),.18*pulse)
    elif name=='Death':

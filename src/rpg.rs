@@ -166,6 +166,12 @@ fn preview_setup(
         .with_children(|p| {
             p.spawn((
                 Insignia(PREVIEW_ID, true),
+                visuals::CrownAnchor {
+                    id: PREVIEW_ID,
+                    up: visuals::CROWN_BAND_UP,
+                    ring: 0.,
+                    angle: 0.,
+                },
                 Mesh3d(band),
                 MeshMaterial3d(assets.gold.clone()),
                 Transform::from_xyz(0., 0.71, 0.),
@@ -175,6 +181,12 @@ fn preview_setup(
                 let angle = point as f32 * std::f32::consts::TAU / 5.;
                 p.spawn((
                     Insignia(PREVIEW_ID, true),
+                    visuals::CrownAnchor {
+                        id: PREVIEW_ID,
+                        up: visuals::CROWN_TIP_UP,
+                        ring: visuals::CROWN_RING,
+                        angle,
+                    },
                     Mesh3d(tip.clone()),
                     MeshMaterial3d(assets.gold.clone()),
                     Transform::from_xyz(angle.cos() * 0.19, 0.81, angle.sin() * 0.19),

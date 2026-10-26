@@ -163,6 +163,45 @@ fn technology(p: &mut ChildSpawnerCommands, kit: &Kit, weapon: W) {
         dart(p, kit, 1.55, 0.11, 0., true);
     }
 }
+fn grip(female: bool, left: bool, shield: bool) -> Transform {
+    let palm = Vec3::new(0.0, if female { 0.057 } else { 0.080 }, -0.038);
+    let rotation = if shield {
+        Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)
+    } else {
+        Quat::from_rotation_z(if left {
+            -std::f32::consts::FRAC_PI_2
+        } else {
+            std::f32::consts::FRAC_PI_2
+        })
+    };
+    // The handle crosses the closed palm. Its center is 3 cm above the mesh
+    // origin; attaching it at the wrist made the blade float beside an open hand.
+    Transform::from_translation(palm - rotation * Vec3::Y * 0.03).with_rotation(rotation)
+}
+
+#[cfg(test)]
+mod grip_tests {
+    use super::*;
+    #[test]
+    fn handle_centers_stay_in_both_palms_under_arbitrary_wrist_motion() {
+        for female in [false, true] {
+            for left in [false, true] {
+                let mount = grip(female, left, false);
+                let palm = Vec3::new(0., if female { 0.057 } else { 0.080 }, -0.038);
+                for angle in [0., 0.8, 2.7] {
+                    let wrist = Transform::from_xyz(1., 2., -3.).with_rotation(Quat::from_euler(
+                        EulerRot::XYZ,
+                        angle,
+                        angle * 0.4,
+                        -angle,
+                    ));
+                    let handle = wrist.transform_point(mount.transform_point(Vec3::Y * 0.03));
+                    assert!(handle.distance(wrist.transform_point(palm)) < 1e-5);
+                }
+            }
+        }
+    }
+}
 fn weapon(p: &mut ChildSpawnerCommands, kit: &Kit, class: Class, left: bool) {
     if class == Class::BannerBearer {
         return;
@@ -413,19 +452,35 @@ pub(super) fn ready(
                                 id: model.id,
                                 class,
                             },
-                            // Measured from each new rig's Idle wrist frame: weapon +Y points upright.
-                            Transform::from_rotation(if left || class == Class::RockThrower {
-                                Quat::IDENTITY
-                            } else {
-                                if model.female {
-                                    Quat::from_xyzw(0.783481, 0.0, 0.599873, 0.162204)
-                                } else {
-                                    Quat::from_xyzw(0.903484, 0.0, 0.397842, 0.159494)
-                                }
-                            }),
+                            grip(model.female, left, left && class != Class::Scout),
                             Visibility::Hidden,
                         ))
-                        .with_children(|p| weapon(p, &kit, class, left));
+                        .with_children(|p| {
+                            weapon(p, &kit, class, left);
+                            if !left
+                                && matches!(
+                                    class,
+                                    Class::Warrior
+                                        | Class::Scout
+                                        | Class::Guardian
+                                        | Class::Paladin
+                                        | Class::Berserker
+                                )
+                            {
+                                p.spawn((
+                                    super::spectacle::Tip {
+                                        id: model.id,
+                                        female: model.female,
+                                    },
+                                    Transform::from_xyz(
+                                        0.0,
+                                        if class == Class::Scout { 0.39 } else { 0.64 },
+                                        0.0,
+                                    ),
+                                    Visibility::Inherited,
+                                ));
+                            }
+                        });
                     });
                 }
             }
@@ -437,11 +492,7 @@ pub(super) fn ready(
                                 id: model.id,
                                 weapon,
                             },
-                            Transform::from_rotation(if model.female {
-                                Quat::from_xyzw(0.783481, 0., 0.599873, 0.162204)
-                            } else {
-                                Quat::from_xyzw(0.903484, 0., 0.397842, 0.159494)
-                            }),
+                            grip(model.female, false, false),
                             Visibility::Hidden,
                         ))
                         .with_children(|p| technology(p, &kit, weapon));

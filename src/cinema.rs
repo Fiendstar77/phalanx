@@ -147,16 +147,31 @@ impl Director {
 
     fn aim(&self, living: &[&FighterView], wide_zoom: f32) -> Aim {
         let center = centroid(living).unwrap_or([0.0, 0.0]);
+        let duel = self.focus.and_then(|id| {
+            let actor = living.iter().find(|f| f.id == id)?;
+            let opponent = living
+                .iter()
+                .filter(|f| f.team != actor.team)
+                .min_by(|a, b| {
+                    crate::distance(actor.position, a.position)
+                        .total_cmp(&crate::distance(actor.position, b.position))
+                })?;
+            Some((
+                [
+                    (actor.position[0] + opponent.position[0]) * 0.5,
+                    (actor.position[1] + opponent.position[1]) * 0.5,
+                ],
+                crate::distance(actor.position, opponent.position),
+            ))
+        });
         let (look, zoom, pitch, orbit_rate) = match self.shot {
             Shot::Establish => (center, wide_zoom, 0.78, 0.04),
             Shot::Approach => (center, (wide_zoom * 0.62).clamp(10.0, 28.0), 0.22, 0.1),
             Shot::Contact => (
-                self.focus
-                    .and_then(|id| living.iter().find(|f| f.id == id).map(|f| f.position))
-                    .unwrap_or(center),
-                9.0,
-                0.36,
-                0.04,
+                duel.map_or(center, |(midpoint, _)| midpoint),
+                duel.map_or(9.0, |(_, gap)| (gap * 1.25 + 5.5).clamp(6.5, 12.0)),
+                0.30,
+                0.11,
             ),
             Shot::Mistake | Shot::Wound => (
                 self.focus

@@ -87,18 +87,22 @@ fn schema_two_relu_stops_before_the_logits() {
     row[0] = 1.0;
     let hidden = vec![row];
     let output = vec![vec![1.0]; ACTION_COUNT];
-    let policy = LearnedPolicy::from_json(&serde_json::json!({
-        "schema_version": 2,
-        "source_sha256": "test",
-        "features": FEATURE_NAMES,
-        "actions": phalanx::ACTIONS,
-        "mean": vec![0.0; FEATURE_NAMES.len()],
-        "std": vec![1.0; FEATURE_NAMES.len()],
-        "layers": [
-            {"weight": hidden, "bias": [-2.0]},
-            {"weight": output, "bias": vec![-3.0; ACTION_COUNT]}
-        ]
-    }).to_string()).unwrap();
+    let policy = LearnedPolicy::from_json(
+        &serde_json::json!({
+            "schema_version": 2,
+            "source_sha256": "test",
+            "features": FEATURE_NAMES,
+            "actions": phalanx::ACTIONS,
+            "mean": vec![0.0; FEATURE_NAMES.len()],
+            "std": vec![1.0; FEATURE_NAMES.len()],
+            "layers": [
+                {"weight": hidden, "bias": [-2.0]},
+                {"weight": output, "bias": vec![-3.0; ACTION_COUNT]}
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
     let mut features = vec![0.0; FEATURE_NAMES.len()];
     features[0] = 1.0;
     let quiet = policy.logits(&features).unwrap();
@@ -295,7 +299,10 @@ fn founders_schema_two_matches_python_logits_on_held_out_rows() {
         }
     }
     let agreement = agreements as f64 / compared as f64;
-    assert!(agreement > 0.9, "student should still track the founders teacher, got {agreement}");
+    assert!(
+        agreement > 0.9,
+        "student should still track the founders teacher, got {agreement}"
+    );
     let report = serde_json::json!({
         "seeds": "100..108, both orientations, founders pressure, learned versus utility",
         "battles": rows.len(),

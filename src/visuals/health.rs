@@ -178,7 +178,7 @@ fn update(
         let Some(unit) = battle.units.get(bar.0) else {
             continue;
         };
-        if session.menu || unit.health <= 0.0 {
+        if session.menu || unit.health <= 0.0 || session.cinematic_playing() {
             continue;
         }
         let Ok(screen) = camera.0.world_to_viewport(
@@ -191,10 +191,9 @@ fn update(
             .0
             .logical_viewport_size()
             .unwrap_or(Vec2::new(1440.0, 900.0));
-        if (screen.x < 620.0 && screen.y < 285.0)
-            || screen.x < 35.0
-            || screen.x > size.x - 390.0
-            || screen.y < 135.0
+        if screen.x < 35.0
+            || screen.x > size.x - if session.player.details { 370.0 } else { 35.0 }
+            || screen.y < 90.0
             || screen.y > size.y - 120.0
         {
             continue;

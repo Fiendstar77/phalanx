@@ -1,12 +1,13 @@
 //! Fixed-step combat model, independent of rendering and wall-clock time.
 use serde::{Deserialize, Serialize};
 pub mod archery;
-pub mod cinema;
 pub mod async_exchange;
 pub mod challenges;
+pub mod cinema;
 pub mod cognition;
 pub mod collision;
 pub mod equipment;
+pub mod genesis;
 pub mod heraldry;
 pub mod inventory;
 pub mod learned;
@@ -20,7 +21,6 @@ pub mod psyche;
 pub mod rivals;
 pub mod skills;
 pub mod styles;
-pub mod genesis;
 pub mod telemetry;
 pub mod terrain;
 pub mod tutorial;

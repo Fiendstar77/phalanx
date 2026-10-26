@@ -18,9 +18,10 @@ python tools/validate_face_assets.py
 ```
 
 The preparation step normalizes centered bases to feet-at-zero coordinates
-and bakes fifteen clips in stable order: the original Idle, Walk, Run, Attack,
+and bakes twenty-two clips in stable order: the original Idle, Walk, Run, Attack,
 Throw, Hit and Death, plus AttackQuick, AttackHeavy, AttackDesperate,
-ThrowUnderhand, HitHeavy, LimbRecoil, DeathBackward and DeathDelayed.
+ThrowUnderhand, HitHeavy, LimbRecoil, DeathBackward, DeathDelayed, NearDeathPanic,
+WoundedStagger, WireLunge, WhirlwindCut, VaultStrike, WireRecoil and WireDeath.
 Both sexes retain their own artist-authored skin weights; no weight transfer
 from the older male or decimation of the female is performed.
 
@@ -89,7 +90,7 @@ Comic text bubbles react to damage, limb loss, retreat, attacks and healing, wit
 
 ## Sound
 
-A local seeded composer generates sixteen bars of a minor-key waltz at startup, with bass, staccato chords, a varying melody, sustained brass-like harmonies and downbeat drums. It loops at a modest level beneath combat. Twenty-four synthesized effects cover swings, impacts, cutting, blood spray, slurps, blops, gurgles, splats, throws and blessing, plus male/female pain, fear, victory and screams. Voice choice follows the selected 3D body; barks continue to supply words. These are original synthetic placeholders, including vocal-like oscillators rather than recorded human screams. They need listening and mix/art direction; they are not production foley.
+A local seeded composer now generates a sixteen-bar, 124 BPM action score in 4/4. Six equal-length parts provide a sparse plucked courtyard motif, a low ostinato and answering strings for approach, accented skin drums and metallic strikes for clashes, tense upper figures under pressure, and separate victory/defeat parts. Actual contact distance, health, and resolved results drive the crossfades. The score leaves space for combat foley; it remains synthesized prototype music that needs listening review. Twenty-seven synthesized effects cover swings, impacts, cutting, blood spray, slurps, blops, gurgles, splats, throws and blessing, plus male/female pain, fear, victory and screams. Voice choice follows the selected 3D body; barks continue to supply words. These are original synthetic placeholders, including vocal-like oscillators rather than recorded human screams. They need listening and mix/art direction; they are not production foley.
 
 Effects follow real HP loss, wounds, cooldown changes and projectile hits. The mixer admits at most four new voices per frame and sixteen active effects. Effects pause with combat; music remains available in the menu. F8 toggles music, F9 toggles effects, and the menu exposes both controls. Preferences save locally in `outputs/audio-settings.json`. Visual witnesses stay silent unless `--audible-witness` is supplied.
 
@@ -144,3 +145,19 @@ sexes moving and all three death variants. HitHeavy was checked with a forced
 review pose; that battle did not produce a hit above its 16% health threshold.
 
 The RPG character-sheet preview reuses the actual body masking, armor, equipment, flag and fitted iron-limb renderers from saved member state. Unfitted missing limbs remain absent. Blood bursts now emit ten times the previous counts, within an 8,192-droplet pool, with larger splats/pools and wound trails every 0.1 simulated seconds. See [RPG workshop](rpg-workshop.md).
+
+## Wire-fu presentation pass
+
+Five new authored skeletal clips add rising lunges, full-turn cuts, aerial vaults, suspended recoils and a falling death. The shared guard now uses a two-bone solve to bring the forearms forward, turns the wrists into a weapon grip, splits the stance and curls the rigs' index/thumb chains into a grip. Weapon handles mount across the palm instead of using a world-upright rotation measured from one idle frame. A fighter with an unreplaced missing leg uses grounded attack variants. Bow drawing retains its separate two-hand solver.
+
+A fixed pool of 384 instances supplies short blade-tip ribbons, impact sparks, landing rings and dust. Blade motion produces the ribbons, real damage events produce sparks, and the aerial clips' recovery phase produces landing dust. The existing blood treatment is retained. These arcs, turns and offsets are choreography; they do not add simulated jumps, knockback, hits or damage. This is a first art pass, with contact and foot placement still requiring review.
+
+Cinema now starts for Founders squads of any supported size and resets for a new battle. Text entry no longer triggers camera shortcuts. **Cinema [V]** restores automatic framing after manual movement; **Home** restores the tactical field view. Contact shots frame the midpoint of a duel, leaving room for airborne motion. The battle toolbar is compact, and roster cards, floating HP labels and large tactical rings withdraw during automatic cinema. **Fighters** brings back the roster and the detailed controls.
+
+For a disposable rendered review, make a fresh directory with an `assets` symlink to this repository, then run:
+
+```sh
+/path/to/Phalanx/target/debug/phalanx --visual-witness --wirefu-demo --seed 6
+```
+
+The fixture uses six actual fighters and real combat at normal speed. It writes 24 FPS PNGs and an audit under `outputs/wirefu-demo`, with observed camera shots, aerial clips, impacts, trails, landings and music-layer peaks. It disables campaign autosave. The fixture is an authored review setup, not a player playtest or a completed fight. `--audio-witness --seed 6` exports the new score and each individual part for listening.

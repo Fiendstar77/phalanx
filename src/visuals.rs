@@ -3,14 +3,15 @@
 mod archery;
 mod barks;
 mod blood;
-mod pooling;
 pub(super) mod organs;
+mod pooling;
 pub(super) use blood::Fx;
 use blood::effects;
 mod body;
 mod equipment;
 mod face;
 mod health;
+mod spectacle;
 mod standards;
 use super::{Pawn, Session, setup};
 use bevy::{
@@ -33,9 +34,16 @@ impl Plugin for BattleVisuals {
         health::install(app);
         standards::install(app);
         equipment::install(app);
-        app.add_systems(Update, portrait_camera.after(super::camera_motion));
+        spectacle::install(app);
+        app.add_systems(Update, portrait_camera.after(super::camera_motion))
+            .add_systems(
+                PostUpdate,
+                follow_crowns
+                    .after(face::Pose)
+                    .before(bevy::transform::TransformSystems::Propagate),
+            );
         if std::env::args().any(|a| a == "--visual-witness")
-            && !std::env::args().any(|a| a == "--player-demo")
+            && !std::env::args().any(|a| a == "--player-demo" || a == "--wirefu-demo")
         {
             app.init_resource::<Witness>()
                 .add_systems(Update, witness.after(animate).after(effects));
@@ -62,7 +70,7 @@ pub(super) struct PanicAudit {
     run: Option<u32>,
     pub(super) clips_seen: [bool; 2],
 }
-const CLIP_NAMES: [&str; 17] = [
+const CLIP_NAMES: [&str; 22] = [
     "Idle",
     "Walk",
     "Run",
@@ -80,9 +88,15 @@ const CLIP_NAMES: [&str; 17] = [
     "DeathDelayed",
     "NearDeathPanic",
     "WoundedStagger",
+    "WireLunge",
+    "WhirlwindCut",
+    "VaultStrike",
+    "WireRecoil",
+    "WireDeath",
 ];
-const CLIP_DURATIONS: [f32; 17] = [
+const CLIP_DURATIONS: [f32; 22] = [
     1.6, 0.9, 0.6, 0.65, 1.1, 0.38, 1.1, 0.42, 0.95, 0.60, 0.85, 0.70, 0.85, 1.35, 1.90, 1.4, 1.1,
+    0.82, 1.05, 1.10, 0.85, 1.45,
 ];
 fn loop_clip(clip: usize) -> bool {
     matches!(clip, 0..=2 | 15 | 16)
@@ -99,10 +113,11 @@ fn locomotion_clip(unit: &phalanx::Unit, moved: f32, finished: bool) -> usize {
     }
 }
 fn death_clip(clip: usize) -> bool {
-    matches!(clip, 6 | 13 | 14)
+    matches!(clip, 6 | 13 | 14 | 21)
 }
 fn attack_clip(unit: &phalanx::Unit, ordinal: u32) -> usize {
     use phalanx::FighterClass as Class;
+    let grounded = unit.lost_limbs & !unit.prosthetics & 12 != 0;
     if unit.projectile_weapon() == Some(phalanx::weapons::ProjectileWeapon::Bow) && unit.is_ranged()
     {
         return 0;
@@ -123,14 +138,25 @@ fn attack_clip(unit: &phalanx::Unit, ordinal: u32) -> usize {
         return 9;
     }
     if unit.class == Some(Class::Scout) {
-        return 7;
+        return if grounded || ordinal.is_multiple_of(2) {
+            7
+        } else {
+            19
+        };
     }
     if matches!(
         unit.class,
         Some(Class::Guardian | Class::Berserker | Class::Paladin)
     ) && !ordinal.is_multiple_of(3)
     {
-        return 8;
+        return if !grounded && ordinal.is_multiple_of(2) {
+            18
+        } else {
+            8
+        };
+    }
+    if !grounded && ordinal.is_multiple_of(2) {
+        return 17;
     }
     if unit.mind.discipline > 0.70 {
         return if ordinal.is_multiple_of(2) { 3 } else { 7 };
@@ -151,6 +177,23 @@ struct Model {
     id: usize,
     female: bool,
 }
+/// Head joint of a loaded body. Crowns read this after the pose is applied.
+#[derive(Component)]
+pub(crate) struct HeadBone {
+    pub id: usize,
+    pub model: Entity,
+}
+/// Offset from the head joint, in pawn units, along the head's own axes.
+#[derive(Component, Clone, Copy)]
+pub(crate) struct CrownAnchor {
+    pub id: usize,
+    pub up: f32,
+    pub ring: f32,
+    pub angle: f32,
+}
+pub(crate) const CROWN_BAND_UP: f32 = 0.50;
+pub(crate) const CROWN_TIP_UP: f32 = 0.62;
+pub(crate) const CROWN_RING: f32 = 0.19;
 #[derive(Component, Default)]
 struct Actor {
     id: usize,
@@ -282,9 +325,19 @@ fn ready(
         return;
     };
     for entity in children.iter_descendants(event.entity) {
-        if let Ok(name)=names.get(entity) {
-            let limb=match name.as_str() { "mixamorigRightArm"=>1,"mixamorigLeftArm"=>2,"mixamorigRightUpLeg"=>4,"mixamorigLeftUpLeg"=>8,_=>0 };
-            if limb!=0 { commands.entity(entity).insert(blood::Socket { id:model.id,limb }); }
+        if let Ok(name) = names.get(entity) {
+            let limb = match name.as_str() {
+                "mixamorigRightArm" => 1,
+                "mixamorigLeftArm" => 2,
+                "mixamorigRightUpLeg" => 4,
+                "mixamorigLeftUpLeg" => 8,
+                _ => 0,
+            };
+            if limb != 0 {
+                commands
+                    .entity(entity)
+                    .insert(blood::Socket { id: model.id, limb });
+            }
         }
         if names.get(entity).is_ok_and(|name| {
             matches!(
@@ -318,6 +371,10 @@ fn ready(
             .get(entity)
             .is_ok_and(|name| name.as_str() == "mixamorigHead")
         {
+            commands.entity(entity).insert(HeadBone {
+                id: model.id,
+                model: event.entity,
+            });
             commands.entity(entity).with_children(|p| {
                 for style in 0..10 {
                     p.spawn((
@@ -440,13 +497,13 @@ fn animate(
         let mut clip = actor.clip;
         if unit.health <= 0.0 {
             if !death_clip(clip) {
-                clip = [6, 13, 14][unit.id.wrapping_add(session.battle.seed as usize) % 3];
+                clip = [21, 13, 14][unit.id.wrapping_add(session.battle.seed as usize) % 3];
             }
         } else if limb_loss || (damage > 0.0 && (!attack || damage / unit.max_health() >= 0.16)) {
             clip = if limb_loss {
                 12
             } else if damage / unit.max_health() >= 0.16 {
-                11
+                20
             } else {
                 5
             };
@@ -482,14 +539,14 @@ fn animate(
         }
         // Match the authored throw pose to simulation windup, then finish the follow-through.
         if let Some(draw) = &unit.windup {
-            if !matches!(clip, 5 | 11 | 12) {
+            if !matches!(clip, 5 | 11 | 12 | 20) {
                 clip = if bow { 0 } else { 4 };
                 actor.clock = (1.0 - (draw.remaining - session.accumulator) / draw.weapon.windup())
                     .clamp(0.0, 1.0)
                     * 0.72;
                 actor.lock = draw.remaining + 0.35;
             }
-        } else if release && unit.health > 0.0 && !matches!(clip, 5 | 11 | 12) {
+        } else if release && unit.health > 0.0 && !matches!(clip, 5 | 11 | 12 | 20) {
             clip = if bow { 0 } else { 4 };
             actor.clock = 0.72;
             actor.lock = 0.35;
@@ -552,6 +609,76 @@ fn advance_clip(
 
 #[derive(Component)]
 struct Dressing(usize);
+
+fn chain_global(
+    entity: Entity,
+    parents: &Query<&ChildOf, Without<CrownAnchor>>,
+    locals: &Query<&Transform, Without<CrownAnchor>>,
+) -> GlobalTransform {
+    let mut chain = Vec::new();
+    let mut cursor = entity;
+    loop {
+        chain.push(cursor);
+        match parents.get(cursor) {
+            Ok(parent) => cursor = parent.parent(),
+            Err(_) => break,
+        }
+        if chain.len() > 32 {
+            break;
+        }
+    }
+    let mut world = GlobalTransform::IDENTITY;
+    for bone in chain.iter().rev() {
+        if let Ok(local) = locals.get(*bone) {
+            world = world.mul_transform(*local);
+        }
+    }
+    world
+}
+
+/// Place one crown on a head joint. The offset is a distance along the head's
+/// own axes, so the caricature scale does not enlarge the crown.
+fn crown_pose(head: GlobalTransform, pawn: GlobalTransform, anchor: CrownAnchor) -> Transform {
+    let offset = Vec3::new(
+        anchor.angle.cos() * anchor.ring,
+        anchor.up,
+        anchor.angle.sin() * anchor.ring,
+    );
+    let world = head.translation() + head.rotation() * offset;
+    Transform::from_translation(pawn.affine().inverse().transform_point3(world))
+        .with_rotation(pawn.rotation().inverse() * head.rotation())
+}
+
+/// Crowns are pawn children so a hidden body cannot hide them. Each frame they
+/// sit on the visible head joint, in that head's own up and side axes.
+fn follow_crowns(
+    session: Res<Session>,
+    heads: Query<(Entity, &HeadBone)>,
+    models: Query<&Visibility>,
+    parents: Query<&ChildOf, Without<CrownAnchor>>,
+    locals: Query<&Transform, Without<CrownAnchor>>,
+    mut crowns: Query<(&CrownAnchor, &ChildOf, &mut Transform)>,
+) {
+    for (anchor, parent, mut transform) in &mut crowns {
+        let Some((head, _)) = heads.iter().find(|(_, bone)| {
+            bone.id == anchor.id
+                && models
+                    .get(bone.model)
+                    .is_ok_and(|visible| *visible != Visibility::Hidden)
+                && session.visual_unit(bone.id).is_some()
+        }) else {
+            continue;
+        };
+        let pose = crown_pose(
+            chain_global(head, &parents, &locals),
+            chain_global(parent.parent(), &parents, &locals),
+            *anchor,
+        );
+        transform.translation = pose.translation;
+        transform.rotation = pose.rotation;
+    }
+}
+
 fn scenery(
     session: Res<Session>,
     mut pieces: Query<(&Dressing, &mut Transform, &mut Visibility)>,
@@ -645,7 +772,9 @@ struct PortraitPhoto(Handle<Image>);
 #[derive(Component)]
 pub(super) struct PortraitCamera;
 fn look(session: &Session, id: usize) -> phalanx::progression::Appearance {
-    if session.founding.open && id<3 {return session.founding.cards[id].appearance;}
+    if session.founding.open && id < 3 {
+        return session.founding.cards[id].appearance;
+    }
     let id = if id == super::rpg::PREVIEW_ID {
         session.selected
     } else {
@@ -891,7 +1020,7 @@ struct JointWitness {
 }
 #[derive(Resource, Default)]
 struct Witness {
-    seen: [bool; 17],
+    seen: [bool; 22],
     joints: std::collections::BTreeMap<Entity, Quat>,
     skeleton_motion: bool,
     model_motion: [bool; 2],
@@ -906,6 +1035,7 @@ struct Witness {
     weapon_captured: bool,
     winding_seen: bool,
     shaft_seen: bool,
+    founding_faces: bool,
 }
 #[allow(clippy::too_many_arguments)]
 fn witness(
@@ -943,6 +1073,7 @@ fn witness(
                     || a == "--standard-witness"
                     || a == "--weapon-loadout-witness"
                     || a == "--bow-draw-witness"
+                    || a == "--mind-witness"
             })
         {
             commands
@@ -998,6 +1129,10 @@ fn witness(
                         } else {
                             "outputs/snapshot-witness.png"
                         }
+                    } else if std::env::args().any(|a| a == "--mind-witness") {
+                        "outputs/mind-witness.png"
+                    } else if session.founding.open {
+                        "outputs/founding-title-witness.png"
                     } else if session.ladder {
                         "outputs/ladder-witness.png"
                     } else {
@@ -1011,6 +1146,18 @@ fn witness(
             ))
             .observe(bevy::render::view::screenshot::save_to_disk(
                 "outputs/portrait-witness.png",
+            ));
+    }
+    if session.founding.open
+        && session.founding.stage >= 1
+        && witness.seconds > 3.6
+        && !witness.founding_faces
+    {
+        witness.founding_faces = true;
+        commands
+            .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
+            .observe(bevy::render::view::screenshot::save_to_disk(
+                "outputs/founding-faces-witness.png",
             ));
     }
     for actor in &actors {
@@ -1101,10 +1248,13 @@ fn witness(
                     || a == "--standard-witness"
                     || a == "--weapon-loadout-witness"
                     || a == "--bow-draw-witness"
+                    || a == "--mind-witness"
             }))
             && witness.seconds
                 > if std::env::args().any(|a| a == "--rpg-witness") {
                     9.0
+                } else if session.founding.open {
+                    5.2
                 } else {
                     3.0
                 })
@@ -1114,6 +1264,58 @@ fn witness(
             serde_json::json!({"clip_names":CLIP_NAMES,"clips":witness.seen,"blood":witness.blood,"actors":actors.iter().count(),"finished":session.battle.finished,"seconds":witness.seconds,"bow_poses":bow_audit.poses,"bow_grip_error":bow_audit.max_grip_error,"bow_string_error":bow_audit.max_string_error,"bow_draw":bow_audit.max_draw,"arrows_blocked":session.battle.units.iter().map(|u|u.arrow_blocks).sum::<u32>(),"weapon_windup":witness.winding_seen,"shaft_projectile":witness.shaft_seen,"selected_weapon":session.battle.units[session.selected].weapon_status(),"selected_shots":session.battle.units[session.selected].weapon_shots,"selected_healing":session.battle.units[session.selected].healing_done,"particle_capacity":fx.particles.len(),"stained_pixels":fx.stained_pixels(),"detached_limbs":witness.gibs,"surviving_wounded":witness.wounded,"face_expressions":face_audit.seen,"eye_rotation":face_audit.eye_rotation,"face_morph_meshes":face_audit.meshes,"repeated_gestures":actors.iter().map(|a|a.replays).sum::<u32>(),"skeleton_motion":witness.skeleton_motion,"male_female_motion":witness.model_motion,"sound_effects":audio_audit.emitted})
         );
         exit.write(AppExit::Success);
+    }
+}
+
+#[cfg(test)]
+mod crown_follow {
+    use super::{CrownAnchor, crown_pose};
+    use bevy::prelude::*;
+
+    fn anchor(up: f32) -> CrownAnchor {
+        CrownAnchor {
+            id: 0,
+            up,
+            ring: 0.0,
+            angle: 0.0,
+        }
+    }
+
+    #[test]
+    fn a_nod_carries_the_crown_and_scale_does_not() {
+        let pawn = GlobalTransform::IDENTITY;
+        let nod = Quat::from_rotation_x(0.5);
+        let head = GlobalTransform::from(
+            Transform::from_xyz(0.0, 0.3, 0.0)
+                .with_rotation(nod)
+                .with_scale(Vec3::splat(1.22)),
+        );
+        let pose = crown_pose(head, pawn, anchor(0.5));
+        let expected = Vec3::new(0.0, 0.3, 0.0) + nod * Vec3::Y * 0.5;
+        assert!(
+            pose.translation.distance(expected) < 1e-4,
+            "crown landed at {}",
+            pose.translation
+        );
+        assert!(pose.rotation.angle_between(nod) < 1e-4);
+        assert!(pose.scale.distance(Vec3::ONE) < 1e-4);
+    }
+
+    #[test]
+    fn the_body_yaw_stays_on_the_pawn_so_the_crown_can_nod() {
+        let yaw = Quat::from_rotation_y(1.1);
+        let nod = Quat::from_rotation_x(0.4);
+        let pawn = GlobalTransform::from(Transform::from_rotation(yaw));
+        let head =
+            GlobalTransform::from(Transform::from_xyz(2.0, 0.3, -1.0).with_rotation(yaw * nod));
+        let pose = crown_pose(head, pawn, anchor(0.5));
+        assert!(
+            pose.rotation.angle_between(nod) < 1e-3,
+            "local crown rotation should be the nod alone"
+        );
+        let world = pawn.transform_point(pose.translation);
+        let expected = head.translation() + (yaw * nod) * Vec3::Y * 0.5;
+        assert!(world.distance(expected) < 1e-3);
     }
 }
 
@@ -1158,7 +1360,10 @@ mod animation_regressions {
         let mut unit = battle.units[0].clone();
         unit.role = Role::Fighter;
         unit.class = Some(phalanx::FighterClass::Scout);
+        assert_eq!(attack_clip(&unit, 1), 19);
+        unit.lost_limbs = 4;
         assert_eq!(attack_clip(&unit, 1), 7);
+        unit.lost_limbs = 0;
         unit.class = Some(phalanx::FighterClass::Guardian);
         assert_eq!(attack_clip(&unit, 1), 8);
         unit.health = unit.max_health() * 0.20;

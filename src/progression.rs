@@ -5,9 +5,10 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, path::Path};
 /// Earned-gold slot prices, indexed by the destination league (4 through 20).
+/// League 4 is priced so a company can still buy limbs and gear on the way there.
 /// Content after league four is priced here but not yet playable.
 pub const SLOT_COSTS: [u32; 17] = [
-    1_000, 1_800, 3_000, 5_000, 8_000, 12_000, 18_000, 26_000, 38_000, 55_000, 80_000, 115_000,
+    250, 1_800, 3_000, 5_000, 8_000, 12_000, 18_000, 26_000, 38_000, 55_000, 80_000, 115_000,
     165_000, 235_000, 330_000, 460_000, 650_000,
 ];
 pub fn slot_cost(destination: usize) -> Option<u32> {
@@ -332,7 +333,7 @@ impl Campaign {
             .unwrap_or_default()
             .as_nanos();
         let mut campaign = Self {
-            origin:None,
+            origin: None,
             founders_prepared: false,
             tutorial: Default::default(),
             rivals: Vec::new(),
@@ -406,11 +407,20 @@ impl Campaign {
         name: &str,
         classes: [FighterClass; 3],
     ) -> Result<(), String> {
-        let founders=std::array::from_fn(|i|crate::genesis::Founder {name:self.teams[0].fighters[i].name.clone(),class:classes[i],
-            mind:self.teams[0].fighters[i].mind,appearance:self.teams[0].fighters[i].appearance});
-        self.found_phalanx(name,founders,None)
+        let founders = std::array::from_fn(|i| crate::genesis::Founder {
+            name: self.teams[0].fighters[i].name.clone(),
+            class: classes[i],
+            mind: self.teams[0].fighters[i].mind,
+            appearance: self.teams[0].fighters[i].appearance,
+        });
+        self.found_phalanx(name, founders, None)
     }
-    pub fn found_phalanx(&mut self,name:&str,founders:[crate::genesis::Founder;3],origin:Option<crate::genesis::Origin>)->Result<(),String> {
+    pub fn found_phalanx(
+        &mut self,
+        name: &str,
+        founders: [crate::genesis::Founder; 3],
+        origin: Option<crate::genesis::Origin>,
+    ) -> Result<(), String> {
         let name = name.trim();
         if self.founders_prepared
             || self.teams[0].fighters.len() != 3
@@ -428,16 +438,20 @@ impl Campaign {
         prepared.teams[0].name = name.into();
         for (fighter, choice) in prepared.teams[0].fighters.iter_mut().zip(founders) {
             fighter.class = choice.class;
-            fighter.name=choice.name.trim().into();fighter.mind=choice.mind;fighter.appearance=choice.appearance;
+            fighter.name = choice.name.trim().into();
+            fighter.mind = choice.mind;
+            fighter.appearance = choice.appearance;
         }
-        prepared.origin=origin;
+        prepared.origin = origin;
         prepared.founders_prepared = true;
         prepared.validate()?;
         *self = prepared;
         Ok(())
     }
     pub fn validate(&self) -> Result<(), String> {
-        if self.origin.as_ref().is_some_and(|o|!o.valid()) {return Err("Invalid founder seed record".into());}
+        if self.origin.as_ref().is_some_and(|o| !o.valid()) {
+            return Err("Invalid founder seed record".into());
+        }
         if !self.tutorial.valid() {
             return Err("invalid tutorial progress".into());
         }
@@ -647,10 +661,12 @@ impl Campaign {
             recruit.psyche = Psyche::default();
             team.fighters.push(recruit);
         }
-        if let Some(origin)=&updated.origin {
-            let f=crate::genesis::reveal(&origin.word,3,0,FighterClass::Warrior)?;
-            let recruit=&mut updated.teams[0].fighters[3];
-            recruit.name=f.name;recruit.mind=f.mind;recruit.appearance=f.appearance;
+        if let Some(origin) = &updated.origin {
+            let f = crate::genesis::reveal(&origin.word, 3, 0, FighterClass::Warrior)?;
+            let recruit = &mut updated.teams[0].fighters[3];
+            recruit.name = f.name;
+            recruit.mind = f.mind;
+            recruit.appearance = f.appearance;
         }
         updated.validate()?;
         *self = updated;

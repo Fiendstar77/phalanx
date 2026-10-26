@@ -17,7 +17,12 @@
     "DeathBackward",
     "DeathDelayed",
     "NearDeathPanic",
-    "WoundedStagger"
+    "WoundedStagger",
+    "WireLunge",
+    "WhirlwindCut",
+    "VaultStrike",
+    "WireRecoil",
+    "WireDeath"
   ],
   "method": "Artist-rigged new bases, independent bone-parented eyes; authored procedural combat motion. Feet normalized to ground."
 }

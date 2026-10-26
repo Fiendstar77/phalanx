@@ -5,8 +5,8 @@ mod exchange;
 mod founding;
 mod front;
 mod player;
-mod rewards;
 mod presentation;
+mod rewards;
 mod rpg;
 mod visuals;
 use bevy::{
@@ -39,8 +39,8 @@ fn frame_zoom(arena: Arena) -> f32 {
 #[derive(Resource)]
 struct Session {
     founding: founding::Draft,
-    renaming:Option<(usize,String)>,
-    harvesting:bool,
+    renaming: Option<(usize, String)>,
+    harvesting: bool,
     player: player::View,
     map_briefing: bool,
     exchange: exchange::State,
@@ -75,6 +75,14 @@ struct Session {
     autosave: bool,
 }
 impl Session {
+    fn cinematic_playing(&self) -> bool {
+        self.battle.founders
+            && self.running
+            && self.cinema_on
+            && !self.cinema_grabbed
+            && !self.camera_follow
+            && !self.player.details
+    }
     fn new(mut battle: Battle) -> Self {
         let path = std::path::Path::new("outputs/phalanx-save.json");
         let mut notice = String::new();
@@ -132,13 +140,13 @@ impl Session {
         let previous_positions = battle.units.iter().map(|u| u.position).collect();
         let paths = if battle.arena.large() { 1 } else { 0 };
         let zoom = frame_zoom(battle.arena);
-        let founders_cinema = battle.founders && battle.team_size() == 3;
+        let founders_cinema = battle.founders;
         let founding =
             founding::Draft::new(&campaign, battle.founders && !campaign.founders_prepared);
         let mut session = Self {
             founding,
-            renaming:None,
-            harvesting:false,
+            renaming: None,
+            harvesting: false,
             player: player::View::default(),
             map_briefing: true,
             exchange: exchange::State::default(),
@@ -294,6 +302,10 @@ impl Session {
                 self.battle = b;
                 self.active_battle_id = Some(id);
                 self.rewarded = false;
+                self.cinema = phalanx::cinema::Director::default();
+                self.cinema_on = true;
+                self.cinema_grabbed = false;
+                self.camera_follow = false;
             }
             Err(e) => self.save_notice = e,
         }
@@ -355,9 +367,13 @@ struct PressLatch(bool);
 struct Inspector;
 #[derive(Component)]
 struct InspectorPanel;
-type MainCameraFilter = (With<Camera3d>, Without<visuals::PortraitCamera>);
+type MainCameraFilter = (
+    With<Camera3d>,
+    Without<visuals::PortraitCamera>,
+    Without<founding::CardCamera>,
+);
 #[derive(Component)]
-struct TraitValue(usize);
+pub(crate) struct TraitValue(pub usize);
 #[derive(Component)]
 struct Status;
 #[derive(Component)]
@@ -401,7 +417,6 @@ enum Control {
     TogglePlay,
     NextTutorial,
     StarterClass(usize, FighterClass),
-    ClearPhalanxName,
     ConfirmFounders,
     FocusFounderField(usize),
     RevealFounder(usize),
@@ -414,6 +429,7 @@ enum Control {
     BattleStyle(phalanx::styles::BattleStyle),
     FollowFighter,
     FrameBattle,
+    Cinematic,
     Overlay,
     Controller,
     Pair(usize, usize),
@@ -430,6 +446,8 @@ enum Control {
     Aggressive,
     Disciplined,
     Trait(usize, f32),
+    FoundingStep,
+    FounderLook(usize, usize),
 }
 
 fn main() {
@@ -601,6 +619,9 @@ fn main() {
             if std::env::var_os("PHALANX_WITNESS_CLOSE").is_some() {
                 session.camera_follow = true;
                 session.zoom = 3.3;
+                if let Ok(zoom) = std::env::var("PHALANX_REVIEW_ZOOM") {
+                    session.zoom = zoom.parse::<f32>().unwrap_or(3.3).clamp(2.0, 12.0);
+                }
                 session.pitch = 0.12;
                 session.orbit = 1.35;
             }
@@ -709,6 +730,22 @@ fn main() {
             session.menu = true;
             session.ladder = args.iter().any(|a| a == "--ladder-witness");
             session.running = false;
+        }
+        if args.iter().any(|a| a == "--founding-witness") {
+            session.autosave = false;
+            session.founding = founding::Draft::new(&session.campaign, true);
+            session.menu = true;
+            session.running = false;
+            session.camp_page = None;
+            session.ladder = false;
+        }
+        if args.iter().any(|a| a == "--mind-witness") {
+            session.autosave = false;
+            session.founding.open = false;
+            session.menu = false;
+            session.running = false;
+            session.player.details = true;
+            session.camp_page = None;
         }
     }
     if args.iter().any(|a| a == "--rpg-witness") {
@@ -879,6 +916,7 @@ fn main() {
         rewards::Rewards,
         founding::Founding,
     ))
+    .add_systems(Startup, install_ui_font.before(setup))
     .add_systems(Startup, setup)
     .add_systems(
         Update,
@@ -927,9 +965,17 @@ fn main() {
     }
     app.run();
 }
+fn install_ui_font(mut fonts: ResMut<Assets<Font>>) {
+    let face =
+        Font::from_bytes(include_bytes!("../assets/fonts/LiberationSans-Regular.ttf").to_vec());
+    let handle = Handle::<Font>::default();
+    if let Some(mut slot) = fonts.get_mut(&handle) {
+        *slot = face;
+    }
+}
 fn font(size: f32) -> TextFont {
     TextFont {
-        font_size: FontSize::Px(size),
+        font_size: FontSize::Px(size + 1.0),
         ..default()
     }
 }
@@ -1127,6 +1173,12 @@ fn setup(
             .with_children(|p| {
                 p.spawn((
                     Insignia(id, true),
+                    visuals::CrownAnchor {
+                        id,
+                        up: visuals::CROWN_BAND_UP,
+                        ring: 0.0,
+                        angle: 0.0,
+                    },
                     Mesh3d(crown_band.clone()),
                     MeshMaterial3d(gold.clone()),
                     Transform::from_xyz(0.0, 0.71, 0.0),
@@ -1136,6 +1188,12 @@ fn setup(
                     let angle = point as f32 * std::f32::consts::TAU / 5.0;
                     p.spawn((
                         Insignia(id, true),
+                        visuals::CrownAnchor {
+                            id,
+                            up: visuals::CROWN_TIP_UP,
+                            ring: visuals::CROWN_RING,
+                            angle,
+                        },
                         Mesh3d(crown_tip.clone()),
                         MeshMaterial3d(gold.clone()),
                         Transform::from_xyz(angle.cos() * 0.19, 0.81, angle.sin() * 0.19),
@@ -1383,15 +1441,20 @@ fn setup(
     });
 }
 fn apply(control: Control, session: &mut Session) {
-    if session.renaming.is_some() && !matches!(control,Control::FinishRename|Control::CancelRename) {return;}
+    if session.renaming.is_some()
+        && !matches!(control, Control::FinishRename | Control::CancelRename)
+    {
+        return;
+    }
     if session.founding.open
         && !matches!(
             control,
             Control::StarterClass(..)
                 | Control::FocusFounderField(_)
                 | Control::RevealFounder(_)
-                | Control::ClearPhalanxName
                 | Control::ConfirmFounders
+                | Control::FoundingStep
+                | Control::FounderLook(..)
                 | Control::Quit
         )
     {
@@ -1425,6 +1488,7 @@ fn apply(control: Control, session: &mut Session) {
                 | Control::RosterPage(_)
                 | Control::FollowFighter
                 | Control::FrameBattle
+                | Control::Cinematic
                 | Control::Pair(..)
                 | Control::ClearPair
                 | Control::NextMatch
@@ -1445,43 +1509,74 @@ fn apply(control: Control, session: &mut Session) {
         let _ = session.campaign.capture_minds(&session.battle);
     }
     match control {
-        Control::FocusFounderField(i)=> {if session.founding.open {session.founding.focus=i.min(4);}}
-        Control::RevealFounder(i)=> {if session.founding.open {match session.founding.reveal(i) {Ok(())=>session.save_notice="A life revealed. Edit the name, choose a class, or reroll.".into(),Err(e)=>session.save_notice=e}}}
-        Control::RenameFighter=> {
-            if session.battle.founders && session.exchange.live.is_none() {
-                let id=session.selected;let u=&session.battle.units[id];
-                if u.team==0 {session.running=false;session.renaming=Some((id,session.campaign.teams[0].fighters[id%session.battle.team_size()].name.clone()));}
+        Control::FocusFounderField(i) => {
+            if session.founding.open {
+                session.founding.focus = i.min(4);
             }
         }
-        Control::CancelRename=>session.renaming=None,
-        Control::FinishRename=> {
-            if let Some((id,name))=session.renaming.clone() {
-                let name=name.trim();
-                if !name.is_empty() && name.chars().count()<=40 && !name.chars().any(char::is_control) {
-                    let size=session.battle.team_size();session.campaign.teams[0].fighters[id%size].name=name.into();
-                    session.renaming=None;if session.autosave {session.save_campaign();}
+        Control::RevealFounder(i) => {
+            if session.founding.open {
+                match session.founding.reveal(i) {
+                    Ok(()) => {
+                        session.save_notice =
+                            "A life revealed. Edit the name, choose a class, or reroll.".into()
+                    }
+                    Err(e) => session.save_notice = e,
                 }
             }
         }
-        Control::BattleView=>session.player.details=!session.player.details,
+        Control::RenameFighter => {
+            if session.battle.founders && session.exchange.live.is_none() {
+                let id = session.selected;
+                let u = &session.battle.units[id];
+                if u.team == 0 {
+                    session.running = false;
+                    session.renaming = Some((
+                        id,
+                        session.campaign.teams[0].fighters[id % session.battle.team_size()]
+                            .name
+                            .clone(),
+                    ));
+                }
+            }
+        }
+        Control::CancelRename => session.renaming = None,
+        Control::FinishRename => {
+            if let Some((id, name)) = session.renaming.clone() {
+                let name = name.trim();
+                if !name.is_empty()
+                    && name.chars().count() <= 40
+                    && !name.chars().any(char::is_control)
+                {
+                    let size = session.battle.team_size();
+                    session.campaign.teams[0].fighters[id % size].name = name.into();
+                    session.renaming = None;
+                    if session.autosave {
+                        session.save_campaign();
+                    }
+                }
+            }
+        }
+        Control::BattleView => session.player.details = !session.player.details,
         Control::StarterClass(slot, class) => {
             if session.founding.open && slot < 3 {
                 session.founding.classes[slot] = class;
-                session.founding.cards[slot].class=class;
-            }
-        }
-        Control::ClearPhalanxName => {
-            if session.founding.open {
-                session.founding.name.clear();
+                session.founding.cards[slot].class = class;
             }
         }
         Control::ConfirmFounders => {
             if !session.founding.open {
                 return;
             }
-            if !session.founding.revealed.iter().all(|v|*v) {session.save_notice="Reveal each of your three founders first.".into();return;}
-            match session.campaign.found_phalanx(&session.founding.name,session.founding.cards.clone(),Some(session.founding.origin()))
-            {
+            if !session.founding.revealed.iter().all(|v| *v) {
+                session.save_notice = "Reveal each of your three founders first.".into();
+                return;
+            }
+            match session.campaign.found_phalanx(
+                &session.founding.name,
+                session.founding.cards.clone(),
+                Some(session.founding.origin()),
+            ) {
                 Ok(()) => {
                     session.founding.open = false;
                     // Refresh the staged snapshot before the ordinary tutorial flow captures minds.
@@ -1536,9 +1631,19 @@ fn apply(control: Control, session: &mut Session) {
         }
         Control::FrameBattle => {
             session.camera_follow = false;
+            session.cinema_grabbed = true;
             session.camera_target = Vec3::new(3.5, 0., 0.);
             session.zoom = frame_zoom(session.battle.arena);
             session.pitch = 0.72;
+        }
+        Control::Cinematic => {
+            if !session.cinema_on || session.cinema_grabbed || session.camera_follow {
+                session.cinema_on = true;
+                session.cinema_grabbed = false;
+                session.camera_follow = false;
+            } else {
+                session.cinema_on = false;
+            }
         }
         Control::BattleStyle(style) => {
             if !session.battle.founders || (session.battle.tick > 0 && !session.battle.finished) {
@@ -1635,8 +1740,10 @@ fn apply(control: Control, session: &mut Session) {
                     if session.autosave {
                         session.save_campaign();
                     }
-                    session.save_notice =
-                        "League 4 unlocked: a new Warrior joins each side. 1000 gold spent.".into();
+                    let cost = phalanx::progression::slot_cost(4).unwrap();
+                    session.save_notice = format!(
+                        "League 4 unlocked: a new Warrior joins each side. {cost} gold spent."
+                    );
                 }
                 Err(e) => session.save_notice = e,
             }
@@ -2023,6 +2130,43 @@ fn apply(control: Control, session: &mut Session) {
             };
             *field = (*field + change).clamp(0.0, 1.0);
         }
+        Control::FoundingStep => {
+            if !session.founding.open {
+                return;
+            }
+            match session.founding.stage {
+                0 => {
+                    session.founding.stage = 1;
+                    for i in 0..3 {
+                        if !session.founding.revealed[i] {
+                            let _ = session.founding.reveal(i);
+                        }
+                    }
+                }
+                1 => {
+                    if session.founding.revealed.iter().all(|shown| *shown) {
+                        session.founding.stage = 2;
+                    } else {
+                        session.save_notice = "Reveal each founder before choosing a class.".into();
+                    }
+                }
+                _ => {}
+            }
+        }
+        Control::FounderLook(slot, choice) => {
+            if session.founding.open && slot < 3 && session.founding.revealed[slot] {
+                let look = &mut session.founding.cards[slot].appearance;
+                match choice {
+                    0 => look.female = Some(!look.female.unwrap_or(false)),
+                    1 => look.hair = (look.hair + 1) % 11,
+                    2 => look.face = (look.face + 1) % 17,
+                    3 => look.eyes = (look.eyes + 1) % 16,
+                    4 => look.nose = (look.nose + 1) % 17,
+                    5 => look.skin = (look.skin + 1) % 8,
+                    _ => look.hair_color = (look.hair_color + 1) % 7,
+                }
+            }
+        }
     }
     if matches!(
         control,
@@ -2105,13 +2249,15 @@ fn controls(
                 || matches!(
                     control,
                     Control::Continue
+                        // The creator keeps the menu open until founders are accepted.
+                        | Control::FoundingStep
+                        | Control::FounderLook(..)
                         | Control::FocusFounderField(_)
                         | Control::RevealFounder(_)
                         | Control::RenameFighter
                         | Control::FinishRename
                         | Control::CancelRename
                         | Control::StarterClass(..)
-                        | Control::ClearPhalanxName
                         | Control::ConfirmFounders
                         | Control::Camp(_)
                         | Control::SelectFighter(_)
@@ -2402,10 +2548,13 @@ fn camera_motion(
     mut initialized: Local<bool>,
 ) {
     let dt = time.delta_secs().min(0.1);
-    let over_world = !session.menu
-        && window
-            .cursor_position()
-            .is_some_and(|p| p.x < window.width() - 365.0 && p.y < window.height() - 100.0);
+    let accepts_input = camera_input_enabled(&session);
+    let over_world = accepts_input
+        && window.cursor_position().is_some_and(|p| {
+            p.y > 80.0
+                && (!session.player.details || p.x < window.width() - 350.0)
+                && p.y < window.height() - 130.0
+        });
     let delta = motion.read().fold(Vec2::ZERO, |sum, e| sum + e.delta);
     let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
     if over_world {
@@ -2437,15 +2586,15 @@ fn camera_motion(
             session.cinema_grabbed = true;
         }
     }
-    if keys.pressed(KeyCode::KeyQ) {
+    if accepts_input && keys.pressed(KeyCode::KeyQ) {
         session.orbit -= dt * 0.7;
         session.cinema_grabbed = true;
     }
-    if keys.pressed(KeyCode::KeyE) {
+    if accepts_input && keys.pressed(KeyCode::KeyE) {
         session.orbit += dt * 0.7;
         session.cinema_grabbed = true;
     }
-    if !session.menu {
+    if accepts_input {
         let movement = Vec2::new(
             (keys.pressed(KeyCode::KeyD) as u8 as f32) - (keys.pressed(KeyCode::KeyA) as u8 as f32),
             (keys.pressed(KeyCode::KeyW) as u8 as f32) - (keys.pressed(KeyCode::KeyS) as u8 as f32),
@@ -2460,30 +2609,28 @@ fn camera_motion(
             session.cinema_grabbed = true;
         }
     }
-    if keys.just_pressed(KeyCode::KeyF) {
+    if accepts_input && keys.just_pressed(KeyCode::KeyF) {
         session.camera_follow = true;
         session.cinema_grabbed = true;
         session.zoom = 2.6;
         session.pitch = 0.18;
     }
-    if keys.just_pressed(KeyCode::KeyV) && !session.menu {
-        if !session.cinema_on || session.cinema_grabbed {
-            session.cinema_on = true;
-            session.cinema_grabbed = false;
-            session.camera_follow = false;
-        } else {
-            session.cinema_on = false;
-        }
+    if accepts_input && keys.just_pressed(KeyCode::KeyV) {
+        apply(Control::Cinematic, &mut session);
     }
-    if keys.just_pressed(KeyCode::Home) {
+    if accepts_input && keys.just_pressed(KeyCode::Home) {
         session.camera_follow = false;
         session.cinema_grabbed = true;
         session.camera_target = Vec3::new(3.5, 0.0, 0.0);
         session.zoom = frame_zoom(session.battle.arena);
         session.pitch = 0.72;
     }
-    let staged = session.battle.founders && session.battle.team_size() == 3;
-    if session.cinema_on && staged && !session.cinema_grabbed && !session.camera_follow && !session.menu
+    let staged = session.battle.founders;
+    if session.cinema_on
+        && staged
+        && !session.cinema_grabbed
+        && !session.camera_follow
+        && !session.menu
     {
         let shot_dt = if session.running { dt } else { 0.0 };
         let tick = session.battle.tick;
@@ -2501,13 +2648,19 @@ fn camera_motion(
                 max_health: u.max_health(),
             })
             .collect();
-        let aim = session.cinema.update(shot_dt, tick, &fighters, finished, wide);
+        let aim = session
+            .cinema
+            .update(shot_dt, tick, &fighters, finished, wide);
         let ground = session.battle.arena.elevation(aim.look);
         let raised = !matches!(
             aim.shot,
             phalanx::cinema::Shot::Establish | phalanx::cinema::Shot::Aftermath
         );
-        session.camera_target = Vec3::new(aim.look[0], ground + if raised { 0.85 } else { 0.0 }, aim.look[1]);
+        session.camera_target = Vec3::new(
+            aim.look[0],
+            ground + if raised { 1.1 } else { 0.0 },
+            aim.look[1],
+        );
         session.zoom = aim.zoom;
         session.pitch = aim.pitch;
         session.orbit += aim.orbit_rate * dt;
@@ -2540,11 +2693,64 @@ fn camera_motion(
     camera.translation = camera.translation.lerp(wanted.translation, blend);
     camera.rotation = camera.rotation.slerp(wanted.rotation, blend);
 }
+fn camera_input_enabled(session: &Session) -> bool {
+    !session.menu && !session.founding.open && session.renaming.is_none()
+}
+
+#[cfg(test)]
+mod camera_regressions {
+    use super::*;
+
+    #[test]
+    fn typing_names_cannot_disable_cinema_and_the_button_restores_manual_camera() {
+        let mut session = Session::new(Battle::new(42, false));
+        session.autosave = false;
+        session.campaign = Campaign::new();
+        session.restart_founders(42, Arena::OpenField, Controller::Utility);
+        session.founding = founding::Draft::new(&session.campaign, true);
+        let mut app = App::new();
+        let mut keys = ButtonInput::<KeyCode>::default();
+        for key in [KeyCode::KeyE, KeyCode::KeyF, KeyCode::Home] {
+            keys.press(key);
+        }
+        app.insert_resource(session)
+            .insert_resource(keys)
+            .init_resource::<ButtonInput<MouseButton>>()
+            .insert_resource(Time::<()>::default())
+            .add_message::<bevy::input::mouse::MouseMotion>()
+            .add_message::<bevy::input::mouse::MouseWheel>()
+            .add_systems(Update, camera_motion);
+        app.world_mut().spawn(Window::default());
+        app.world_mut()
+            .spawn((Camera3d::default(), Transform::default()));
+        app.update();
+        assert!(!app.world().resource::<Session>().cinema_grabbed);
+        assert!(!app.world().resource::<Session>().camera_follow);
+        {
+            let mut session = app.world_mut().resource_mut::<Session>();
+            session.menu = false;
+            session.founding.open = false;
+            session.renaming = Some((0, "Queen".into()));
+        }
+        app.update();
+        assert!(!app.world().resource::<Session>().cinema_grabbed);
+        app.world_mut().resource_mut::<Session>().renaming = None;
+        app.update();
+        assert!(app.world().resource::<Session>().cinema_grabbed);
+        let mut session = app.world_mut().resource_mut::<Session>();
+        apply(Control::Cinematic, &mut session);
+        assert!(session.cinema_on && !session.cinema_grabbed && !session.camera_follow);
+        session.cinema_grabbed = true;
+        session.restart_founders(43, Arena::OpenField, Controller::Utility);
+        assert!(session.cinema_on && !session.cinema_grabbed && !session.camera_follow);
+    }
+}
 fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
     let arena = session.battle.arena;
     let u = &session.battle.units[session.selected];
     let rendered = session.presented(u.id);
-    if u.health > 0.0 {
+    let cinema = session.cinematic_playing();
+    if u.health > 0.0 && !cinema {
         gizmos.circle(
             Isometry3d::new(
                 Vec3::new(rendered[0], arena.elevation(rendered) + 0.08, rendered[1]),
@@ -2584,7 +2790,7 @@ fn overlays(session: Res<Session>, mut gizmos: Gizmos) {
         }
     }
     for unit in &session.battle.units {
-        if unit.health > 0.0 && unit.has_skill(FighterClass::Paladin) {
+        if unit.health > 0.0 && unit.has_skill(FighterClass::Paladin) && !cinema {
             let p = session.presented(unit.id);
             gizmos.circle(
                 Isometry3d::new(

@@ -10,6 +10,8 @@ const COLS: usize = 16;
 const ROWS: usize = 28;
 const WIDTH: f32 = 0.76;
 const HEIGHT: f32 = 1.42;
+/// Lifts the cloth, crossbar and pole top so the banner clears the enlarged head.
+const FLAG_LIFT: f32 = 0.50;
 #[derive(Resource)]
 pub(super) struct Standards {
     textures: [Handle<Image>; 2],
@@ -102,7 +104,11 @@ fn cloth_points(clock: f32, phase: f32, speed: f32) -> Vec<[f32; 3]> {
                     * u
                     * (0.2 + 0.8 * v)
                     * (wave.sin() + 0.35 * (wave * 1.9).sin());
-                [0.045 + u * WIDTH, 1.98 - v * HEIGHT - 0.08 * u * u, flutter]
+                [
+                    0.045 + u * WIDTH,
+                    1.98 + FLAG_LIFT - v * HEIGHT - 0.08 * u * u,
+                    flutter,
+                ]
             })
         })
         .collect()
@@ -168,8 +174,8 @@ pub(super) fn ready(
                     ([0., -0.10, 0.055], [0.19, 0.42, 0.08], &kit.leather),
                     ([0., -0.23, 0.005], [0.12, 0.045, 0.12], &kit.iron),
                     ([0., 0.12, 0.005], [0.12, 0.045, 0.12], &kit.iron),
-                    ([0., 0.85, 0.], [0.028, 2.60, 0.028], &kit.wood),
-                    ([0., 2.17, 0.], [0.045, 0.08, 0.045], &kit.iron),
+                    ([0., 1.10, 0.], [0.028, 3.10, 0.028], &kit.wood),
+                    ([0., 2.17 + FLAG_LIFT, 0.], [0.045, 0.08, 0.045], &kit.iron),
                 ] {
                     p.spawn((
                         Mesh3d(kit.pole.clone()),
@@ -187,7 +193,7 @@ pub(super) fn ready(
                     p.spawn((
                         Mesh3d(kit.pole.clone()),
                         MeshMaterial3d(kit.wood.clone()),
-                        Transform::from_xyz(0.40, 2.02, 0.0)
+                        Transform::from_xyz(0.40, 2.02 + FLAG_LIFT, 0.0)
                             .with_scale(Vec3::new(0.85, 0.023, 0.023)),
                     ));
                     p.spawn((
@@ -261,5 +267,19 @@ fn update(
             );
             mesh.compute_smooth_normals();
         }
+    }
+}
+
+#[cfg(test)]
+mod flag_clearance {
+    use super::cloth_points;
+
+    #[test]
+    fn the_cloth_sits_above_the_enlarged_head() {
+        let points = cloth_points(0.0, 0.0, 0.0);
+        let min_y = points.iter().map(|point| point[1]).fold(f32::MAX, f32::min);
+        let max_y = points.iter().map(|point| point[1]).fold(f32::MIN, f32::max);
+        assert!(max_y > 2.4, "the hoist should clear the scalp");
+        assert!(min_y > 0.9, "the hem should not fall through the head");
     }
 }

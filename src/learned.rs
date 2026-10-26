@@ -124,7 +124,8 @@ impl LearnedPolicy {
         {
             return Err("policy schema mismatch".into());
         }
-        if model.schema_version == 1 && (model.layers.len() != 3 || model.layers[0].weight.len() != 64)
+        if model.schema_version == 1
+            && (model.layers.len() != 3 || model.layers[0].weight.len() != 64)
         {
             return Err("policy schema mismatch".into());
         }

@@ -23,6 +23,7 @@ fn setup_menu(mut commands: Commands) {
                 flex_direction: FlexDirection::Column, row_gap: px(12), ..default() }))
                 .with_children(|p| {
                     p.spawn((Text::new("PHALANX"),font(48.0),TextColor(Color::srgb(1.0,0.72,0.08))));
+                    p.spawn((Text::new("A game by Guillaume Heinerth"),font(13.0),TextColor(Color::srgb(0.65,0.75,0.80))));
                     p.spawn((Text::new("Build their minds. Watch them fight. Bring them home."),font(16.0)));
                     p.spawn((MenuSummary,Text::new(""),font(15.0),TextColor(Color::srgb(0.65,0.82,0.84))));
                     button(p,"Begin / continue NPC tutorials",Control::NextTutorial);
@@ -32,7 +33,8 @@ fn setup_menu(mut commands: Commands) {
                     button(p,"Last battle report",Control::Camp(camp::Page::Report));
                     button(p,"Choose a rival phalanx",Control::Camp(camp::Page::Rivals));
                     button(p,"Snapshot challenges / exchange teams",Control::Camp(camp::Page::Challenges));
-                    button(p,"Unlock fourth fighter / League 4 - 1000 gold",Control::Recruit);
+                    let fourth = phalanx::progression::slot_cost(4).unwrap();
+                    button(p,&format!("Unlock fourth fighter / League 4 - {fourth} gold"),Control::Recruit);
                     button(p,"View League 3 -> 20 gold ladder",Control::Ladder);
                     button(p,"Change arena",Control::Arena);
                     button(p,"Create a procedural battlefield",Control::GenerateArena);
@@ -41,7 +43,7 @@ fn setup_menu(mut commands: Commands) {
                     button(p,"Load saved squads",Control::Load);
                     super::audio::menu(p);
                     button(p,"Quit",Control::Quit);
-                    p.spawn((Text::new("Select a fighter to change class, appearance and mind.\nRetrain: 10 gold | Iron limb: 15 gold + 5 salvage\nLeague 3: 30 gold win / 15 otherwise | rewards rise by league\nBattles scar minds. The same event marks two personalities differently.\nFounders fields are generated for both squads. Arena returns to the Lab maps.\n\nRMB orbit | MMB pan | Wheel zoom | F follow\nSpace pause / run | Tab next fighter | Esc menu\n\nLocal prototype | no account or connection required"),font(14.0)));
+                    p.spawn((Text::new("Select a fighter to change class, appearance and mind.\nRetrain: 10 gold | Iron limb: 15 gold + 5 salvage\nLeague 3: 30 gold win / 15 otherwise | rewards rise by league\nBattles scar minds. The same event marks two personalities differently.\nFounders fields are generated for both squads. Arena returns to the Lab maps.\n\nRMB orbit | MMB pan | Wheel zoom | F follow | V cinema\nSpace pause / run | Tab next fighter | Esc menu\n\nLocal prototype | no account or connection required"),font(14.0)));
                 });
         });
     let mut ladder = String::from(

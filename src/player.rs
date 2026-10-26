@@ -3,12 +3,21 @@ use super::*;
 use phalanx::styles::BattleStyle;
 pub const CARDS_PER_PAGE: usize = 6;
 pub struct View {
-    pub details:bool,
+    pub details: bool,
     pub research: bool,
     pub side: usize,
     pub page: usize,
 }
-impl Default for View {fn default()->Self {Self {details:false,research:false,side:0,page:0}}}
+impl Default for View {
+    fn default() -> Self {
+        Self {
+            details: false,
+            research: false,
+            side: 0,
+            page: 0,
+        }
+    }
+}
 pub fn page_count(fighters: usize) -> usize {
     fighters.div_ceil(CARDS_PER_PAGE).max(1)
 }
@@ -66,12 +75,12 @@ fn setup_player(mut commands: Commands) {
             Panel::Top,
             Node {
                 position_type: PositionType::Absolute,
-                left: px(22),
-                right: px(370),
-                top: px(16),
-                padding: UiRect::all(px(12)),
+                left: px(12),
+                right: px(12),
+                top: px(10),
+                padding: UiRect::all(px(6)),
                 flex_direction: FlexDirection::Column,
-                row_gap: px(7),
+                row_gap: px(2),
                 ..default()
             },
             BackgroundColor(Color::srgba(0.025, 0.04, 0.055, 0.93)),
@@ -80,7 +89,7 @@ fn setup_player(mut commands: Commands) {
             p.spawn((
                 Heading,
                 Text::new(""),
-                font(18.),
+                font(14.),
                 TextColor(Color::srgb(1., 0.81, 0.4)),
             ));
             p.spawn(Node {
@@ -89,14 +98,11 @@ fn setup_player(mut commands: Commands) {
                 ..default()
             })
             .with_children(|row| {
-                button(row, "Fight / pause [Space]", Control::TogglePlay);
-                button(row,"Fighter details",Control::BattleView);
+                button(row, "Fight / pause", Control::TogglePlay);
+                button(row, "Fighters", Control::BattleView);
                 button(row, "Speed", Control::Speed);
-                button(row, "NPC tutorials", Control::Camp(camp::Page::Rivals));
+                button(row, "Cinema [V]", Control::Cinematic);
                 button(row, "Workshop", Control::Camp(camp::Page::Workshop));
-                button(row, "New map [G]", Control::GenerateArena);
-                button(row, "Whole battlefield", Control::FrameBattle);
-                button(row, "Research [I]", Control::ResearchView);
                 button(row, "Menu", Control::Menu);
             });
         });
@@ -105,12 +111,11 @@ fn setup_player(mut commands: Commands) {
             Panel::Roster,
             Node {
                 position_type: PositionType::Absolute,
-                left: px(22),
-                right: px(22),
-                bottom: px(14),
-                padding: UiRect::all(px(10)),
+                left: px(12),
+                bottom: px(10),
+                padding: UiRect::all(px(6)),
                 flex_direction: FlexDirection::Column,
-                row_gap: px(5),
+                row_gap: px(2),
                 ..default()
             },
             BackgroundColor(Color::srgba(0.025, 0.04, 0.055, 0.96)),
@@ -143,12 +148,12 @@ fn setup_player(mut commands: Commands) {
                         BorderColor::all(Color::srgb(0.22, 0.3, 0.36)),
                         BackgroundColor(Color::srgb(0.09, 0.14, 0.18)),
                         Node {
-                            width: px(123),
-                            min_height: px(74),
+                            width: px(132),
+                            min_height: px(62),
                             border: UiRect::all(px(2)),
-                            padding: UiRect::all(px(7)),
+                            padding: UiRect::all(px(5)),
                             flex_direction: FlexDirection::Column,
-                            row_gap: px(5),
+                            row_gap: px(3),
                             ..default()
                         },
                     ))
@@ -187,6 +192,39 @@ fn setup_player(mut commands: Commands) {
         BackgroundColor(Color::srgba(0.025,0.04,0.055,0.95))))
     .with_children(|p|{
         p.spawn((Detail,Text::new(""),font(15.)));
+        p.spawn((Text::new("SEVEN TRAITS"),font(13.),TextColor(Color::srgb(1.,0.78,0.35))));
+        for (i, name) in [
+            "Aggression",
+            "Caution",
+            "Courage",
+            "Teamwork",
+            "Patience",
+            "Self-preservation",
+            "Discipline",
+        ]
+        .iter()
+        .enumerate()
+        {
+            p.spawn(Node {
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::SpaceBetween,
+                ..default()
+            })
+            .with_children(|row| {
+                row.spawn((
+                    TraitValue(i),
+                    Text::new(*name),
+                    font(13.),
+                    Node {
+                        width: px(180),
+                        ..default()
+                    },
+                ));
+                button(row, "-", Control::Trait(i, -0.1));
+                button(row, "+", Control::Trait(i, 0.1));
+            });
+        }
+        p.spawn((Text::new("A style below replaces all seven. + and - move one. Styles lock during a fight. Traits do not."),font(12.),TextColor(Color::srgb(0.58,0.72,0.76))));
         button(p,"Follow this fighter",Control::FollowFighter);
         button(p,"Rename this fighter",Control::RenameFighter);
         for style in BattleStyle::ALL {
@@ -194,8 +232,10 @@ fn setup_player(mut commands: Commands) {
                 BackgroundColor(Color::srgb(0.12,0.18,0.25)),Node{padding:UiRect::all(px(10)),flex_direction:FlexDirection::Column,..default()}))
             .with_children(|p|{p.spawn((Text::new(format!("{}\n{}",style.name(),style.description())),font(13.)));});
         }
-        p.spawn((Text::new("Styles shape the seven mind traits. Choose before or after combat.\nClass, skills, equipment and scars still matter."),font(12.),TextColor(Color::srgb(0.58,0.72,0.76))));
         button(p,"Equipment, skills & class",Control::Camp(camp::Page::Workshop));
+        button(p, "Whole battlefield [Home]", Control::FrameBattle);
+        button(p, "New battlefield [G]", Control::GenerateArena);
+        button(p, "Research [I]", Control::ResearchView);
     });
 }
 #[allow(clippy::too_many_arguments)]
@@ -257,13 +297,22 @@ fn update(
     )>,
     mut styles: Query<(&StyleButton, &mut BackgroundColor), Without<CardHealth>>,
 ) {
-    let play = session.battle.founders && !session.player.research && !session.menu && !session.harvesting;
+    let play =
+        session.battle.founders && !session.player.research && !session.menu && !session.harvesting;
     let map = session.map_briefing
         && session.battle.tick == 0
         && matches!(session.battle.arena, Arena::Pressure(_));
+    let cinema = session.cinema_on && !session.cinema_grabbed && !session.camera_follow;
     for (panel, mut node) in &mut panels {
-        if matches!(panel,Panel::Top|Panel::Roster) {node.right=px(if session.player.details {370.}else{22.});}
-        node.display = if play && (!matches!(panel, Panel::Details) || (!map && session.player.details)) {
+        if matches!(panel, Panel::Top) {
+            node.right = px(if session.player.details { 370. } else { 12. });
+        }
+        let visible = match panel {
+            Panel::Top => true,
+            Panel::Details => !map && session.player.details,
+            Panel::Roster => !session.cinematic_playing(),
+        };
+        node.display = if play && visible {
             Display::Flex
         } else {
             Display::None
@@ -281,19 +330,23 @@ fn update(
         };
     }
     for mut node in &mut portraits {
-        node.display = if play || session.harvesting { Display::None } else { Display::Flex };
+        node.display = if play || session.harvesting {
+            Display::None
+        } else {
+            Display::Flex
+        };
     }
     if !session.battle.founders {
         return;
     }
     let battle = &session.battle;
-    let controller = if battle.controller == Controller::Utility {
-        "UTILITY driving | learned shadow"
+    let camera = if cinema {
+        session.cinema.shot().name()
     } else {
-        "LEARNED driving | utility legality/fallback"
+        "MANUAL CAMERA · V to resume cinema"
     };
     let heading = format!(
-        "{}  {} : {}  {}  |  {}  x{}  |  {}",
+        "{}  {} : {}  {}  ·  {}  ×{}  ·  {}{}",
         session.team_name(0),
         battle.survivors(0),
         battle.survivors(1),
@@ -304,7 +357,12 @@ fn update(
             "PAUSED"
         },
         session.speed,
-        controller
+        camera,
+        if session.player.details {
+            format!("\n{}", why_now(&session, session.selected))
+        } else {
+            String::new()
+        }
     );
     for mut t in &mut text.p0() {
         if t.0 != heading {
@@ -323,18 +381,6 @@ fn update(
         .find(|s| s.matches(mind))
         .map(|s| s.name())
         .unwrap_or("INDIVIDUAL MIND");
-    let comparison = u
-        .comparison
-        .as_ref()
-        .map(|c| {
-            format!(
-                "Executing {}\nUtility: {} | Learned: {}",
-                ACTIONS[c.executed],
-                ACTIONS[c.utility],
-                c.learned.map(|i| ACTIONS[i]).unwrap_or("unavailable")
-            )
-        })
-        .unwrap_or_else(|| "Ready for the first decision".into());
     let synergy = match f.class {
         FighterClass::Paladin | FighterClass::BannerBearer => {
             "BUILD IDEA: Keep allies near your aura. Walls interrupt support."
@@ -357,19 +403,14 @@ fn update(
         }
     };
     let detail = format!(
-        "{}\n{} / {}\n\n{:.0} / {:.0} HP\n{}\n\n{}\n\n{}\n\n{synergy}\n\nFIGHTING STYLE",
+        "{}\n{} / {}\n{:.0} / {:.0} HP · {}\n\n{}\n{synergy}",
         f.name,
         f.title.name(),
         f.class.name(),
         u.health,
         u.max_health(),
         style,
-        comparison,
-        if battle.tick > 0 && !battle.finished {
-            "Preparation locked during combat"
-        } else {
-            "Try a different role in the same class"
-        }
+        why_now(&session, session.selected),
     );
     for mut t in &mut text.p1() {
         if t.0 != detail {
@@ -386,8 +427,9 @@ fn update(
     }
     let own = &session.campaign.teams[0];
     let recruitment = if count == 3 {
+        let price = phalanx::progression::slot_cost(4).unwrap_or(0);
         format!(
-            "Next recruit: {} / 1000 gold | Buy slot 4 in the menu",
+            "Next recruit: {} / {price} gold | Buy slot 4 in the menu",
             own.gold
         )
     } else {
@@ -401,7 +443,7 @@ fn update(
         .find(|l| Some(l.rival) == session.campaign.teams[1].rival_style);
     let lesson_name = lesson.map(|l| l.title).unwrap_or("Free sparring");
     let notice = format!(
-        "Tutorial {} / 5 | {}\n{} | {} salvage | Click a fighter to explore builds",
+        "Trial {} / 5 · {}\n{} · {} salvage",
         session.campaign.tutorial.completed(),
         lesson_name,
         recruitment,
@@ -432,14 +474,27 @@ fn update(
         if let Some(id) = card_id(session.player.side, page, card.0, count) {
             let u = &battle.units[id];
             let f = &session.campaign.teams[u.team].fighters[id % count];
+            let shown = if battle.tick == 0 || battle.finished {
+                f.mind
+            } else {
+                u.mind
+            };
             let label = format!(
-                "{}\n{} | {}",
+                "{} · {}\n{}{}{}",
                 f.name,
                 f.class.name(),
                 if u.health <= 0. {
                     "DOWN".into()
                 } else {
                     format!("{:.0} HP", u.health)
+                },
+                card_flag(&session, id)
+                    .map(|flag| format!("\n{flag}"))
+                    .unwrap_or_default(),
+                if session.player.details {
+                    format!("\n{}", mind_line(shown))
+                } else {
+                    String::new()
                 }
             );
             if t.0 != label {
@@ -491,7 +546,9 @@ fn record_demo(
     match demo.phase {
         0 => {
             session.founding.name = "THE BAD DECISIONS".into();
-            for i in 0..3 {session.founding.reveal(i).unwrap();}
+            for i in 0..3 {
+                session.founding.reveal(i).unwrap();
+            }
             demo.phase = 1;
         }
         1 if t > 2. => {
@@ -559,6 +616,138 @@ fn record_demo(
     }
 }
 
+fn call_name(session: &Session, id: usize) -> String {
+    let unit = &session.battle.units[id];
+    if session.battle.founders {
+        let fighter = &session.campaign.teams[unit.team].fighters[id % session.battle.team_size()];
+        let name = fighter.name.trim();
+        if name.is_empty() {
+            unit.command_title
+                .map(|title| title.name().to_string())
+                .unwrap_or_else(|| fighter.class.name().into())
+        } else {
+            name.to_string()
+        }
+    } else {
+        session.battle.unit_label(id)
+    }
+}
+fn living_allies<'a>(battle: &'a Battle, id: usize) -> Vec<&'a phalanx::Unit> {
+    let team = battle.units[id].team;
+    battle
+        .units
+        .iter()
+        .filter(|ally| ally.team == team && ally.id != id && ally.health > 0.0)
+        .collect()
+}
+fn away_from_company(battle: &Battle, id: usize) -> bool {
+    let here = battle.units[id].position;
+    let allies = living_allies(battle, id);
+    allies.is_empty()
+        || allies
+            .iter()
+            .map(|ally| phalanx::distance(here, ally.position))
+            .fold(f32::MAX, f32::min)
+            > 5.0
+}
+fn help_refused(unit: &phalanx::Unit) -> bool {
+    unit.health > 0.0 && unit.action != 8 && unit.scores[8] > 0.0
+}
+fn route_missing(battle: &Battle, unit: &phalanx::Unit) -> bool {
+    battle.tick > 0
+        && unit.health > 0.0
+        && unit.route.points.is_empty()
+        && matches!(unit.action, 0 | 3 | 4 | 5 | 7 | 8)
+}
+/// One readable line for the selected fighter. It reports the choice already made.
+fn why_now(session: &Session, id: usize) -> String {
+    let battle = &session.battle;
+    let unit = &battle.units[id];
+    let name = call_name(session, id);
+    let choice = if unit.decision_reason.is_empty() {
+        ACTIONS[unit.action].to_string()
+    } else {
+        unit.decision_reason.clone()
+    };
+    if unit.health <= 0.0 {
+        let killer = battle
+            .damage_events
+            .iter()
+            .rev()
+            .find(|event| event.defender == id)
+            .map(|event| call_name(session, event.attacker));
+        let apart = if away_from_company(battle, id) {
+            " They were away from the company."
+        } else {
+            ""
+        };
+        return match killer {
+            Some(killer) => format!("{name} fell to {killer}. Last choice: {choice}.{apart}"),
+            None => format!("{name} is down. Last choice: {choice}.{apart}"),
+        };
+    }
+    let mut notes = Vec::new();
+    if away_from_company(battle, id) {
+        let aura = unit.has_skill(FighterClass::Paladin)
+            || unit.command_title == Some(CommandTitle::General);
+        notes.push(if aura {
+            "away from the company, so the aura is covering nobody".to_string()
+        } else if unit.mind.teamwork < 0.45 {
+            "away from the company. Teamwork is too low to pull them back".to_string()
+        } else if unit.mind.caution > 0.65 && matches!(unit.action, 5 | 7) {
+            "left the fight. Caution outranked staying".to_string()
+        } else if unit.mind.aggression > 0.65 && matches!(unit.action, 0 | 3) {
+            "walked off. Aggression outranked the company".to_string()
+        } else {
+            "away from the company".to_string()
+        });
+    }
+    if help_refused(unit) {
+        let who = unit
+            .support_target
+            .map(|ally| call_name(session, ally))
+            .unwrap_or_else(|| "an ally".into());
+        notes.push(if unit.mind.teamwork < 0.45 {
+            format!("could have helped {who}, and teamwork lost that argument")
+        } else {
+            format!("could have helped {who}, and another urge scored higher")
+        });
+    }
+    if route_missing(battle, unit) {
+        notes.push("no walkable route to the goal".into());
+    }
+    if notes.is_empty() {
+        format!("{name}: {choice}")
+    } else {
+        format!("{name}: {}. {choice}", notes.join(". "))
+    }
+}
+fn card_flag(session: &Session, id: usize) -> Option<&'static str> {
+    let unit = &session.battle.units[id];
+    if unit.health <= 0.0 {
+        Some("DOWN")
+    } else if away_from_company(&session.battle, id) {
+        Some("ALONE")
+    } else if help_refused(unit) {
+        Some("WON'T HELP")
+    } else if route_missing(&session.battle, unit) {
+        Some("NO PATH")
+    } else {
+        None
+    }
+}
+fn mind_line(mind: Mind) -> String {
+    format!(
+        "A{:.0} C{:.0} R{:.0} T{:.0}\nP{:.0} S{:.0} D{:.0}",
+        mind.aggression * 100.0,
+        mind.caution * 100.0,
+        mind.courage * 100.0,
+        mind.teamwork * 100.0,
+        mind.patience * 100.0,
+        mind.self_preservation * 100.0,
+        mind.discipline * 100.0
+    )
+}
 fn scroll_details(
     session: Res<Session>,
     window: Single<&Window>,
@@ -659,5 +848,61 @@ mod tests {
         );
         s.restart_founders(43, Arena::OpenField, Controller::Utility);
         assert!(BattleStyle::Skirmisher.matches(s.battle.units[0].mind));
+    }
+    #[test]
+    fn the_play_view_says_why_someone_left_refused_or_fell() {
+        let mut s = session();
+        let general = s
+            .battle
+            .units
+            .iter()
+            .position(|u| u.team == 0 && u.command_title == Some(CommandTitle::General))
+            .unwrap();
+        let king = s
+            .battle
+            .units
+            .iter()
+            .position(|u| u.team == 0 && u.command_title == Some(CommandTitle::King))
+            .unwrap();
+        s.battle.units[general].position = s.battle.units[king].position;
+        s.battle.units[general].decision_reason = "Advance on observed/reported contact".into();
+        let together = why_now(&s, general);
+        assert!(together.contains("Advance on observed/reported contact"));
+        assert!(!together.contains("away from the company"));
+        assert_eq!(card_flag(&s, general), None);
+
+        s.battle.units[general].position = [18.0, 10.0];
+        s.battle.units[general].action = 7;
+        s.battle.units[general].mind.caution = 0.9;
+        s.battle.units[general].mind.teamwork = 0.2;
+        s.battle.units[general].scores = [-1.0; ACTION_COUNT];
+        s.battle.units[general].scores[7] = 1.1;
+        s.battle.units[general].scores[8] = 0.4;
+        s.battle.units[general].support_target = Some(king);
+        s.battle.units[general].decision_reason =
+            "Exposure and self-preservation favor cover".into();
+        let lost = why_now(&s, general);
+        assert!(lost.contains("aura is covering nobody"), "{lost}");
+        assert!(lost.contains("could have helped"), "{lost}");
+        assert!(lost.contains("teamwork lost"), "{lost}");
+        assert_eq!(card_flag(&s, general), Some("ALONE"));
+
+        let killer = s.battle.team_size();
+        s.battle.units[general].health = 0.0;
+        s.battle.damage_events.push(phalanx::DamageEvent {
+            sequence: 1,
+            tick: 40,
+            attacker: killer,
+            defender: general,
+            amount: 80.0,
+            velocity: [1.0, 0.0],
+            position: s.battle.units[general].position,
+            severed: 0,
+            blunt: true,
+        });
+        let fallen = why_now(&s, general);
+        assert!(fallen.contains("fell to"), "{fallen}");
+        assert!(fallen.contains("away from the company"), "{fallen}");
+        assert_eq!(card_flag(&s, general), Some("DOWN"));
     }
 }

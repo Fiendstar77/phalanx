@@ -14,9 +14,9 @@ For an established team, use **Begin / continue NPC tutorials** in the main menu
 
 The default play view has fighter cards, health bars, clear selection, a compact detail panel and contextual build ideas. Switch between your squad and the rival roster, or select a fighter directly on the field. **I** opens the existing research inspector. **Follow selected** gives a tactical close view; **Whole battlefield** restores the wider framing. Scroll the right detail panel to read longer information.
 
-Three free, persistent **battle styles** expose meaningful choices without editing seven sliders: Vanguard pursues aggressively, Protector values team support, and Skirmisher takes a cautious approach. These are authored mind presets, not new trained policies. Combine them with existing classes, skills and equipment; the workshop retains the finer controls. Styles cannot be changed during combat. Postbattle changes prepare the next fight and preserve the completed result.
+Three free, persistent **battle styles** replace the whole mind: Vanguard pursues aggressively, Protector values team support, and Skirmisher takes a cautious approach. These are authored mind presets, not new trained policies. The play view’s Mind & fighter panel shows the same seven traits as Research, with plus and minus on each one. Roster cards print a short readout (A C R T / P S D). Styles cannot be changed during combat. A single trait can. Postbattle style changes prepare the next fight and preserve the completed result.
 
-Fighters still start in a three-person squad. Slot four costs **1,000 gold**. The existing purchase ladder continues toward twenty; playable Founders leagues currently stop at four. Card pagination is checked for twenty fighters per side, preparing the interface without claiming that 20v20 campaign combat is delivered.
+Fighters still start in a three-person squad. Slot four costs **250 gold**. The existing purchase ladder continues toward twenty; playable Founders leagues currently stop at four. Card pagination is checked for twenty fighters per side, preparing the interface without claiming that 20v20 campaign combat is delivered.
 
 ## Splatter and panic
 

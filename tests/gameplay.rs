@@ -151,7 +151,7 @@ fn fourth_slot_requires_savings_and_produces_a_persistent_matched_league() {
     let before = serde_json::to_string(&c).unwrap();
     assert!(c.unlock_fourth().is_err());
     assert_eq!(before, serde_json::to_string(&c).unwrap());
-    c.teams[0].gold = 1000;
+    c.teams[0].gold = 250;
     c.unlock_fourth().unwrap();
     assert_eq!(c.teams[0].gold, 0);
     assert_eq!(c.teams[0].fighters.len(), 4);
@@ -185,7 +185,7 @@ fn complete_cost_ladder_escalates_to_an_extreme_final_milestone() {
     use phalanx::progression::{SLOT_COSTS, gold_reward, slot_cost};
     assert_eq!(slot_cost(3), None);
     assert_eq!(slot_cost(21), None);
-    assert_eq!(slot_cost(4), Some(1000));
+    assert_eq!(slot_cost(4), Some(250));
     assert_eq!(slot_cost(20), Some(650_000));
     assert!(SLOT_COSTS.windows(2).all(|w| w[1] > w[0]));
     for league in 3..20 {
