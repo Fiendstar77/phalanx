@@ -208,6 +208,13 @@ mod grip_tests {
     }
 }
 fn weapon(p: &mut ChildSpawnerCommands, kit: &Kit, class: Class, left: bool) {
+    if class == Class::Monk {
+        return;
+    }
+    if class.index() >= 10 {
+        weapon(p, kit, class.silhouette(), left);
+        return;
+    }
     if class == Class::BannerBearer {
         return;
     }
@@ -333,7 +340,7 @@ fn weapon(p: &mut ChildSpawnerCommands, kit: &Kit, class: Class, left: bool) {
                 block(p, kit, &kit.gold, [0.0, 0.72, 0.0], [0.025, 0.16, 0.025]);
             }
         }
-        Class::RockThrower => {
+        _ => {
             for x in [-0.05, 0.05] {
                 part(
                     p,
@@ -384,7 +391,7 @@ pub(super) fn ready(
                 .map(|i| i.iter().map(|n| n as u32).collect())
                 .unwrap_or_default();
             for layer in 0..2 {
-                let mut garment = source.clone();
+                let mut garment = super::garments::fitted(&source, layer);
                 let selected = indices
                     .as_chunks::<3>()
                     .0
@@ -394,25 +401,13 @@ pub(super) fn ready(
                             + Vec3::from_array(positions[tri[1] as usize])
                             + Vec3::from_array(positions[tri[2] as usize]))
                             / 3.0;
-                        if layer == 0 {
-                            c.y > 0.70 && c.y < 1.22 && c.x.abs() < 0.32
-                        } else {
-                            c.y > -0.02 && c.y <= 0.74
-                        }
+                        super::garments::layer(c) == Some(layer)
                     })
                     .flatten()
                     .copied()
                     .collect::<Vec<_>>();
                 garment.insert_indices(Indices::U32(selected.clone()));
                 garment.remove_attribute(Mesh::ATTRIBUTE_COLOR);
-                if let Some(VertexAttributeValues::Float32x3(points)) =
-                    garment.attribute_mut(Mesh::ATTRIBUTE_POSITION)
-                {
-                    for p in points {
-                        p[0] *= 1.07;
-                        p[2] = p[2] * 1.08 + p[2].signum() * 0.008;
-                    }
-                }
                 let material = materials.add(StandardMaterial {
                     perceptual_roughness: 0.85,
                     ..default()
@@ -827,6 +822,14 @@ fn update(
                         Class::BannerBearer => [0.65, 0.39, 0.12],
                         Class::RockThrower => [0.43, 0.33, 0.22],
                         Class::Paladin => [0.72, 0.62, 0.34],
+                        Class::Duelist => [0.38, 0.12, 0.20],
+                        Class::Assassin => [0.12, 0.12, 0.19],
+                        Class::Monk => [0.65, 0.43, 0.18],
+                        Class::Shinobi => [0.09, 0.15, 0.27],
+                        Class::Reaper => [0.22, 0.10, 0.13],
+                        Class::Alchemist => [0.21, 0.42, 0.27],
+                        Class::Warlock => [0.18, 0.07, 0.30],
+                        Class::Acrobat => [0.19, 0.36, 0.44],
                     }
                 };
                 let mix = if garment.layer == 0 { 0.18 } else { 0.05 };

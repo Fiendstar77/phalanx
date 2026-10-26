@@ -18,9 +18,17 @@ pub enum Skill {
     WallDance,
     SmokeBomb,
     ShadowSeal,
+    Fencing,
+    Ambush,
+    Flow,
+    Veilcraft,
+    Reaping,
+    ToxicSmoke,
+    Occult,
+    Springheel,
 }
 impl Skill {
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 23] = [
         Self::Heal,
         Self::Bless,
         Self::Rally,
@@ -36,6 +44,14 @@ impl Skill {
         Self::WallDance,
         Self::SmokeBomb,
         Self::ShadowSeal,
+        Self::Fencing,
+        Self::Ambush,
+        Self::Flow,
+        Self::Veilcraft,
+        Self::Reaping,
+        Self::ToxicSmoke,
+        Self::Occult,
+        Self::Springheel,
     ];
     pub fn class(self) -> C {
         match self {
@@ -51,12 +67,31 @@ impl Skill {
             Self::WeaponDrill => C::Warrior,
             Self::WallDance | Self::SmokeBomb => C::Scout,
             Self::ShadowSeal => C::Hexer,
+            Self::Fencing => C::Duelist,
+            Self::Ambush => C::Assassin,
+            Self::Flow => C::Monk,
+            Self::Veilcraft => C::Shinobi,
+            Self::Reaping => C::Reaper,
+            Self::ToxicSmoke => C::Alchemist,
+            Self::Occult => C::Warlock,
+            Self::Springheel => C::Acrobat,
         }
     }
     pub fn passive(self) -> bool {
         matches!(
             self,
-            Self::Bulwark | Self::Fleetfoot | Self::Bloodrage | Self::WeaponDrill | Self::Quickdraw
+            Self::Bulwark
+                | Self::Fleetfoot
+                | Self::Bloodrage
+                | Self::WeaponDrill
+                | Self::Quickdraw
+                | Self::Fencing
+                | Self::Ambush
+                | Self::Flow
+                | Self::Veilcraft
+                | Self::Reaping
+                | Self::Occult
+                | Self::Springheel
         )
     }
     pub fn name(self) -> &'static str {
@@ -76,10 +111,27 @@ impl Skill {
             Self::WallDance => "Wall dance",
             Self::SmokeBomb => "Smoke bombs",
             Self::ShadowSeal => "Grave binding",
+            Self::Fencing => "Fencing",
+            Self::Ambush => "Opportunist ambush",
+            Self::Flow => "Flow breathing",
+            Self::Veilcraft => "Veilcraft",
+            Self::Reaping => "Reaping edge",
+            Self::ToxicSmoke => "Toxic smoke",
+            Self::Occult => "Occult resonance",
+            Self::Springheel => "Springheel",
         }
     }
     pub fn description(self) -> &'static str {
         match self {
+            Self::Fencing => "Active parries gain +2 defence and stronger ripostes.",
+            Self::Ambush => "Exploit exposed enemies for +35% damage; fast but fragile.",
+            Self::Flow => "Recover effort faster; fluid unarmed counters and greater endurance.",
+            Self::Veilcraft => "Three smoke bombs; faster wall recovery and smoke ambushes.",
+            Self::Reaping => "Longer melee reach; increasingly dangerous to wounded enemies.",
+            Self::ToxicSmoke => "Toxic smoke drains enemy effort while covering allies.",
+            Self::Occult => "Stronger resisted bindings drain enemy effort and last longer.",
+            Self::Springheel => "Fast traversal; improved acrobatics and longer wall holds.",
+
             Self::Heal => "Heal nearby injured allies every 1.2s",
             Self::Bless => "Nearby allies gain damage and protection",
             Self::Rally => "Rally allies; requires a physical banner",

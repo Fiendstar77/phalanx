@@ -157,6 +157,14 @@ pub enum FighterClass {
     Berserker,
     Hexer,
     BannerBearer,
+    Duelist,
+    Assassin,
+    Monk,
+    Shinobi,
+    Reaper,
+    Alchemist,
+    Warlock,
+    Acrobat,
 }
 impl FighterClass {
     pub fn index(self) -> usize {
@@ -174,9 +182,17 @@ impl FighterClass {
             Self::Berserker => "BERSERKER",
             Self::Hexer => "HEXER",
             Self::BannerBearer => "BANNER BEARER",
+            Self::Duelist => "DUELIST",
+            Self::Assassin => "ASSASSIN",
+            Self::Monk => "MONK",
+            Self::Shinobi => "SHINOBI",
+            Self::Reaper => "REAPER",
+            Self::Alchemist => "ALCHEMIST",
+            Self::Warlock => "WARLOCK",
+            Self::Acrobat => "ACROBAT",
         }
     }
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 18] = [
         Self::Warrior,
         Self::Guardian,
         Self::Ranger,
@@ -187,7 +203,27 @@ impl FighterClass {
         Self::BannerBearer,
         Self::RockThrower,
         Self::Paladin,
+        Self::Duelist,
+        Self::Assassin,
+        Self::Monk,
+        Self::Shinobi,
+        Self::Reaper,
+        Self::Alchemist,
+        Self::Warlock,
+        Self::Acrobat,
     ];
+    /// Existing authored silhouettes remain usable by the new mechanical classes.
+    pub fn silhouette(self) -> Self {
+        match self {
+            Self::Duelist => Self::Warrior,
+            Self::Assassin | Self::Shinobi | Self::Acrobat => Self::Scout,
+            Self::Monk => Self::Healer,
+            Self::Reaper => Self::Berserker,
+            Self::Alchemist => Self::Healer,
+            Self::Warlock => Self::Hexer,
+            _ => self,
+        }
+    }
     pub fn next(self) -> Self {
         Self::ALL[(Self::ALL.iter().position(|c| *c == self).unwrap() + 1) % Self::ALL.len()]
     }
@@ -205,10 +241,21 @@ impl FighterClass {
             Self::BannerBearer => "Nearby allies move faster and strike harder.",
             Self::RockThrower => "Slow ranged projectile; needs protection.",
             Self::Paladin => "Blesses nearby allies with courage and protection.",
+            Self::Duelist => "Active parries gain +2 defence and stronger ripostes.",
+            Self::Assassin => "Exploit exposed enemies for +35% damage; fast but fragile.",
+            Self::Monk => "Recover effort faster; fluid unarmed counters and greater endurance.",
+            Self::Shinobi => "Three smoke bombs; faster wall recovery and smoke ambushes.",
+            Self::Reaper => "Longer melee reach; increasingly dangerous to wounded enemies.",
+            Self::Alchemist => "Toxic smoke drains enemy effort while covering allies.",
+            Self::Warlock => "Stronger resisted bindings drain enemy effort and last longer.",
+            Self::Acrobat => "Fast traversal; improved acrobatics and longer wall holds.",
         }
     }
     pub fn role(self) -> Role {
-        if matches!(self, Self::RockThrower | Self::Ranger | Self::Hexer) {
+        if matches!(
+            self,
+            Self::RockThrower | Self::Ranger | Self::Hexer | Self::Warlock | Self::Alchemist
+        ) {
             Role::RockThrower
         } else {
             Role::Fighter
@@ -344,6 +391,14 @@ impl Unit {
             FighterClass::Scout => S::Fleetfoot,
             FighterClass::Berserker => S::Bloodrage,
             FighterClass::Warrior => S::WeaponDrill,
+            FighterClass::Duelist => S::Fencing,
+            FighterClass::Assassin => S::Ambush,
+            FighterClass::Monk => S::Flow,
+            FighterClass::Shinobi => S::Veilcraft,
+            FighterClass::Reaper => S::Reaping,
+            FighterClass::Alchemist => S::ToxicSmoke,
+            FighterClass::Warlock => S::Occult,
+            FighterClass::Acrobat => S::Springheel,
         };
         self.equipped_skill(skill)
     }
@@ -364,6 +419,8 @@ impl Unit {
                     FighterClass::RockThrower,
                     FighterClass::Ranger,
                     FighterClass::Hexer,
+                    FighterClass::Warlock,
+                    FighterClass::Alchemist,
                 ]
                 .into_iter()
                 .any(|c| self.has_skill(c))
@@ -372,6 +429,8 @@ impl Unit {
                 FighterClass::RockThrower,
                 FighterClass::Ranger,
                 FighterClass::Hexer,
+                FighterClass::Warlock,
+                FighterClass::Alchemist,
             ]
             .into_iter()
             .any(|c| self.has_skill(c))
@@ -432,7 +491,11 @@ impl Unit {
         self.projectile_weapon()
             .filter(|_| self.is_ranged())
             .map(ProjectileWeapon::range)
-            .unwrap_or(1.5)
+            .unwrap_or(if self.has_skill(FighterClass::Reaper) {
+                2.2
+            } else {
+                1.5
+            })
     }
     pub fn reset_weapon(&mut self) {
         self.role = self.trained_role();
@@ -540,6 +603,13 @@ impl Unit {
                 15.0
             } else {
                 0.0
+            }
+            + if self.has_skill(FighterClass::Monk) {
+                10.0
+            } else if self.has_skill(FighterClass::Assassin) {
+                -10.0
+            } else {
+                0.0
             })
     }
     pub fn health_fraction(&self) -> f32 {
@@ -547,6 +617,13 @@ impl Unit {
     }
     pub fn movement_multiplier(&self) -> f32 {
         self.equipment.speed()
+            * if self.has_skill(FighterClass::Assassin) {
+                1.15
+            } else if self.has_skill(FighterClass::Acrobat) {
+                1.20
+            } else {
+                1.0
+            }
             * if self.command_title == Some(CommandTitle::Captain) {
                 1.10
             } else {
@@ -577,6 +654,11 @@ impl Unit {
     }
     pub fn damage_multiplier(&self) -> f32 {
         self.equipment.damage()
+            * if self.has_skill(FighterClass::Reaper) {
+                1.12
+            } else {
+                1.0
+            }
             * if self.has_skill(FighterClass::Berserker) {
                 1.15 + (1.0 - self.health_fraction()).clamp(0.0, 1.0) * 0.85
             } else {

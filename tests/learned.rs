@@ -113,6 +113,43 @@ fn schema_two_relu_stops_before_the_logits() {
 }
 
 #[test]
+fn alternate_policy_schema_validates_names_and_applies_its_own_action_mask() {
+    let text = serde_json::json!({
+        "schema_version": 2,
+        "source_sha256": "test",
+        "features": ["effort", "health"],
+        "actions": ["press", "recover"],
+        "mean": [0.0, 0.0],
+        "std": [1.0, 1.0],
+        "layers": [
+            {"weight": [[1.0, 0.0], [0.0, 1.0]], "bias": [0.0, 0.0]},
+            {"weight": [[1.0, 0.0], [0.0, 1.0]], "bias": [0.0, 0.0]}
+        ]
+    })
+    .to_string();
+    let policy =
+        LearnedPolicy::from_schema(&text, &["effort", "health"], &["press", "recover"]).unwrap();
+    assert_eq!(policy.logits(&[2.0, 1.0]).unwrap(), [2.0, 1.0]);
+    assert_eq!(
+        policy.predict_masked(&[2.0, 1.0], &[false, true]),
+        Some((1, 1.0))
+    );
+    assert!(policy.predict_masked(&[2.0, 1.0], &[true]).is_none());
+    assert!(
+        policy
+            .predict_masked(&[2.0, 1.0], &[false, false])
+            .is_none()
+    );
+    assert!(LearnedPolicy::from_json(&text).is_err());
+    assert!(
+        LearnedPolicy::from_schema(&text, &["health", "effort"], &["press", "recover"]).is_err()
+    );
+    assert!(
+        LearnedPolicy::from_schema(&text, &["effort", "health"], &["recover", "press"]).is_err()
+    );
+}
+
+#[test]
 fn summary_counts_real_pairs_and_excludes_missing_predictions() {
     use phalanx::learned::{Comparison, ComparisonSummary};
     let mut summary = ComparisonSummary::default();

@@ -140,7 +140,7 @@ fn setup(
 ) {
     // Ragged central splash, satellite spatters and gravity streaks. Transparent
     // padding also prevents projection-edge artifacts at a grazing camera angle.
-    let size = 128;
+    let size = 512;
     let mut bytes = vec![0; size * size * 4];
     for y in 0..size {
         for x in 0..size {

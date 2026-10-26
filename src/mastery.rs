@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 pub const RETAIN_AT: u32 = 100;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Mastery {
-    pub practice: [u32; 10],
+    #[serde(deserialize_with = "deserialize_classes")]
+    pub practice: [u32; 18],
     #[serde(default, deserialize_with = "crate::weapons::deserialize_practice")]
     pub weapons: [u32; 4],
 }
@@ -64,4 +65,16 @@ impl Mastery {
             }
         )
     }
+}
+
+fn deserialize_classes<'de, D: serde::Deserializer<'de>>(d: D) -> Result<[u32; 18], D::Error> {
+    let values = Vec::<u32>::deserialize(d)?;
+    if values.len() != 10 && values.len() != 18 {
+        return Err(serde::de::Error::custom(
+            "expected 10 legacy or 18 class tracks",
+        ));
+    }
+    let mut tracks = [0; 18];
+    tracks[..values.len()].copy_from_slice(&values);
+    Ok(tracks)
 }

@@ -114,11 +114,14 @@ impl Serialize for ComparisonSummary {
 }
 impl LearnedPolicy {
     pub fn from_json(text: &str) -> Result<Self, String> {
+        Self::from_schema(text, &FEATURE_NAMES, &ACTIONS)
+    }
+    pub fn from_schema(text: &str, features: &[&str], actions: &[&str]) -> Result<Self, String> {
         let model: Self = serde_json::from_str(text).map_err(|e| e.to_string())?;
-        if model.features != FEATURE_NAMES
-            || model.actions != ACTIONS
-            || model.mean.len() != FEATURE_NAMES.len()
-            || model.std.len() != FEATURE_NAMES.len()
+        if model.features != features
+            || model.actions != actions
+            || model.mean.len() != features.len()
+            || model.std.len() != features.len()
             || model.layers.len() < 2
             || model.layers.len() > 6
         {
@@ -137,13 +140,13 @@ impl LearnedPolicy {
         {
             return Err("invalid normalization".into());
         }
-        let mut inputs = FEATURE_NAMES.len();
+        let mut inputs = features.len();
         for (i, layer) in model.layers.iter().enumerate() {
             let width = layer.weight.len();
             let last = i + 1 == model.layers.len();
             if width == 0
                 || width > 2048
-                || (last && width != ACTION_COUNT)
+                || (last && width != actions.len())
                 || (!last && model.schema_version == 1 && width != 64)
                 || layer.bias.len() != width
                 || layer
@@ -204,7 +207,13 @@ impl LearnedPolicy {
         }
     }
     pub fn predict(&self, features: &[f32], mask: &[bool; ACTION_COUNT]) -> Option<(usize, f32)> {
+        self.predict_masked(features, mask)
+    }
+    pub fn predict_masked(&self, features: &[f32], mask: &[bool]) -> Option<(usize, f32)> {
         let values = self.logits(features)?;
+        if mask.len() != values.len() {
+            return None;
+        }
         let mut best = None;
         for (i, value) in values.iter().enumerate() {
             if mask[i] && best.is_none_or(|old: usize| *value > values[old]) {

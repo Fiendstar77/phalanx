@@ -425,6 +425,7 @@ pub(super) fn update(
                 }
             }
             painted.insert_indices(Indices::U32(selected_indices(&painted, mask, false)));
+            super::garments::conceal_skin(&mut painted);
             if let Some(mut target) = meshes.get_mut(&mesh.0) {
                 *target = painted;
             }

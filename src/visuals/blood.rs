@@ -10,7 +10,7 @@ const INTENSITY: usize = 12;
 const MAX_FOUNTAINS: usize = 24;
 const BLOOD_VOLUME: usize = 12;
 const EMISSION_STEP: f32 = 0.025;
-const SIZE: usize = 512;
+const SIZE: usize = 2048;
 #[derive(Component)]
 pub(super) struct Particle(usize);
 #[derive(Component)]
@@ -318,7 +318,8 @@ impl Fx {
                     continue;
                 }
                 let i = (y as usize * SIZE + x as usize) * 4;
-                let alpha = ((1.0 - q).clamp(0.0, 1.0) * strength * 180.0 + 20.0).min(220.0) as u8;
+                let alpha =
+                    (((1.0 - q) * 18.).clamp(0.0, 1.0) * strength * 180.0 + 20.0).min(220.0) as u8;
                 let old = self.pixels[i + 3] as u32;
                 self.pixels[i] = if old > 150 { 65 } else { 96 };
                 self.pixels[i + 1] = 3;

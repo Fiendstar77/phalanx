@@ -1,7 +1,7 @@
 //! Presentation-only, conservative thin-film flow on a sampled height field.
 //! This does not change terrain, damage, movement or authoritative simulation RNG.
 use phalanx::terrain::Arena;
-pub(super) const SIDE: usize = 128;
+pub(super) const SIDE: usize = 256;
 pub(crate) struct Pools {
     pub height: Vec<f32>,
     volume: Vec<f32>,

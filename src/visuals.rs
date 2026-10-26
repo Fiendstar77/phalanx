@@ -13,6 +13,7 @@ mod body;
 mod cuts;
 mod equipment;
 mod face;
+mod garments;
 mod health;
 mod occult;
 mod spectacle;

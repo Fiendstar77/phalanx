@@ -4,6 +4,30 @@ use phalanx::{
 };
 
 #[test]
+fn legacy_class_practice_keeps_its_discipline_when_new_tracks_are_added() {
+    use phalanx::mastery::Mastery;
+    let legacy = serde_json::json!({"practice": [10,20,30,40,50,60,70,80,90,100]});
+    let mut restored: Mastery = serde_json::from_value(legacy).unwrap();
+    for (index, class) in Class::ALL[..10].iter().enumerate() {
+        assert_eq!(restored.points(*class), (index as u32 + 1) * 10);
+    }
+    for class in &Class::ALL[10..] {
+        assert_eq!(restored.points(*class), 0);
+    }
+    restored.train(Class::Warlock, 101);
+    let reloaded: Mastery =
+        serde_json::from_str(&serde_json::to_string(&restored).unwrap()).unwrap();
+    assert_eq!(restored, reloaded);
+    assert!(reloaded.retained(Class::Warlock));
+    for length in [0, 9, 11, 17, 19] {
+        assert!(
+            serde_json::from_value::<Mastery>(serde_json::json!({"practice": vec![0; length]}))
+                .is_err()
+        );
+    }
+}
+
+#[test]
 fn titles_swap_without_changing_identity_class_gear_mastery_or_appearance() {
     let mut c = Campaign::new();
     c.teams[0].salvage = 100;
@@ -150,6 +174,7 @@ fn retained_banner_changes_real_ally_damage_only_when_equipped() {
 #[test]
 fn all_disciplines_are_available_to_the_general_and_healers_seek_wounded_allies() {
     let mut c = Campaign::new();
+    c.teams[0].gold = 10 * Class::ALL.len() as u32;
     for class in Class::ALL {
         c.set_class(0, 2, class).unwrap();
     }
