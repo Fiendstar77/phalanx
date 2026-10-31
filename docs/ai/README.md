@@ -19,6 +19,7 @@ GitHub, without installing the game, PyTorch or Bonsai.
 | Utility controller | Nine guarded tactical objectives, personality and situational scores, seeded variation | Live default, action eligibility authority and deterministic fallback |
 | Learned controller | PyTorch-trained 29 → 64 → 64 → 9 ReLU policy; 6,665 parameters | Frozen exported weights run in Rust and can control live combat |
 | Campaign adaptation | Experience, class/weapon practice, conditioned reactions, habit updates and rival counters | Persists through save/load and influences later battles; uses authored rules |
+| Opportunity Composition | Bounded forward search over run, wall-vault and strike primitives | Live for qualified veteran acrobats; each primitive revalidates and uses existing physical rules |
 | Bonsai 1.7B | Local native `libllama` inference; structured action proposals and combat text | Separate experiments; tactical shadow decisions do not alter a battle |
 | Study tooling | JSONL observations/receipts, battle state, readable reports, manifests and checks | Inspects behavior and provenance; does not choose combat outcomes |
 
@@ -37,6 +38,8 @@ flowchart TD
     Features --> Learned[Frozen Rust inference of PyTorch weights]
     Utility --> Selector[Controller selection and eligible-action fallback]
     Learned --> Selector
+    Observation --> Composer[Qualified fighter: bounded legal-primitive search]
+    Composer --> Selector
     Selector --> Execution[Rule-based targets, routes, physical combat and damage]
     Execution --> World
     Observation --> Trace[Decision trace and controller comparison]
@@ -147,6 +150,21 @@ conditioned reactions change the same decision.
 The campaign begins at 3v3 and currently supports progression to 4v4. Five NPC
 tutorial teams are sequential opponents. Historical Lab experiments use their
 own explicitly documented 5v5/10v10 configurations.
+
+## Composed opportunities
+
+The new [Opportunity Composition and Legend Ledger](../opportunity-composition.md)
+add a separate classical-planning layer. It searches a small legal-primitive
+graph, executes against the world, records interruptions and awards history
+only from actual completion receipts. Composed actions are labeled `Opportunity`
+in comparison records and rejected as utility-teacher training labels. This
+mechanism does not depend on Bonsai or imply that the language model controls
+the fighter.
+
+[The v07 evidence](../results/v07/README.md) follows a staged wounded Scout's
+plan through actual physical execution, an opposed hit, the saved ledger and
+the rendered post-battle report. Its initial grants and opponent constraints
+are explicit.
 
 ## Native generative inference
 

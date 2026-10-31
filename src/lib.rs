@@ -14,9 +14,11 @@ mod injuries;
 pub mod inventory;
 pub mod learned;
 pub mod learning;
+pub mod legend;
 pub mod mastery;
 pub mod navigation;
 pub mod ninjutsu;
+pub mod opportunity;
 pub mod perception;
 pub mod pressure;
 pub mod procedural;
@@ -739,6 +741,8 @@ pub struct Battle {
     pub damage_events: Vec<DamageEvent>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub theus_events: Vec<theus::Event>,
+    #[serde(skip_serializing_if = "opportunity::Runtime::empty")]
+    pub opportunities: opportunity::Runtime,
     pub next_damage_event: u64,
     pub initial_arena: Arena,
     pub barricade_health: [f32; 4],
@@ -958,6 +962,7 @@ impl Battle {
             theus_events: Vec::new(),
             ninjutsu: Default::default(),
             next_damage_event: 0,
+            opportunities: opportunity::Runtime::default(),
             initial_arena: arena,
             barricade_health: if matches!(arena,Arena::Pressure(f) if f.layout>0) {
                 [45.0; 4]
@@ -1097,7 +1102,14 @@ impl Battle {
                 enemy = Some(priority);
                 unit.decision_reason = "Theus: seize an ally's opening".into();
             }
-            theus_combat::mobility(unit, enemy.as_ref(), arena, self.tick);
+            if let Some(target) = self.opportunities.target(unit.id)
+                && let Some(contact) = unit.contacts.iter().find(|c| c.enemy == target)
+            {
+                enemy = Some(contact.clone());
+            }
+            if !self.opportunities.owns_mobility(unit.id) {
+                theus_combat::mobility(unit, enemy.as_ref(), arena, self.tick);
+            }
             let bow = unit.bow_available();
             if bow {
                 let nearest = unit
@@ -1565,6 +1577,11 @@ impl Battle {
                 } else {
                     utility_action
                 };
+                let composed = self.opportunities.directive(unit, &mask);
+                if let Some((action, _)) = composed {
+                    unit.action = action;
+                    self.opportunities.record_action(unit.id, action, self.tick);
+                }
                 let comparison = Comparison {
                     tick: self.tick,
                     unit: unit.id,
@@ -1572,7 +1589,11 @@ impl Battle {
                     learned: learned_action,
                     executed: unit.action,
                     confidence: prediction.map(|p| p.1),
-                    controller: active_controller,
+                    controller: if composed.is_some() {
+                        Controller::Opportunity
+                    } else {
+                        active_controller
+                    },
                     disagreed: learned_action.is_some_and(|a| a != utility_action),
                 };
                 self.comparison_summary.record(&comparison);
@@ -1609,7 +1630,9 @@ impl Battle {
                     _ => "Known ally injury or pressure favors support",
                 }
                 .into();
-                if active_controller == Controller::Learned && learned_action.is_some() {
+                if composed.is_some() {
+                    unit.decision_reason = self.opportunities.description(unit.id);
+                } else if active_controller == Controller::Learned && learned_action.is_some() {
                     unit.decision_reason = "Learned proposal; scores show utility baseline".into();
                 } else if let Some(line) = scar.as_ref().filter(|line| line.action == unit.action) {
                     unit.decision_reason = line.text.into();
@@ -1667,6 +1690,12 @@ impl Battle {
                     .unwrap_or(unit.position),
                 _ => enemy_position,
             };
+            if let Some((_, goal)) = self
+                .opportunities
+                .directive(unit, &std::array::from_fn(|i| unit.scores[i] >= 0.))
+            {
+                unit.target = goal;
+            }
             if let Some(plan) = &bow_plan
                 && plan.action == unit.action
             {
@@ -2230,6 +2259,7 @@ impl Battle {
                 self.ally_distance_samples[team] += 1;
             }
         }
+        opportunity::observe(self, true);
         self.tick += 1;
         let a = self.survivors(0);
         let b = self.survivors(1);
@@ -2237,6 +2267,7 @@ impl Battle {
             || self.tick >= BATTLE_TICK_LIMIT
         {
             self.finished = true;
+            opportunity::finish(self);
             self.result = if a == 0 && b == 0 {
                 "Draw"
             } else if a == 0 {

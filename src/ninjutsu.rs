@@ -319,6 +319,7 @@ pub fn prepare(battle: &mut Battle) {
             }
         }
     }
+    crate::opportunity::prepare(battle);
     let snapshot = battle.units.clone();
     let mut reserved: Vec<_> = snapshot
         .iter()
@@ -331,11 +332,16 @@ pub fn prepare(battle: &mut Battle) {
         let contact = u.contacts.iter().min_by(|a, b| {
             distance(u.position, a.position).total_cmp(&distance(u.position, b.position))
         });
-        let goal = contact.map_or(u.target, |c| c.position);
+        let goal = battle
+            .opportunities
+            .wall_goal(u.id)
+            .unwrap_or_else(|| contact.map_or(u.target, |c| c.position));
         let known_target = contact.map(|c| c.enemy);
         let hands = u.lost_limbs & !u.prosthetics & 3 != 3;
         let legs = u.lost_limbs & !u.prosthetics & 12 == 0;
         if u.equipped_skill(Skill::WallDance)
+            && (!battle.opportunities.owns_mobility(u.id)
+                || battle.opportunities.wall_goal(u.id).is_some())
             && legs
             && u.ninja.as_ref().unwrap().wall_ready <= tick
             && u.ninja.as_ref().unwrap().bound_until <= tick
@@ -366,6 +372,11 @@ pub fn prepare(battle: &mut Battle) {
                 leap.to,
                 true,
             ));
+            battle.opportunities.vault_started(
+                u.id,
+                &leap,
+                battle.ninjutsu.events.last().unwrap().sequence,
+            );
             continue;
         }
         let Some(target) = known_target else {

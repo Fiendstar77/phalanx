@@ -77,6 +77,15 @@ pub(super) fn bubbles(
                 ][(b.seed as usize + u.id) % 4],
             );
         } else if u.health > 0.
+            && b.opportunities.completed.iter().any(|event| {
+                event.actor == u.id
+                    && event.vault.is_some()
+                    && b.tick.saturating_sub(event.completed_tick) <= 1
+                    && event.completed_tick > v.last
+            })
+        {
+            line = Some("FOUND MY OWN WAY IN!");
+        } else if u.health > 0.
             && u.health_fraction() <= 0.30
             && (v.health / u.max_health() > 0.30 || (pain && b.tick.saturating_sub(v.last) > 45))
         {

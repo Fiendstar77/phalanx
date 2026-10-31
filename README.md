@@ -2,6 +2,10 @@
 
 **Terrain-aware autonomous combat simulation and an experimental testbed for game AI.**
 
+> **Build them. Watch them fight. Watch them change. Eventually watch them become legendary.**
+
+[Core player fantasy and development law](PHALANX_CORE_PLAYER_FANTASY_AND_DEVELOPMENT_LAW.md) · [Implementation status and remaining systems](docs/development-law-status.md)
+
 Players shape battlefields and agent personalities, then observe autonomous teams fight. PHALANX explores how terrain, individual psychology, and teamwork affect collective behavior—and how to make those decisions explainable and measurable.
 
 **Inspect the AI engineering:** [Architecture, learning and measured results](docs/ai/README.md) · [Code and test walkthrough](docs/ai/code-review.md) · [Browsable experiment evidence](docs/results/v06/README.md) · [GitHub Actions](https://github.com/Fiendstar77/phalanx/actions/workflows/ci.yml)
@@ -25,6 +29,8 @@ Every starting squad has a **King, Queen, and General**. King and Queen wear bas
 The squads now persist locally: fighter IDs, minds, classes, XP, battle history, psychological scars, and chosen team colors survive save/load. Completed battles award XP, small habit changes, and personality-specific reactions to isolation, encirclement, a fallen ally, or a failed charge. **Next battle** continues with the same fighters. [Play the progression loop and see its current limits](docs/progression.md). Recruitment and the wider game follow the [commercial roadmap](PHALANX_COMMERCIAL_GAME_ROADMAP_v0.1.md). **Founders/Lab** switches setups; launch with `--lab` for the original experimental rosters. Both share the same simulation, controllers, telemetry, and inspector.
 
 **Theus** now resolves campaign attacks, active defences, effort and critical openings, with persistent skill practice and creator attributes. Cooperative fighters can launch targets, chain aerial finishers, pincer or crossfire. The original Lab baseline is retained. [Rules, integration and current limits](docs/design/shared-rules.md).
+
+**Opportunity Composition:** trained acrobats can search for short legal movement-and-strike plans from perceived contacts and real geometry. Physical traversal and opposed hits determine completion; a **Legend Ledger** preserves qualifying wounded or critical wall assaults and earns cosmetic epithets. [Working primitives, proof and the Black Bridge expansion](docs/opportunity-composition.md).
 
 **Ninjutsu and occult weapons:** equip wall vaults, sight-blocking smoke bombs and resisted grave bindings in Skills. Craft a chain-sickle or a returning razor wheel in Forge. These abilities change traversal, perception, exposure and physical hits. [Controls, rules and current limits](docs/ninjutsu.md).
 

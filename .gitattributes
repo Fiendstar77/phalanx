@@ -4,3 +4,6 @@
 PHALANX_COMMERCIAL_GAME_ROADMAP_v0.1.md whitespace=-blank-at-eol
 # Preserve the exact model input, including the intentional non-thinking suffix.
 docs/results/v06/**/*.prompt.txt whitespace=-blank-at-eof
+# Keep the generated report bytes covered by the v07 evidence manifest.
+docs/results/v07/learning.md whitespace=-blank-at-eof
+docs/results/v07/legend-ledger.md whitespace=-blank-at-eof

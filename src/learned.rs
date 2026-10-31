@@ -7,12 +7,15 @@ pub enum Controller {
     #[default]
     Utility,
     Learned,
+    /// The bounded primitive planner supplied this executed decision.
+    Opportunity,
 }
 impl Controller {
     pub fn name(self) -> &'static str {
         match self {
             Self::Utility => "Utility",
             Self::Learned => "Learned",
+            Self::Opportunity => "Opportunity",
         }
     }
 }

@@ -375,6 +375,7 @@ pub fn exchanges(
         }
         let sequence = battle.theus_events.last().map_or(0, |e| e.sequence + 1);
         battle.theus_events.push(Event {
+            ranged,
             sequence,
             tick: battle.tick,
             attacker,

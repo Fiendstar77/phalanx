@@ -955,6 +955,13 @@ fn main() {
         session.menu = true;
         session.running = false;
     }
+    if args.iter().any(|a| a == "--saved-report-witness") {
+        session.autosave = false;
+        session.founding.open = false;
+        session.menu = true;
+        session.running = false;
+        session.camp_page = Some(camp::Page::Report);
+    }
     std::fs::create_dir_all("outputs").expect("create log directory");
     let log_path = format!(
         "outputs/disagreements-{}.jsonl",

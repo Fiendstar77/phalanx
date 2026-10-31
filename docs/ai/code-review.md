@@ -51,11 +51,10 @@ The 29 → 64 → 64 → 9 architecture has
 Training occurs offline. The Rust controller applies the trained weights; it
 does not call a Python service or update them online.
 
-The current loader checks each trace header's controller for utility teacher
-data. It is intended for the experiment collector's single-controller traces.
-Do not assume this makes arbitrary interactively switched game traces valid
-training data: review per-decision controller records and the collection
-manifest before admitting another source.
+The loader checks both the trace header and per-decision controller. It rejects
+learned or composed decisions inside a utility-labeled session. Other admission
+checks still matter for arbitrary interactive traces: review the collection
+manifest, changes to settings and observation provenance before adding a source.
 
 The optional `founders_schema_two_matches_python_logits_on_held_out_rows` test
 is ignored by default because it reads local experimental outputs. It is not
@@ -87,6 +86,13 @@ The visible [post-battle receipt code](../../src/learning.rs) describes saved
 deltas and practice thresholds. It does not ask a language model to invent a
 story about why a fighter improved. XP/stat progression, habit adaptation and
 learned-policy action selection should be evaluated separately.
+
+## Review the composition boundary
+
+For the additional classical planner, inspect [opportunity.rs](../../src/opportunity.rs),
+[legend.rs](../../src/legend.rs) and [their integration tests](../../tests/opportunity.rs).
+The [design and implementation boundary](../opportunity-composition.md) distinguishes
+searched plans from physical completion and source-reported historical claims.
 
 ## Review the generative boundary
 

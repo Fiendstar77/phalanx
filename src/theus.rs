@@ -326,6 +326,8 @@ impl Actor {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Event {
+    #[serde(skip_serializing_if = "crate::is_false")]
+    pub ranged: bool,
     pub sequence: u64,
     pub tick: u32,
     pub attacker: usize,

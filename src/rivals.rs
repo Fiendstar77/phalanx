@@ -95,6 +95,9 @@ pub fn initialize(c: &mut Campaign) {
             f.battles = 0;
             f.wins = 0;
             f.history.clear();
+            f.source_fighter_id = None;
+            f.legends.clear();
+            f.legend_count = 0;
             f.wounds.clear();
             f.lost_limbs = 0;
             f.prosthetics = 0;

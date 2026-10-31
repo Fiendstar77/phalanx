@@ -39,6 +39,7 @@ Starting combat, including single-stepping, creates a unique directory under
 | `decisions.jsonl` | Initial setup; exact decision-time perceived contacts, features, eligibility, scores, controller proposals and executed actions; damage/healing receipts; final result |
 | `battle.json` | Full final simulation state |
 | `learning.md`, `learning.json` | Campaign settlement and each fighter's actual before/after adaptation, when campaign rewards settle |
+| `legend-ledger.md`, `legends.json` | Qualifying actually completed compositions recorded at settlement; an empty ledger is explicit |
 | `status.json` | `complete=true` only after the battle and report files finish successfully |
 
 The in-game battle report shows the directory. Reports are independent of the
@@ -48,6 +49,11 @@ combat; incomplete artifacts should not enter an outcome study. Trace output
 is buffered, so an interrupted process can lose its final buffered records.
 
 The raw initial setup and the final state contain world information for auditing.
+
+Qualified acrobats can now use [Opportunity Composition](opportunity-composition.md).
+Decision records identify `Opportunity` as the executed source, and separate
+opportunity records preserve proposals, completed primitives and cancellations.
+These records are excluded from utility-teacher imitation training.
 Decision features and contacts reflect what the acting fighter perceived.
 Do not feed the complete world snapshot or future outcomes to a partial-observation
 controller. Interactive controller switches are visible in individual decision

@@ -1,0 +1,78 @@
+{
+  "attempts": 1,
+  "completions": 1,
+  "human_playtest": false,
+  "legends": [
+    {
+      "actor_fighter_id": "18e3c035bb1a0166-0-0",
+      "arena": "choke",
+      "battle_id": 0,
+      "completed_tick": 37,
+      "distance": 8.483503341674805,
+      "final_health": 92.4000015258789,
+      "opponent": "Gatekeeper",
+      "plan": 0,
+      "primitives": [
+        "Run",
+        "WallVault",
+        "Run",
+        "Strike"
+      ],
+      "seed": 6,
+      "simulation_build": "0.5.0:a64ff80432a4bd69",
+      "started_tick": 0,
+      "starting_health": 92.4000015258789,
+      "starting_max_health": 330.0,
+      "starting_wounds": 2,
+      "strike": {
+        "attack": {
+          "dice": [
+            6,
+            6,
+            5
+          ],
+          "margin": 1,
+          "target": 18
+        },
+        "critical": "None",
+        "damage": 8.607059478759766,
+        "defence": {
+          "dice": [
+            4,
+            5,
+            6
+          ],
+          "margin": -9,
+          "target": 6
+        },
+        "outcome": "Hit",
+        "sequence": 0,
+        "tick": 37
+      },
+      "strike_selected_tick": 35,
+      "target_fighter_id": "18e3c035bb1a0166-1-0",
+      "vault": {
+        "from": [
+          -2.2251338958740234,
+          0.0,
+          -5.1564178466796875
+        ],
+        "landed_tick": 20,
+        "sequence": 0,
+        "tick": 6,
+        "to": [
+          1.7200000286102295,
+          0.0,
+          -5.1564178466796875
+        ],
+        "wall": 0
+      }
+    }
+  ],
+  "purpose": "Autonomous composition, physical execution and ledger proof; not a survival-probability or superiority study.",
+  "resolution": "Normal seeded Theus; no successful hit or critical is forced.",
+  "scripted_fixture": true,
+  "seed": 6,
+  "setup": "Rank-one acrobat Scout, one arm missing, 28% initial health, remembered opponent beyond a wall. Other roster members are downed; the Guardian can move and defend but its attack cooldown is held high.",
+  "study_directory": "outputs/opportunity-law-v1/battle-6-1793488413629571231-2360197"
+}

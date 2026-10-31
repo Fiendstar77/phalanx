@@ -83,13 +83,14 @@ impl TeamSnapshot {
                 .fighters
                 .iter()
                 .map(|f| format!(
-                    "{} / {} / {} | level {} | {} battles, {} wins",
-                    f.name,
+                    "{} / {} / {} | level {} | {} battles, {} wins | {} source-reported legends",
+                    f.display_name(),
                     f.title.name(),
                     f.class.name(),
                     1 + (f.experience / 100).min(9),
                     f.battles,
-                    f.wins
+                    f.wins,
+                    f.legend_count
                 ))
                 .collect::<Vec<_>>()
                 .join("\n")
@@ -149,6 +150,7 @@ impl Challenge {
         };
         for (side, team) in campaign.teams.iter_mut().enumerate() {
             for (slot, fighter) in team.fighters.iter_mut().enumerate() {
+                fighter.source_fighter_id = Some(fighter.source_identity().to_string());
                 fighter.fighter_id = format!("challenge-{side}-{slot}");
             }
         }

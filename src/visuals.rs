@@ -1382,7 +1382,9 @@ fn witness(
                         }
                     } else if std::env::args().any(|a| a == "--rival-witness") {
                         "outputs/rivals-witness.png"
-                    } else if std::env::args().any(|a| a == "--camp-witness") {
+                    } else if std::env::args()
+                        .any(|a| a == "--camp-witness" || a == "--saved-report-witness")
+                    {
                         if std::env::args().any(|a| a == "--workshop-witness") {
                             if std::env::args().any(|a| a == "--camp-scroll-witness") {
                                 "outputs/workshop-scrolled-witness.png"

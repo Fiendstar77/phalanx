@@ -236,6 +236,22 @@ fn report(session: &Session) -> String {
             }
         }
     }
+    text.push_str("\nLEGEND LEDGER\n");
+    let mut legends = 0;
+    for fighter in r.fighters.iter().flatten() {
+        for entry in &fighter.legends {
+            legends += 1;
+            text.push_str(&format!(
+                "{}\n{} earns the epithet {}.\n",
+                entry.summary(&fighter.name),
+                fighter.name,
+                entry.epithet()
+            ));
+        }
+    }
+    if legends == 0 {
+        text.push_str("No qualifying witnessed composition this battle.\n");
+    }
     text.push('\n');
     for team in 0..2 {
         text.push_str(&format!(
@@ -404,9 +420,9 @@ fn refresh(
                 team.heraldry.accent[2] * 255.0
             ),
             Label::Fighter => format!(
-                "{} | {} [title: {}] / {} | {} gold / {} salvage\n{}\n{}\nEquipped: {}\nMissing: {} | Iron I: {}",
+                "{} | {} [title: {}] / {} | {} gold / {} salvage\n{}\n{}\nEquipped: {}\nMissing: {} | Iron I: {}\n{}",
                 team.name,
-                fighter.name,
+                fighter.display_name(),
                 fighter.title.name(),
                 fighter.class.name(),
                 team.gold,
@@ -419,7 +435,8 @@ fn refresh(
                 ),
                 fighter.equipment.summary(),
                 limb_names(fighter.lost_limbs),
-                limb_names(fighter.prosthetics)
+                limb_names(fighter.prosthetics),
+                fighter.legend_summary()
             ),
             Label::Roster(id) => {
                 if *id >= session.battle.units.len() {

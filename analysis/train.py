@@ -37,6 +37,8 @@ def load(paths, train_end=32, val_end=40):
                 for line in stream:
                     row = json.loads(line)
                     if row["event"] != "decision": continue
+                    if (row.get("comparison") or {}).get("controller", "Utility") != "Utility":
+                        raise ValueError("imitation labels must come from utility decisions, including within mixed-controller traces")
                     label = header["actions"].index(row["action"])
                     if not row["action_mask"][label]: raise ValueError("teacher selected an excluded action")
                     if len(row["features"]) != len(header["feature_names"]): raise ValueError("feature width mismatch")

@@ -20,6 +20,7 @@ pub struct Recorder {
     total_step_ms: f64,
     max_step_ms: f64,
     complete: bool,
+    next_opportunity: u64,
 }
 
 fn write_json(path: &Path, value: &impl Serialize) -> io::Result<()> {
@@ -71,6 +72,7 @@ impl Recorder {
             total_step_ms: 0.,
             max_step_ms: 0.,
             complete: false,
+            next_opportunity: 0,
         })
     }
 
@@ -101,6 +103,21 @@ impl Recorder {
                 "{}",
                 serde_json::json!({"event": "healing", "receipt": event})
             )?;
+        }
+        for event in battle
+            .opportunities
+            .events
+            .iter()
+            .filter(|e| e.sequence >= self.next_opportunity)
+        {
+            writeln!(
+                self.trace,
+                "{}",
+                serde_json::json!({"event": "opportunity", "receipt": event})
+            )?;
+        }
+        if let Some(event) = battle.opportunities.events.last() {
+            self.next_opportunity = event.sequence + 1;
         }
         if battle.finished {
             self.finish(battle)?;
@@ -135,6 +152,8 @@ impl Recorder {
             "survivors": [battle.survivors(0), battle.survivors(1)],
             "actions": actions, "comparison": battle.comparison_summary,
             "learned_fallbacks": battle.learned_fallbacks,
+            "opportunity_attempts": battle.opportunities.attempt_count(),
+            "opportunity_completions": battle.opportunities.completed.len(),
             "mean_recorded_step_wall_ms": self.total_step_ms / f64::from(self.steps.max(1)),
             "max_recorded_step_wall_ms": self.max_step_ms,
             "step_timing_scope": "Simulation and observation capture; excludes trace disk writes, rendering and model-specific timing.",
@@ -185,6 +204,25 @@ impl Recorder {
 
     pub fn save_learning(&self, report: &crate::progression::BattleReport) -> io::Result<()> {
         write_json(&self.directory.join("learning.json"), report)?;
+        let entries: Vec<_> = report
+            .fighters
+            .iter()
+            .flatten()
+            .flat_map(|f| &f.legends)
+            .collect();
+        write_json(&self.directory.join("legends.json"), &entries)?;
+        let mut ledger = String::from(
+            "# Legend Ledger\n\nWitnessed compositions from this battle. Epithets confer no mechanical bonus.\n\n",
+        );
+        for fighter in report.fighters.iter().flatten() {
+            for entry in &fighter.legends {
+                ledger.push_str(&format!("{}\n\n", entry.summary(&fighter.name)));
+            }
+        }
+        if entries.is_empty() {
+            ledger.push_str("No qualifying completed composition.\n");
+        }
+        fs::write(self.directory.join("legend-ledger.md"), ledger)?;
         let mut text = String::from(
             "# How the phalanxes changed\n\nPersisted experience, practice, habits and conditioned memories. Frozen model weights are unchanged.\n\n",
         );

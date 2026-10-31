@@ -1,0 +1,67 @@
+[
+  {
+    "strike_selected_tick": 35,
+    "battle_id": 0,
+    "seed": 6,
+    "simulation_build": "0.5.0:a64ff80432a4bd69",
+    "actor_fighter_id": "18e3c035bb1a0166-0-0",
+    "opponent": "Gatekeeper",
+    "target_fighter_id": "18e3c035bb1a0166-1-0",
+    "arena": "choke",
+    "plan": 0,
+    "started_tick": 0,
+    "completed_tick": 37,
+    "primitives": [
+      "Run",
+      "WallVault",
+      "Run",
+      "Strike"
+    ],
+    "distance": 8.483503,
+    "starting_health": 92.4,
+    "starting_max_health": 330.0,
+    "final_health": 92.4,
+    "starting_wounds": 2,
+    "vault": {
+      "sequence": 0,
+      "tick": 6,
+      "landed_tick": 20,
+      "wall": 0,
+      "from": [
+        -2.225134,
+        0.0,
+        -5.156418
+      ],
+      "to": [
+        1.72,
+        0.0,
+        -5.156418
+      ]
+    },
+    "strike": {
+      "sequence": 0,
+      "tick": 37,
+      "attack": {
+        "dice": [
+          6,
+          6,
+          5
+        ],
+        "target": 18,
+        "margin": 1
+      },
+      "defence": {
+        "dice": [
+          4,
+          5,
+          6
+        ],
+        "target": 6,
+        "margin": -9
+      },
+      "outcome": "Hit",
+      "critical": "None",
+      "damage": 8.6070595
+    }
+  }
+]

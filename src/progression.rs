@@ -114,6 +114,13 @@ pub struct WoundRecord {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Fighter {
+    /// Original identity when an exhibition needs a separate runtime namespace.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_fighter_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub legends: Vec<crate::legend::Entry>,
+    #[serde(default, skip_serializing_if = "crate::is_zero")]
+    pub legend_count: u32,
     #[serde(default)]
     pub theus: Option<crate::theus::Sheet>,
     #[serde(default)]
@@ -142,6 +149,26 @@ pub struct Fighter {
     /// Personality-specific scars. Absent on older saves, which load as blank.
     #[serde(default)]
     pub psyche: Psyche,
+}
+impl Fighter {
+    pub fn source_identity(&self) -> &str {
+        self.source_fighter_id
+            .as_deref()
+            .unwrap_or(&self.fighter_id)
+    }
+    pub fn display_name(&self) -> String {
+        self.legends.last().map_or_else(
+            || self.name.clone(),
+            |entry| format!("{} \"{}\"", self.name, entry.epithet()),
+        )
+    }
+    pub fn legend_summary(&self) -> String {
+        let mut text = format!("LEGEND LEDGER | {} recorded moments", self.legend_count);
+        for entry in self.legends.iter().rev().take(3) {
+            text.push_str(&format!("\n{}", entry.summary(&self.name)));
+        }
+        text
+    }
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Phalanx {
@@ -193,10 +220,25 @@ impl Phalanx {
             }
             let m = f.mind;
             if f.skills.is_some_and(|s| !s.valid(f.class, f.mastery))
+                || f.legends.len() > crate::legend::RETAINED_ENTRIES
+                || f.legend_count < f.legends.len() as u32
+                || f.legend_count > f.battles
+                || f.legends
+                    .iter()
+                    .any(|entry| !entry.valid(next_battle_id, f.source_identity()))
+                || f.legends
+                    .iter()
+                    .map(|entry| entry.battle_id)
+                    .collect::<BTreeSet<_>>()
+                    .len()
+                    != f.legends.len()
                 || !f.equipment.valid()
                 || !valid_name(&f.name)
                 || f.fighter_id.is_empty()
                 || f.fighter_id.len() > 128
+                || f.source_fighter_id.as_ref().is_some_and(|id| {
+                    id.is_empty() || id.len() > 128 || id.chars().any(char::is_control)
+                })
                 || !ids.insert(&f.fighter_id)
                 || !f.mastery.valid()
                 || [
@@ -254,6 +296,8 @@ impl Phalanx {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FighterResult {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub legends: Vec<crate::legend::Entry>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub learning: Option<crate::learning::Learning>,
     #[serde(default)]
@@ -301,6 +345,15 @@ impl BattleReport {
                             && f.max_health > 0.0
                             && f.health <= f.max_health
                             && f.xp <= 55
+                            && f.legends.len() <= 1
+                            && f.legends.iter().all(|entry| {
+                                entry.battle_id == self.battle_id
+                                    && entry.seed == self.seed
+                                    && entry.valid(
+                                        self.battle_id.saturating_add(1),
+                                        &entry.actor_fighter_id,
+                                    )
+                            })
                             && f.learning.as_ref().is_none_or(|learning| learning.valid())
                             && f.new_wounds <= 15
                             && f.weapon_training.iter().all(|p| *p <= 55)
@@ -388,6 +441,9 @@ impl Campaign {
                 .into_iter()
                 .enumerate()
                 .map(|(slot, title)| Fighter {
+                    source_fighter_id: None,
+                    legends: Vec::new(),
+                    legend_count: 0,
                     theus: None,
                     skills: None,
                     mastery: Default::default(),
@@ -684,6 +740,9 @@ impl Campaign {
             recruit.battles = 0;
             recruit.wins = 0;
             recruit.history.clear();
+            recruit.source_fighter_id = None;
+            recruit.legends.clear();
+            recruit.legend_count = 0;
             recruit.wounds.clear();
             recruit.lost_limbs = 0;
             recruit.prosthetics = 0;
@@ -804,6 +863,13 @@ impl Campaign {
         }
         for u in &b.units {
             let f = &mut updated.teams[u.team].fighters[u.id % b.team_size()];
+            if let Some(entry) = crate::legend::capture(id, b, u.id, self) {
+                f.legend_count = f.legend_count.saturating_add(1);
+                f.legends.push(entry);
+                if f.legends.len() > crate::legend::RETAINED_ENTRIES {
+                    f.legends.remove(0);
+                }
+            }
             if let Some(actor) = &u.theus {
                 f.theus = Some(actor.sheet);
             }
@@ -894,6 +960,12 @@ impl Campaign {
                         let slot = u.id % b.team_size();
                         let f = &updated.teams[team].fighters[slot];
                         FighterResult {
+                            legends: f
+                                .legends
+                                .iter()
+                                .filter(|entry| entry.battle_id == id)
+                                .cloned()
+                                .collect(),
                             learning: Some(crate::learning::Learning {
                                 fighter_id: f.fighter_id.clone(),
                                 experience: [u.experience, f.experience],
