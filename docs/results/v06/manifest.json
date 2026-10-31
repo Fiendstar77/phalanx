@@ -1,0 +1,515 @@
+{
+  "schema_version": 1,
+  "captured_at_utc": "2026-10-31T22:09:57.022757+00:00",
+  "source_commit": "dac8ed8879d0612e1abf95ef50e450ec3c83c9c4",
+  "source_tree_clean_at_start": true,
+  "source_sha256": {
+    "Cargo.lock": "e195a34ad8020f0e902f9f2741d76fd23b8fc2a99ed298b56c0a21ad87386c65",
+    "Cargo.toml": "b43865cfa47dec456cb1b8d94049c53064da387267d38909fc8b9bda0a2460cb",
+    "analysis/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "analysis/compare.py": "a58327c0d235efb49371c6d9784200910c25806ff708dca7478603f39cbb237c",
+    "analysis/divergence.py": "a0113d13add1a0f41ff2a4a55f0d229b4a0524bd01aa179c63b85f3b79c9110b",
+    "analysis/duel.py": "fb88f596808709df1b07b714470bdf607b6feb8a0adef14ba399f7370ca748be",
+    "analysis/experiments.py": "19291c603cdcbd418254625cf7c34b223e4e7a0a3d7912f5b5219637ebd200ce",
+    "analysis/export.py": "156af6ddcf8a99d3bb4d57568ff6b3b2f9875b1eb3c6177eac585e75471877e2",
+    "analysis/founders_trace.py": "a229b905d397ae2107bc7cf80c411a6fed172ee3b8741733dd384d4910730cf3",
+    "analysis/plots.py": "449bde95a14a22e08d9e7511cc4e126f5ecdd09a42fed763ffc45637e2956044",
+    "analysis/predict.py": "12d9dc3af078a6673aef69581d8f389e46fcec7c92869855922890668ed99d1b",
+    "analysis/test_analysis.py": "704d6f9f7aea26c65aa717a4596010168a55e3b1fa0efccc236faa95473aaeb3",
+    "analysis/test_bonsai.py": "a76dce9eaa10a351282035d66b7022b98c80cdba07feb1520978ad8025b5b63a",
+    "analysis/test_policy.py": "ec3ace8229ce1f024d907d984570f6db4d790c2788c8ef23bf2f1000cefa6541",
+    "analysis/train.py": "636b0aebc0a5c8cdcefd5e5468a3a53acf19db277451c0879cddfcff2a9366ab",
+    "assets/policy.json": "fba0acda602297170a2af25a3ce4252152efd63a4c723082f4dbd762d7628bcd",
+    "src/appearance.rs": "613d919cf938ee2ffd6b10d96471dd4d68ba61fecbc5224ed1b4770e34d4fdbf",
+    "src/archery.rs": "d35709b43fd8f50eb576e923fe57ed747a0d26c5bddcb09f9718ae5abf4a9be2",
+    "src/async_exchange.rs": "dc4ba8a03b3a61b3054b5f8b8af0ba5b1b8fc367e916ea080a24975a9cef7d7a",
+    "src/audio.rs": "371fd8ab7b132b6ce9f4d272cdfaddc6e36b7f696b65b4d657f329f2235e6321",
+    "src/audio/director.rs": "081f79ee0e39f883339a0c46182c10cf46feaf54d8093f49ef08ce7634c8bb34",
+    "src/audio/synth.rs": "bc12bd59a71fa8e7d08aa70f7268739a0dc2dec2f13c6233a7e0f27dd7b3ae02",
+    "src/batch.rs": "1e88c87bda00e26207d274be6e7c2f95d980bd64c234c852464ee0a28a778ed4",
+    "src/battlefield.rs": "3759bbe8bde894db89256436564334d54db125d3f28cf2298d1a19becf3fdb47",
+    "src/camp.rs": "8fa75cc1b18f655cfe9a2d6e36ced67482dd0f98279373cb980fe84e4921e03d",
+    "src/challenge_cli.rs": "4e6214be03a08622d506fd242452804ff6ca591df8b659036e6b5e70380bef8a",
+    "src/challenges.rs": "9f53de966db2bbe8c2cdac0bd9742bd02e300ab3ce91d1e8160c67d09b856685",
+    "src/cinema.rs": "78d1af7426def0e0a99b6a67c0125bf0b41fa50b3244edef19048e9787d1b793",
+    "src/cognition.rs": "2fd784e146f3e7394499171aea1cf8170c26de92ba746fd272ba29c16125fc0c",
+    "src/collision.rs": "15badd7d6a4ebe13ae339d8533c14ee82a9cecf442f1ef94907a39d8f6562f43",
+    "src/equipment.rs": "8ac99002bd3646e3b65222d9394e4e4d1463824123968db4fbd583e12ddba907",
+    "src/exchange.rs": "c90d65ebf1c27ca37877cfbc0fb7ed6df660f9dc196c035a34298412d072dcf1",
+    "src/founding.rs": "a02d22bc0e6dd3bc8eccc22166ac062689ddb33559a5e8feee8e56caa9ce85bb",
+    "src/front.rs": "04a296ab5a423fdd9ed1597fc77dbcd4c4559a99600823a2476521e4814185d1",
+    "src/genesis.rs": "0ca78ba9a13ce55448dccb43468d2d835eea509a9bc34d3f0ec08adc9d086923",
+    "src/heraldry.rs": "843a168b7ebaadaf374134fe0769377a6389c13b39cabdee97da4264c47f9f4f",
+    "src/injuries.rs": "d4e87bbb7448c48afff620fd6395388b8034b517775e6789b7734e266fca8727",
+    "src/inventory.rs": "1dfc20a8b430c60d32517541a65811341190520c9e108cd92527322af9af3aa0",
+    "src/learned.rs": "94370cd0630d0c3ecc7cc6519e06f91c6974e76ab87010793907673f6986738a",
+    "src/learning.rs": "a8da8b4bf05750a49274462f23eac2450d62f143b8167a6b28ad95e21a42793d",
+    "src/lib.rs": "bef812a645527419d3c61cab7a412e1d8be447bbcd7ae173ac2af5e9540e6f3b",
+    "src/main.rs": "7cd5747f0b5f39db73ac6f775f2f6d895aae04a1698279a0454a09fdf86ce021",
+    "src/map_cli.rs": "f979d25ef460ed6870501af119c36e054ca75c81291190fe3f350aee98ea70e3",
+    "src/mastery.rs": "5d266e8d60e9904be3227f118b9a085c805ce8fe2ee33070a8309361fe297da6",
+    "src/navigation.rs": "d8da4ce84ad4f42974445315c7a59f6ab5a419e59cce13bacd73b8329eadb088",
+    "src/ninjutsu.rs": "489f9a4e4421e5d2f783070bfe353fc02a348bfe5d6756ef83b36650c6cdde84",
+    "src/perception.rs": "63296b8156aa98705095b42bef6e97ebbd746312e6722a86736a3a6a36b080cf",
+    "src/player.rs": "c12ff4c03139ef5fbfd5dbf6d17bb5a8ea89721e0ecd1805cd3336bf66154408",
+    "src/presentation.rs": "b10db4c08e4e0bb4a9b570a6e5453dee3edadd32536bd74955863121f15baa66",
+    "src/pressure.rs": "8fda3bd0b8919403e6e8d13fc55ac1066f9072204a861fecd34c6f1cd0ece5dd",
+    "src/procedural.rs": "b7b3637e14cf4ce96577ceb9a551641b4900679c877ab810664675b09ee95f4b",
+    "src/progression.rs": "4f43fb88b41235d375b1161e9ce2793fb91c42c1d3ecaee36b9283ad6c37cd39",
+    "src/psyche.rs": "6bb19db8cf450572c950517bcb0e3eba3f29c7c1d0f1e1d344646278d6dd416c",
+    "src/rewards.rs": "363d55fd144a3b014a68a2a3a4c0010629465e703f4fcbba5d617965ae041dd7",
+    "src/rivals.rs": "09dea9e452e957a3330cf4abe900ad0b45c3292599679197dbd71d9592cd3419",
+    "src/rpg.rs": "3511e3f49bfb82b0b1f7cf166af1eebc8c675fb245ee8427736d487ba09b03d5",
+    "src/skills.rs": "05441e2313f178712bc63a2ee3515602fe742bfd28edb550ce71ff3c20ddd5a8",
+    "src/study.rs": "0be9bb1b026dee73e4e55bc68099dd2ac7464df41856a6ef6603a301ea96f863",
+    "src/study_cli.rs": "d9178d5bb87162465c2e0d9ae0ff1b271f37546cba3bb6c7a03cba7ef6636857",
+    "src/styles.rs": "9d6f568392d053ad9485842aec1dd024ac9336fb198784e909e88dfde8f1dc90",
+    "src/telemetry.rs": "9d3bf25added9cafcecf1712f02dc4184d9a18c9be79195ff316dbc2d650e095",
+    "src/terrain.rs": "7925f958735902ae8d431e019f57c0c0e5f2cfdc3f4e695cf53726b04487548a",
+    "src/theus.rs": "ca7b170cd9fd3656523685be0194b18f8edce94f4fb8cd4353a0566d2de3c80c",
+    "src/theus_combat.rs": "a9eb52b4f332ee8fe59e7547fefd5dc188e7b9b2f7702b2df4181a5da277d92d",
+    "src/tutorial.rs": "a01a872b5c1d3665215de677f7cb46477514cb7320d0c56cc13fd00db3637ab5",
+    "src/visuals.rs": "6b64faf1dfa5bbe56d926bb5e52cc745c807b65e5175a1ea06923d6a883135d9",
+    "src/visuals/archery.rs": "9956575d5743291c6d7f029a10b1a6249068c2f5485fb7639fe0063ed3092b24",
+    "src/visuals/barks.rs": "9bc366a43255ea1f149ce441b01de14414d3474a8fb8d85a410395bc3b7d477f",
+    "src/visuals/blood.rs": "4ec7771a261138916fa17eb00584d7f0eacb30234d56fccd1bdbc6fd34d107b6",
+    "src/visuals/body.rs": "bde46a82f5c3c4d14e5e13429bd38111217d26d7503d298aa2baad82f0d4e6a9",
+    "src/visuals/cuts.rs": "c3e7cc716640628409323869a82c0c9e18051b6f95260d9c89c673029a9cc02a",
+    "src/visuals/equipment.rs": "0a9b5ca3eca9335976e1b9b52751e7eeeee3c8930ebe4fae5c6f444ebdad8875",
+    "src/visuals/face.rs": "f26b12f2f31e37df4d2a6101ef479894266d1b4707e62e48dbf8b10c0e3b0d2b",
+    "src/visuals/garments.rs": "90ed9691fd2886d9281df6d57fe5d7ab2d5302783c41b415b78260e6095aff1f",
+    "src/visuals/health.rs": "dd108ce3200de999a510b1240e3127780e904a2fef724870285f1c07b7d01397",
+    "src/visuals/occult.rs": "8889397f89a0a632259b5f2b7492e380062f4b7bd84620976c0cdce1e09794c4",
+    "src/visuals/organs.rs": "edc6e24691c5dc01e92e3d37726ecc87d28cb4f78d61a63fd6eb874be7968f19",
+    "src/visuals/pooling.rs": "511aa5f45b5caf4f3c2e34b353bd38bf65767faf327c28e0856be63c951f2684",
+    "src/visuals/spectacle.rs": "42f5e2477ae6313c827185b427c7601dfc48724ea40550c372f388a1c4f8cfe1",
+    "src/visuals/stain_patch.rs": "6a5092527dbae08fa0d5689ac9c7326cbdeb3a8efa1a2fd457c5c3237146ae8a",
+    "src/visuals/stains.rs": "79c5e66468286da924ddf64a6c06defbcf4116d8d845d97c29ffdbde7023e3cc",
+    "src/visuals/standards.rs": "6a46f7849f1897a4ad0dd96a2ec9648848b0df6362b7a7c1f731032d7b5793c6",
+    "src/visuals/team_actions.rs": "8aa893bf40d392f90bec78030cebd0026913eb25d35935fc6ea7e6315244577e",
+    "src/weapons.rs": "ddd4da91afbcf92b7908de754b8985a46ffd478d15678b1a5877be441c8fe58c",
+    "tools/bonsai_smoke.py": "9a64fac7c00603819dac8cff3e2717c34418c508893b020be3607ae6c642a893",
+    "tools/bonsai_tactics.py": "a8cdcb26193e82a4f588e4107fa2437388fdabb3b0d169ddb1e1ea92e1f3cacc",
+    "tools/build_hair_meshes.py": "e353237b068eda73a37e496757d6b0b22cde9088c69081f21eb13e34ce425aaf",
+    "tools/fit_rigged_eyes.py": "d9a136bf0257902e6632585449812186c8d6df32d0cd19c6c5741e963d281aa0",
+    "tools/memory_soak.py": "2689c18567b9b4aa9c78c6b22426629a1ef935ec9069f364090fa6425844a193",
+    "tools/prepare_combat_characters.py": "82729ed10ee0cf946f453d1417cdc7d447b707d42b1a562f0695746ec5c1adb9",
+    "tools/rig_character_faces.py": "8714a24929b051c2cfd6bf138dadc2cb5bd0b2115dcf1e59dcb6c3a782f7cb7d",
+    "tools/validate_character_assets.py": "407a348bfd8da0d18adc0a7348fae23c9a469fb96b0a81ca62e60788b8fe0338",
+    "tools/validate_face_assets.py": "7c937102f5f58f52fc32d7504d8ffa3ea076bd0500cf161d32d1104c11b10468"
+  },
+  "binary_sha256": "212a97cb525126ec9df085e325a121920c4c9a13c7e322a8bb0a542c8b46a01e",
+  "machine": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "python": "3.14.8",
+    "cpu": "AMD Ryzen 9 7950X 16-Core Processor",
+    "logical_cpus": 32
+  },
+  "native_settings": {
+    "cpu_threads": 4,
+    "gpu_layers": 0,
+    "sampler": "greedy",
+    "max_generated_tokens": 48,
+    "bark_word_limit": 20,
+    "process_timeout_seconds": 30,
+    "model_reload_each_request": true
+  },
+  "source_unchanged_during_capture": true,
+  "source_tree_clean_at_end": true,
+  "bundle_scope": "Three real campaign battles; Bonsai tactical shadow, deadline and bark studies. UI image is a separate scripted fixture.",
+  "path_normalization": "Local checkout prefix removed from model/command paths; timestamped battle directories renamed by seed. Terminal blank lines normalized in generated Markdown. Numeric results, raw traces and exact prompt/completion text are unchanged.",
+  "commands": [
+    {
+      "argv": [
+        "target/debug/phalanx-study",
+        "--battles",
+        "3",
+        "--seed",
+        "200",
+        "--output",
+        "outputs/recruiter-ai-2026-10-31/campaign"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 1.366
+    },
+    {
+      "argv": [
+        "python3",
+        "tools/bonsai_smoke.py",
+        "--trace",
+        "outputs/recruiter-ai-2026-10-31/campaign/battle-200-1793484597030100658-2305045/decisions.jsonl",
+        "--samples",
+        "12",
+        "--budget-ms",
+        "10000",
+        "--output",
+        "outputs/recruiter-ai-2026-10-31/tactical"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 33.537
+    },
+    {
+      "argv": [
+        "python3",
+        "tools/bonsai_smoke.py",
+        "--trace",
+        "outputs/recruiter-ai-2026-10-31/campaign/battle-200-1793484597030100658-2305045/decisions.jsonl",
+        "--samples",
+        "3",
+        "--budget-ms",
+        "1500",
+        "--output",
+        "outputs/recruiter-ai-2026-10-31/deadline"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 5.025
+    },
+    {
+      "argv": [
+        "python3",
+        "tools/bonsai_smoke.py",
+        "--output",
+        "outputs/recruiter-ai-2026-10-31/barks"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 2.818
+    }
+  ],
+  "source_artifacts": {
+    "campaign/battle-200/battle.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-200-1793484597030100658-2305045/battle.json",
+      "capture_sha256": "f79cae21ae7534070a52f84f5eb7a04eb87aa26977dd8bab5d64437dfca4dba0"
+    },
+    "campaign/battle-200/decisions.jsonl": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-200-1793484597030100658-2305045/decisions.jsonl",
+      "capture_sha256": "5e1e7ed467fa4fc1554be8442bded2fde6c65dd08e4433f3d143eb2eba103a54"
+    },
+    "campaign/battle-200/learning.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-200-1793484597030100658-2305045/learning.json",
+      "capture_sha256": "2d5ca198f2939e2782ca0b845b37726b2f97191e58506d29248dd9725a3f84d6"
+    },
+    "campaign/battle-200/learning.md": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-200-1793484597030100658-2305045/learning.md",
+      "capture_sha256": "3f84f610be4e131446e1f0cd6bb917e7e2f197a520d567f0712ef7265766034d"
+    },
+    "campaign/battle-200/report.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-200-1793484597030100658-2305045/report.json",
+      "capture_sha256": "551d31b9a0cb2db83575ac6b3d75a4afc730c0d92c4bf5a2233bd986aa9cd6ee"
+    },
+    "campaign/battle-200/report.md": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-200-1793484597030100658-2305045/report.md",
+      "capture_sha256": "a1071dafe9e39d1c23d6cf703bff146ba64ba8bae58b332f9420092d5e6569a7"
+    },
+    "campaign/battle-200/status.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-200-1793484597030100658-2305045/status.json",
+      "capture_sha256": "0f1d627aa4cdaee5a8a1c71caf31abe464a308e4248010478033a4867c83b017"
+    },
+    "campaign/battle-201/battle.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-201-1793484597401788804-2305045/battle.json",
+      "capture_sha256": "246152f6b79a4b1ebc5edf85ef63214d6b74f9ceef997a1d03add08a48850396"
+    },
+    "campaign/battle-201/decisions.jsonl": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-201-1793484597401788804-2305045/decisions.jsonl",
+      "capture_sha256": "ae07ec56487188c1d7e5a15bb861c4f3686238fca5a2a2dd1bea7f1535bc76c7"
+    },
+    "campaign/battle-201/learning.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-201-1793484597401788804-2305045/learning.json",
+      "capture_sha256": "e33e04f84309bfa52ff35f55098c0bd9b00ca3b17f59fb9fce149dc161bd4667"
+    },
+    "campaign/battle-201/learning.md": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-201-1793484597401788804-2305045/learning.md",
+      "capture_sha256": "e9418837db62851803c6f90ddf37f776ad9753ebda93816f58f58477a20731f9"
+    },
+    "campaign/battle-201/report.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-201-1793484597401788804-2305045/report.json",
+      "capture_sha256": "bce4eff378255616d235501bfdc0a1fb89a852efbb76108237ec0b0bb1629a07"
+    },
+    "campaign/battle-201/report.md": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-201-1793484597401788804-2305045/report.md",
+      "capture_sha256": "8247480b723a9feb33a2304eb5e2d2188306d2373bed28b894fe4e18b75bf86a"
+    },
+    "campaign/battle-201/status.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-201-1793484597401788804-2305045/status.json",
+      "capture_sha256": "c20136037d3697483ba9b40704fab44bb43d672829f936f9cd58cf9e1552d360"
+    },
+    "campaign/battle-202/battle.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-202-1793484597934929384-2305045/battle.json",
+      "capture_sha256": "4cc766b7b46c83d8c9d17466a9752dd17589ff2c687ea168a063c74eae7dfc48"
+    },
+    "campaign/battle-202/decisions.jsonl": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-202-1793484597934929384-2305045/decisions.jsonl",
+      "capture_sha256": "c840f8f11beeb942307a081cb1efd3e4e78582002a440e240eecbb002c8a6cc2"
+    },
+    "campaign/battle-202/learning.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-202-1793484597934929384-2305045/learning.json",
+      "capture_sha256": "0ec9dd9999e83753943b54de2e8dd37b4a618bf766329560703721942324ea1c"
+    },
+    "campaign/battle-202/learning.md": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-202-1793484597934929384-2305045/learning.md",
+      "capture_sha256": "253e9c34f18901b3304bc15bbb6bbb5c73aeaafc4f7c5c1209d4eef23265aed2"
+    },
+    "campaign/battle-202/report.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-202-1793484597934929384-2305045/report.json",
+      "capture_sha256": "c19a0fd7bbb7bcdaef7e1a7cd46018ae056fffcfc932805134615ec84e2f5d87"
+    },
+    "campaign/battle-202/report.md": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-202-1793484597934929384-2305045/report.md",
+      "capture_sha256": "afd49f8e71a7111a73ed3f600cf7c9762eeb043809f74fc7eafdd9bd2d4bb474"
+    },
+    "campaign/battle-202/status.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/battle-202-1793484597934929384-2305045/status.json",
+      "capture_sha256": "5e9dcb8286ac21c5a885b2c893f146c8b9c80f4b704875156e7801438be0b7d2"
+    },
+    "campaign/campaign-before.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/campaign-before.json",
+      "capture_sha256": "a69ce64d5a0563921258748948172b6f28c8d7b9131af59160901dc3eece9df4"
+    },
+    "campaign/campaign-after.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/campaign-after.json",
+      "capture_sha256": "bb3b0351bd6ebf6d5212c0f96a3332cb1daaa7a343beea87ef5d26f1dbcda611"
+    },
+    "campaign/report.md": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/campaign/report.md",
+      "capture_sha256": "65668afd80fd68fa2cc3a9d43d88eac29f47fb88c4dfad071f4c898eb3e81b8d"
+    },
+    "tactical/decision-106.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-106.prompt.txt",
+      "capture_sha256": "ef59b119a15b81078a4198fde251f5c1c97b0d5fafbf0959a7d39a9a408f73dd"
+    },
+    "tactical/decision-106.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-106.raw.txt",
+      "capture_sha256": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993"
+    },
+    "tactical/decision-165.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-165.prompt.txt",
+      "capture_sha256": "d280c29b9b9429ff28cc2d6599294f9cdd2188659ee3b5b277d1a45b0f69d7ed"
+    },
+    "tactical/decision-165.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-165.raw.txt",
+      "capture_sha256": "bedf4093ba54839f22b10d58fcfeeb9ee98e7bc47ef9f61daed8b72d34355ecd"
+    },
+    "tactical/decision-2.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-2.prompt.txt",
+      "capture_sha256": "24cf4b0d47abf88e51596e70a2a8c193839552b0f0f5a0aa698226aa9a72c2eb"
+    },
+    "tactical/decision-2.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-2.raw.txt",
+      "capture_sha256": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993"
+    },
+    "tactical/decision-228.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-228.prompt.txt",
+      "capture_sha256": "87f1d8de32de7d6745a18c1808bb33f64325b1c2287d4473ab60e72f7057ce0d"
+    },
+    "tactical/decision-228.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-228.raw.txt",
+      "capture_sha256": "26230021aa96e838e79505e5867848b033208b228fd3edee8ab4d53fd34e1295"
+    },
+    "tactical/decision-290.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-290.prompt.txt",
+      "capture_sha256": "8cb5fea9ada78b95125192209e6c3a3e031f12906032feaae2b5d3bff13ec4de"
+    },
+    "tactical/decision-290.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-290.raw.txt",
+      "capture_sha256": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993"
+    },
+    "tactical/decision-352.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-352.prompt.txt",
+      "capture_sha256": "051c0f9af56ee02529388dd6c8a283a73087eaff2d05fcd842ce5935696365ce"
+    },
+    "tactical/decision-352.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-352.raw.txt",
+      "capture_sha256": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993"
+    },
+    "tactical/decision-417.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-417.prompt.txt",
+      "capture_sha256": "d3d2f940c2f0e8d64b028480b93bb7890051ee2756fe992899e15b7eb585f729"
+    },
+    "tactical/decision-417.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-417.raw.txt",
+      "capture_sha256": "26230021aa96e838e79505e5867848b033208b228fd3edee8ab4d53fd34e1295"
+    },
+    "tactical/decision-480.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-480.prompt.txt",
+      "capture_sha256": "f4bc2b22f15ced1a739c37eb064e52416f813b9997f6cd3dd07de9d891521970"
+    },
+    "tactical/decision-480.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-480.raw.txt",
+      "capture_sha256": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993"
+    },
+    "tactical/decision-54.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-54.prompt.txt",
+      "capture_sha256": "bcf51932e16c41e83b92882b047afb5d64f64921d8cf031baab1e2d0f84cb5c0"
+    },
+    "tactical/decision-54.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-54.raw.txt",
+      "capture_sha256": "bedf4093ba54839f22b10d58fcfeeb9ee98e7bc47ef9f61daed8b72d34355ecd"
+    },
+    "tactical/decision-547.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-547.prompt.txt",
+      "capture_sha256": "28bd467d34fb111de83085450566cd67317ec924b8c73e4d3657d465cac78443"
+    },
+    "tactical/decision-547.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-547.raw.txt",
+      "capture_sha256": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993"
+    },
+    "tactical/decision-614.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-614.prompt.txt",
+      "capture_sha256": "08bab2d20f9ead78f285c35137a129c03321a0b70500541a7d9339eed3bb1459"
+    },
+    "tactical/decision-614.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-614.raw.txt",
+      "capture_sha256": "26230021aa96e838e79505e5867848b033208b228fd3edee8ab4d53fd34e1295"
+    },
+    "tactical/decision-685.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-685.prompt.txt",
+      "capture_sha256": "a7de987106a3dc0ca1791afc035b9497131f7a03f3e28ad2e1e3809997da3b39"
+    },
+    "tactical/decision-685.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/decision-685.raw.txt",
+      "capture_sha256": "26230021aa96e838e79505e5867848b033208b228fd3edee8ab4d53fd34e1295"
+    },
+    "tactical/report.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/report.json",
+      "capture_sha256": "4c9803b07912bffd7ad51a1829ea1a35a3f5e56406e1294fcd0f497c45c0fc9f"
+    },
+    "tactical/report.md": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/tactical/report.md",
+      "capture_sha256": "1411102af40eb790c377e84b089f65709c2b7505b5ff3056d77df4907ed561ae"
+    },
+    "deadline/decision-2.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/deadline/decision-2.prompt.txt",
+      "capture_sha256": "24cf4b0d47abf88e51596e70a2a8c193839552b0f0f5a0aa698226aa9a72c2eb"
+    },
+    "deadline/decision-2.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/deadline/decision-2.raw.txt",
+      "capture_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "deadline/decision-320.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/deadline/decision-320.prompt.txt",
+      "capture_sha256": "3752fab9191ac99d680a72683841e353e45db05ed308b5509c3b54b81f910b40"
+    },
+    "deadline/decision-320.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/deadline/decision-320.raw.txt",
+      "capture_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "deadline/decision-685.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/deadline/decision-685.prompt.txt",
+      "capture_sha256": "a7de987106a3dc0ca1791afc035b9497131f7a03f3e28ad2e1e3809997da3b39"
+    },
+    "deadline/decision-685.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/deadline/decision-685.raw.txt",
+      "capture_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "deadline/report.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/deadline/report.json",
+      "capture_sha256": "ab86a77d8017c5f7be015cb18029e927765d777e1471579fa2950da4777d6e3f"
+    },
+    "deadline/report.md": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/deadline/report.md",
+      "capture_sha256": "8565ca2d5390f9643a2d5358d7823dc9ce289da66ca382c710518db9163a0633"
+    },
+    "barks/protect_ally.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/barks/protect_ally.prompt.txt",
+      "capture_sha256": "c5316117df7d58ec7be7e16c6c64cc0ae0b1e828532e22f4abc65d0047296ab8"
+    },
+    "barks/protect_ally.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/barks/protect_ally.raw.txt",
+      "capture_sha256": "85c18337703b831031879deb830a9f041520f205068d37a359d144d92269da46"
+    },
+    "barks/ranged_warning.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/barks/ranged_warning.prompt.txt",
+      "capture_sha256": "8b63b50a5fd9a368cad1161143f6422c0b3d80345dc5fe8182a765e34a367937"
+    },
+    "barks/ranged_warning.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/barks/ranged_warning.raw.txt",
+      "capture_sha256": "c9a8ecd23514d1cd6ca4b256631b68f5ad61256001c65bd06e55dec2e7b9eb3a"
+    },
+    "barks/report.json": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/barks/report.json",
+      "capture_sha256": "5976f39804d25271a2c66372db2e597d58f12912b0e05fd039fbe4594252906b"
+    },
+    "barks/retreat.prompt.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/barks/retreat.prompt.txt",
+      "capture_sha256": "bd44d44905bf4886502077390d204e7de0b5028ed9f535e9ec20d37057598379"
+    },
+    "barks/retreat.raw.txt": {
+      "capture_path": "outputs/recruiter-ai-2026-10-31/barks/retreat.raw.txt",
+      "capture_sha256": "7ca7813d11ce34f58d6f9372181dec26bea96990b2cb68e9b428eeca5e4ad367"
+    },
+    "learning-screen.png": {
+      "capture_path": "outputs/learning-ui-2026-10-31/outputs/report-witness.png",
+      "capture_sha256": "cb8e89b11e63e9c67e44aa6685a2d57d3c6bba57db28885dd9cb2f917d46671f"
+    }
+  },
+  "files_sha256": {
+    "README.md": "94ebe032c21070388eeb3a7c9b1458db4782594f6ef67ff6b172a8f37f2d2872",
+    "barks/protect_ally.prompt.txt": "c5316117df7d58ec7be7e16c6c64cc0ae0b1e828532e22f4abc65d0047296ab8",
+    "barks/protect_ally.raw.txt": "85c18337703b831031879deb830a9f041520f205068d37a359d144d92269da46",
+    "barks/ranged_warning.prompt.txt": "8b63b50a5fd9a368cad1161143f6422c0b3d80345dc5fe8182a765e34a367937",
+    "barks/ranged_warning.raw.txt": "c9a8ecd23514d1cd6ca4b256631b68f5ad61256001c65bd06e55dec2e7b9eb3a",
+    "barks/report.json": "fa91763c024a5d0bada58be38c7f21d790942ec242f96c26848098fe10dd8471",
+    "barks/retreat.prompt.txt": "bd44d44905bf4886502077390d204e7de0b5028ed9f535e9ec20d37057598379",
+    "barks/retreat.raw.txt": "7ca7813d11ce34f58d6f9372181dec26bea96990b2cb68e9b428eeca5e4ad367",
+    "campaign/battle-200/battle.json": "f79cae21ae7534070a52f84f5eb7a04eb87aa26977dd8bab5d64437dfca4dba0",
+    "campaign/battle-200/decisions.jsonl": "5e1e7ed467fa4fc1554be8442bded2fde6c65dd08e4433f3d143eb2eba103a54",
+    "campaign/battle-200/learning.json": "2d5ca198f2939e2782ca0b845b37726b2f97191e58506d29248dd9725a3f84d6",
+    "campaign/battle-200/learning.md": "c4baae9ff7b0965651bfb9368d97a5e7ba377d3517eca0811bab94c3232c64dd",
+    "campaign/battle-200/report.json": "551d31b9a0cb2db83575ac6b3d75a4afc730c0d92c4bf5a2233bd986aa9cd6ee",
+    "campaign/battle-200/report.md": "a1071dafe9e39d1c23d6cf703bff146ba64ba8bae58b332f9420092d5e6569a7",
+    "campaign/battle-200/status.json": "0f1d627aa4cdaee5a8a1c71caf31abe464a308e4248010478033a4867c83b017",
+    "campaign/battle-201/battle.json": "246152f6b79a4b1ebc5edf85ef63214d6b74f9ceef997a1d03add08a48850396",
+    "campaign/battle-201/decisions.jsonl": "ae07ec56487188c1d7e5a15bb861c4f3686238fca5a2a2dd1bea7f1535bc76c7",
+    "campaign/battle-201/learning.json": "e33e04f84309bfa52ff35f55098c0bd9b00ca3b17f59fb9fce149dc161bd4667",
+    "campaign/battle-201/learning.md": "7d5207ee825ebd3cae5db657cc58bc8105b9263dce6369eb188b9d348c551a10",
+    "campaign/battle-201/report.json": "bce4eff378255616d235501bfdc0a1fb89a852efbb76108237ec0b0bb1629a07",
+    "campaign/battle-201/report.md": "8247480b723a9feb33a2304eb5e2d2188306d2373bed28b894fe4e18b75bf86a",
+    "campaign/battle-201/status.json": "c20136037d3697483ba9b40704fab44bb43d672829f936f9cd58cf9e1552d360",
+    "campaign/battle-202/battle.json": "4cc766b7b46c83d8c9d17466a9752dd17589ff2c687ea168a063c74eae7dfc48",
+    "campaign/battle-202/decisions.jsonl": "c840f8f11beeb942307a081cb1efd3e4e78582002a440e240eecbb002c8a6cc2",
+    "campaign/battle-202/learning.json": "0ec9dd9999e83753943b54de2e8dd37b4a618bf766329560703721942324ea1c",
+    "campaign/battle-202/learning.md": "aaca28859f02fb25456cd0f9a813ad9e2ecf0514460adb5c292230b2909e0b29",
+    "campaign/battle-202/report.json": "c19a0fd7bbb7bcdaef7e1a7cd46018ae056fffcfc932805134615ec84e2f5d87",
+    "campaign/battle-202/report.md": "afd49f8e71a7111a73ed3f600cf7c9762eeb043809f74fc7eafdd9bd2d4bb474",
+    "campaign/battle-202/status.json": "5e9dcb8286ac21c5a885b2c893f146c8b9c80f4b704875156e7801438be0b7d2",
+    "campaign/campaign-after.json": "bb3b0351bd6ebf6d5212c0f96a3332cb1daaa7a343beea87ef5d26f1dbcda611",
+    "campaign/campaign-before.json": "a69ce64d5a0563921258748948172b6f28c8d7b9131af59160901dc3eece9df4",
+    "campaign/report.md": "5e0c0f9533ad669aa27d31975a83f4026daa5a2cb10d560b7ee05a8dc75439e9",
+    "deadline/decision-2.prompt.txt": "24cf4b0d47abf88e51596e70a2a8c193839552b0f0f5a0aa698226aa9a72c2eb",
+    "deadline/decision-2.raw.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "deadline/decision-320.prompt.txt": "3752fab9191ac99d680a72683841e353e45db05ed308b5509c3b54b81f910b40",
+    "deadline/decision-320.raw.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "deadline/decision-685.prompt.txt": "a7de987106a3dc0ca1791afc035b9497131f7a03f3e28ad2e1e3809997da3b39",
+    "deadline/decision-685.raw.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "deadline/report.json": "c6bd14a8296bf295e978a5f9c426c162632860947e674ecab8e6a9d5a27c1612",
+    "deadline/report.md": "8565ca2d5390f9643a2d5358d7823dc9ce289da66ca382c710518db9163a0633",
+    "learning-screen.png": "cb8e89b11e63e9c67e44aa6685a2d57d3c6bba57db28885dd9cb2f917d46671f",
+    "tactical/decision-106.prompt.txt": "ef59b119a15b81078a4198fde251f5c1c97b0d5fafbf0959a7d39a9a408f73dd",
+    "tactical/decision-106.raw.txt": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993",
+    "tactical/decision-165.prompt.txt": "d280c29b9b9429ff28cc2d6599294f9cdd2188659ee3b5b277d1a45b0f69d7ed",
+    "tactical/decision-165.raw.txt": "bedf4093ba54839f22b10d58fcfeeb9ee98e7bc47ef9f61daed8b72d34355ecd",
+    "tactical/decision-2.prompt.txt": "24cf4b0d47abf88e51596e70a2a8c193839552b0f0f5a0aa698226aa9a72c2eb",
+    "tactical/decision-2.raw.txt": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993",
+    "tactical/decision-228.prompt.txt": "87f1d8de32de7d6745a18c1808bb33f64325b1c2287d4473ab60e72f7057ce0d",
+    "tactical/decision-228.raw.txt": "26230021aa96e838e79505e5867848b033208b228fd3edee8ab4d53fd34e1295",
+    "tactical/decision-290.prompt.txt": "8cb5fea9ada78b95125192209e6c3a3e031f12906032feaae2b5d3bff13ec4de",
+    "tactical/decision-290.raw.txt": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993",
+    "tactical/decision-352.prompt.txt": "051c0f9af56ee02529388dd6c8a283a73087eaff2d05fcd842ce5935696365ce",
+    "tactical/decision-352.raw.txt": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993",
+    "tactical/decision-417.prompt.txt": "d3d2f940c2f0e8d64b028480b93bb7890051ee2756fe992899e15b7eb585f729",
+    "tactical/decision-417.raw.txt": "26230021aa96e838e79505e5867848b033208b228fd3edee8ab4d53fd34e1295",
+    "tactical/decision-480.prompt.txt": "f4bc2b22f15ced1a739c37eb064e52416f813b9997f6cd3dd07de9d891521970",
+    "tactical/decision-480.raw.txt": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993",
+    "tactical/decision-54.prompt.txt": "bcf51932e16c41e83b92882b047afb5d64f64921d8cf031baab1e2d0f84cb5c0",
+    "tactical/decision-54.raw.txt": "bedf4093ba54839f22b10d58fcfeeb9ee98e7bc47ef9f61daed8b72d34355ecd",
+    "tactical/decision-547.prompt.txt": "28bd467d34fb111de83085450566cd67317ec924b8c73e4d3657d465cac78443",
+    "tactical/decision-547.raw.txt": "6c9585edd0531cf7df4cf3c68b8841b2a7920b2f4fe871f529637a52877d0993",
+    "tactical/decision-614.prompt.txt": "08bab2d20f9ead78f285c35137a129c03321a0b70500541a7d9339eed3bb1459",
+    "tactical/decision-614.raw.txt": "26230021aa96e838e79505e5867848b033208b228fd3edee8ab4d53fd34e1295",
+    "tactical/decision-685.prompt.txt": "a7de987106a3dc0ca1791afc035b9497131f7a03f3e28ad2e1e3809997da3b39",
+    "tactical/decision-685.raw.txt": "26230021aa96e838e79505e5867848b033208b228fd3edee8ab4d53fd34e1295",
+    "tactical/observations.json": "e0357d361a885849a1825b7e32173cc32a64c0b190c0d307a0334c1549dd3d38",
+    "tactical/report.json": "f4580e159a20d1a77bf89d2130e686910edfc10f007e14270be9a109c9953786",
+    "tactical/report.md": "1411102af40eb790c377e84b089f65709c2b7505b5ff3056d77df4907ed561ae"
+  }
+}

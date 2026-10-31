@@ -1,0 +1,3835 @@
+{
+  "origin": null,
+  "founders_prepared": true,
+  "tutorial": {
+    "cleared": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "attempts": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "rivals": [
+    {
+      "inventory": [],
+      "rival_style": "Obsidian",
+      "heraldry": {
+        "accent": [
+          0.96,
+          0.94,
+          0.85
+        ],
+        "emblem": "Sun"
+      },
+      "standard_bearer": 2,
+      "name": "The Obsidian Coven",
+      "color": [
+        0.65,
+        0.35,
+        0.95
+      ],
+      "fighters": [
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-0-0-3518bf269fa235c9",
+          "name": "Coven 1",
+          "title": "King",
+          "class": "Hexer",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.85,
+            "courage": 0.65,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-0-1-3518be269fa23416",
+          "name": "Coven 2",
+          "title": "Queen",
+          "class": "RockThrower",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.85,
+            "courage": 0.65,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-0-2-3518bd269fa23263",
+          "name": "Coven 3",
+          "title": "General",
+          "class": "Ranger",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.85,
+            "courage": 0.65,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        }
+      ],
+      "salvage": 0,
+      "gold": 100
+    },
+    {
+      "inventory": [],
+      "rival_style": "Sentinel",
+      "heraldry": {
+        "accent": [
+          0.96,
+          0.94,
+          0.85
+        ],
+        "emblem": "Crescent"
+      },
+      "standard_bearer": 2,
+      "name": "The Iron Sentinel",
+      "color": [
+        1.0,
+        0.42,
+        0.32
+      ],
+      "fighters": [
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-1-0-3518bf269fa235c9",
+          "name": "Sentinel 1",
+          "title": "King",
+          "class": "Guardian",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-1-1-3518be269fa23416",
+          "name": "Sentinel 2",
+          "title": "Queen",
+          "class": "Paladin",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-1-2-3518bd269fa23263",
+          "name": "Sentinel 3",
+          "title": "General",
+          "class": "Guardian",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        }
+      ],
+      "salvage": 0,
+      "gold": 100
+    },
+    {
+      "inventory": [],
+      "rival_style": "Bloodhound",
+      "heraldry": {
+        "accent": [
+          0.96,
+          0.94,
+          0.85
+        ],
+        "emblem": "Diamond"
+      },
+      "standard_bearer": 2,
+      "name": "The Bloodhound Syndicate",
+      "color": [
+        0.2,
+        0.6,
+        0.98
+      ],
+      "fighters": [
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-2-0-3518bf269fa235c9",
+          "name": "Hound 1",
+          "title": "King",
+          "class": "Scout",
+          "mind": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.85,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.25,
+            "discipline": 0.3
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-2-1-3518be269fa23416",
+          "name": "Hound 2",
+          "title": "Queen",
+          "class": "Berserker",
+          "mind": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.85,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.25,
+            "discipline": 0.3
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-2-2-3518bd269fa23263",
+          "name": "Hound 3",
+          "title": "General",
+          "class": "Ranger",
+          "mind": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.85,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.25,
+            "discipline": 0.3
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        }
+      ],
+      "salvage": 0,
+      "gold": 100
+    },
+    {
+      "inventory": [],
+      "rival_style": "Vanguard",
+      "heraldry": {
+        "accent": [
+          0.96,
+          0.94,
+          0.85
+        ],
+        "emblem": "Cross"
+      },
+      "standard_bearer": 2,
+      "name": "The Vanguard of the Sun",
+      "color": [
+        0.58,
+        0.85,
+        0.2
+      ],
+      "fighters": [
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-3-0-3518bf269fa235c9",
+          "name": "Solar 1",
+          "title": "King",
+          "class": "BannerBearer",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65,
+            "teamwork": 0.95,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-3-1-3518be269fa23416",
+          "name": "Solar 2",
+          "title": "Queen",
+          "class": "Warrior",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65,
+            "teamwork": 0.95,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-3-2-3518bd269fa23263",
+          "name": "Solar 3",
+          "title": "General",
+          "class": "Paladin",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65,
+            "teamwork": 0.95,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        }
+      ],
+      "salvage": 0,
+      "gold": 100
+    },
+    {
+      "inventory": [],
+      "rival_style": "Null",
+      "heraldry": {
+        "accent": [
+          0.96,
+          0.94,
+          0.85
+        ],
+        "emblem": "Chevrons"
+      },
+      "standard_bearer": 2,
+      "name": "The Null Collective",
+      "color": [
+        0.98,
+        0.35,
+        0.7
+      ],
+      "fighters": [
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-4-0-3518bf269fa235c9",
+          "name": "Null 1",
+          "title": "King",
+          "class": "Guardian",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-4-1-3518be269fa23416",
+          "name": "Null 2",
+          "title": "Queen",
+          "class": "Hexer",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        {
+          "theus": null,
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "rival-4-2-3518bd269fa23263",
+          "name": "Null 3",
+          "title": "General",
+          "class": "RockThrower",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "experience": 0,
+          "battles": 0,
+          "wins": 0,
+          "history": [],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        }
+      ],
+      "salvage": 0,
+      "gold": 100
+    }
+  ],
+  "last_report": {
+    "team_names": [
+      "Sunward",
+      "Moonward"
+    ],
+    "arena": {
+      "pressure": {
+        "generator": 1,
+        "layout": 1,
+        "seed": 202,
+        "destroyed": 0,
+        "lesson": "exposure",
+        "cover_extra": 0,
+        "wide": false,
+        "reach": 1
+      }
+    },
+    "battle_id": 2,
+    "seed": 202,
+    "winner": 0,
+    "gold": [
+      30,
+      15
+    ],
+    "salvage": [
+      10,
+      6
+    ],
+    "fighters": [
+      [
+        {
+          "learning": {
+            "fighter_id": "18e3bcbd1be95db7-0-0",
+            "experience": [
+              70,
+              125
+            ],
+            "class_practice": [
+              70,
+              125
+            ],
+            "mind_before": {
+              "aggression": 0.9,
+              "caution": 0.2,
+              "courage": 0.85,
+              "teamwork": 0.25,
+              "patience": 0.2,
+              "self_preservation": 0.26999998,
+              "discipline": 0.3
+            },
+            "mind_after": {
+              "aggression": 0.9,
+              "caution": 0.2,
+              "courage": 0.855,
+              "teamwork": 0.25,
+              "patience": 0.2,
+              "self_preservation": 0.27999997,
+              "discipline": 0.3
+            },
+            "psyche_before": {
+              "isolation": {
+                "reaction": "OverAggression",
+                "intensity": 1.0
+              },
+              "encirclement": {
+                "reaction": "OverAggression",
+                "intensity": 1.0
+              },
+              "ally_loss": {
+                "reaction": "OverAggression",
+                "intensity": 0.25
+              },
+              "failed_charge": {
+                "reaction": "OverAggression",
+                "intensity": 0.2
+              },
+              "confidence": 0.0
+            },
+            "psyche_after": {
+              "isolation": {
+                "reaction": "OverAggression",
+                "intensity": 1.0
+              },
+              "encirclement": {
+                "reaction": "OverAggression",
+                "intensity": 1.0
+              },
+              "ally_loss": {
+                "reaction": "OverAggression",
+                "intensity": 0.5
+              },
+              "failed_charge": {
+                "reaction": "OverAggression",
+                "intensity": 0.5
+              },
+              "confidence": 0.07753201
+            }
+          },
+          "title": "King",
+          "name": "KING",
+          "class": "Warrior",
+          "health": 55.630196,
+          "max_health": 330.0,
+          "damage": 612.81476,
+          "healing": 0.0,
+          "xp": 55,
+          "new_wounds": 0,
+          "weapon_training": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "discoveries": []
+        },
+        {
+          "learning": {
+            "fighter_id": "18e3bcbd1be95db7-0-1",
+            "experience": [
+              68,
+              108
+            ],
+            "class_practice": [
+              68,
+              108
+            ],
+            "mind_before": {
+              "aggression": 0.9,
+              "caution": 0.2,
+              "courage": 0.85,
+              "teamwork": 0.25,
+              "patience": 0.2,
+              "self_preservation": 0.26999998,
+              "discipline": 0.3
+            },
+            "mind_after": {
+              "aggression": 0.9,
+              "caution": 0.2,
+              "courage": 0.855,
+              "teamwork": 0.25,
+              "patience": 0.2,
+              "self_preservation": 0.27999997,
+              "discipline": 0.3
+            },
+            "psyche_before": {
+              "isolation": {
+                "reaction": "OverAggression",
+                "intensity": 1.0
+              },
+              "encirclement": {
+                "reaction": "OverAggression",
+                "intensity": 0.9083333
+              },
+              "ally_loss": {
+                "reaction": "OverAggression",
+                "intensity": 0.35
+              },
+              "failed_charge": {
+                "reaction": "None",
+                "intensity": 0.0
+              },
+              "confidence": 0.0
+            },
+            "psyche_after": {
+              "isolation": {
+                "reaction": "OverAggression",
+                "intensity": 1.0
+              },
+              "encirclement": {
+                "reaction": "OverAggression",
+                "intensity": 1.0
+              },
+              "ally_loss": {
+                "reaction": "OverAggression",
+                "intensity": 0.35
+              },
+              "failed_charge": {
+                "reaction": "OverAggression",
+                "intensity": 0.55
+              },
+              "confidence": 0.0
+            }
+          },
+          "title": "Queen",
+          "name": "QUEEN",
+          "class": "RockThrower",
+          "health": 0.0,
+          "max_health": 330.0,
+          "damage": 9.031593,
+          "healing": 0.0,
+          "xp": 40,
+          "new_wounds": 0,
+          "weapon_training": [
+            40,
+            0,
+            0,
+            0
+          ],
+          "discoveries": [
+            "ThrowingSpear"
+          ]
+        },
+        {
+          "learning": {
+            "fighter_id": "18e3bcbd1be95db7-0-2",
+            "experience": [
+              70,
+              125
+            ],
+            "class_practice": [
+              70,
+              125
+            ],
+            "mind_before": {
+              "aggression": 0.9,
+              "caution": 0.2,
+              "courage": 0.85,
+              "teamwork": 0.25,
+              "patience": 0.2,
+              "self_preservation": 0.26999998,
+              "discipline": 0.3
+            },
+            "mind_after": {
+              "aggression": 0.9,
+              "caution": 0.2,
+              "courage": 0.855,
+              "teamwork": 0.25,
+              "patience": 0.2,
+              "self_preservation": 0.27999997,
+              "discipline": 0.3
+            },
+            "psyche_before": {
+              "isolation": {
+                "reaction": "OverAggression",
+                "intensity": 0.55833334
+              },
+              "encirclement": {
+                "reaction": "OverAggression",
+                "intensity": 0.55
+              },
+              "ally_loss": {
+                "reaction": "OverAggression",
+                "intensity": 0.25
+              },
+              "failed_charge": {
+                "reaction": "None",
+                "intensity": 0.0
+              },
+              "confidence": 0.0
+            },
+            "psyche_after": {
+              "isolation": {
+                "reaction": "OverAggression",
+                "intensity": 0.55833334
+              },
+              "encirclement": {
+                "reaction": "OverAggression",
+                "intensity": 1.0
+              },
+              "ally_loss": {
+                "reaction": "OverAggression",
+                "intensity": 0.5
+              },
+              "failed_charge": {
+                "reaction": "OverAggression",
+                "intensity": 0.3
+              },
+              "confidence": 0.07753201
+            }
+          },
+          "title": "General",
+          "name": "GENERAL",
+          "class": "Paladin",
+          "health": 13.01406,
+          "max_health": 300.0,
+          "damage": 435.10834,
+          "healing": 0.0,
+          "xp": 55,
+          "new_wounds": 0,
+          "weapon_training": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "discoveries": []
+        }
+      ],
+      [
+        {
+          "learning": {
+            "fighter_id": "18e3bcbd1be95db7-1-0",
+            "experience": [
+              110,
+              145
+            ],
+            "class_practice": [
+              110,
+              145
+            ],
+            "mind_before": {
+              "aggression": 0.5,
+              "caution": 0.8,
+              "courage": 0.65999997,
+              "teamwork": 0.905,
+              "patience": 0.8,
+              "self_preservation": 0.65999997,
+              "discipline": 0.9
+            },
+            "mind_after": {
+              "aggression": 0.5,
+              "caution": 0.8,
+              "courage": 0.65999997,
+              "teamwork": 0.90999997,
+              "patience": 0.8,
+              "self_preservation": 0.66999996,
+              "discipline": 0.9
+            },
+            "psyche_before": {
+              "isolation": {
+                "reaction": "Attachment",
+                "intensity": 0.85833335
+              },
+              "encirclement": {
+                "reaction": "Fear",
+                "intensity": 0.55
+              },
+              "ally_loss": {
+                "reaction": "Attachment",
+                "intensity": 0.5
+              },
+              "failed_charge": {
+                "reaction": "Hesitation",
+                "intensity": 0.4
+              },
+              "confidence": 0.11081
+            },
+            "psyche_after": {
+              "isolation": {
+                "reaction": "Attachment",
+                "intensity": 0.8833333
+              },
+              "encirclement": {
+                "reaction": "Fear",
+                "intensity": 0.7416667
+              },
+              "ally_loss": {
+                "reaction": "Attachment",
+                "intensity": 0.75
+              },
+              "failed_charge": {
+                "reaction": "Hesitation",
+                "intensity": 0.4
+              },
+              "confidence": 0.060809996
+            }
+          },
+          "title": "King",
+          "name": "KING",
+          "class": "Warrior",
+          "health": 0.0,
+          "max_health": 336.0,
+          "damage": 570.2643,
+          "healing": 0.0,
+          "xp": 35,
+          "new_wounds": 0,
+          "weapon_training": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "discoveries": []
+        },
+        {
+          "learning": {
+            "fighter_id": "18e3bcbd1be95db7-1-1",
+            "experience": [
+              110,
+              143
+            ],
+            "class_practice": [
+              110,
+              143
+            ],
+            "mind_before": {
+              "aggression": 0.5,
+              "caution": 0.8,
+              "courage": 0.65999997,
+              "teamwork": 0.9,
+              "patience": 0.8,
+              "self_preservation": 0.66999996,
+              "discipline": 0.90999997
+            },
+            "mind_after": {
+              "aggression": 0.5,
+              "caution": 0.8,
+              "courage": 0.65999997,
+              "teamwork": 0.9,
+              "patience": 0.8,
+              "self_preservation": 0.67999995,
+              "discipline": 0.90999997
+            },
+            "psyche_before": {
+              "isolation": {
+                "reaction": "Attachment",
+                "intensity": 1.0
+              },
+              "encirclement": {
+                "reaction": "Fear",
+                "intensity": 0.55
+              },
+              "ally_loss": {
+                "reaction": "Attachment",
+                "intensity": 0.5
+              },
+              "failed_charge": {
+                "reaction": "None",
+                "intensity": 0.0
+              },
+              "confidence": 0.110492796
+            },
+            "psyche_after": {
+              "isolation": {
+                "reaction": "Attachment",
+                "intensity": 1.0
+              },
+              "encirclement": {
+                "reaction": "Fear",
+                "intensity": 0.65000004
+              },
+              "ally_loss": {
+                "reaction": "Attachment",
+                "intensity": 0.75
+              },
+              "failed_charge": {
+                "reaction": "None",
+                "intensity": 0.0
+              },
+              "confidence": 0.060492795
+            }
+          },
+          "title": "Queen",
+          "name": "QUEEN",
+          "class": "RockThrower",
+          "health": 0.0,
+          "max_health": 336.0,
+          "damage": 177.73888,
+          "healing": 0.0,
+          "xp": 33,
+          "new_wounds": 0,
+          "weapon_training": [
+            33,
+            0,
+            0,
+            0
+          ],
+          "discoveries": []
+        },
+        {
+          "learning": {
+            "fighter_id": "18e3bcbd1be95db7-1-2",
+            "experience": [
+              100,
+              132
+            ],
+            "class_practice": [
+              100,
+              132
+            ],
+            "mind_before": {
+              "aggression": 0.5,
+              "caution": 0.8,
+              "courage": 0.65999997,
+              "teamwork": 0.905,
+              "patience": 0.8,
+              "self_preservation": 0.66999996,
+              "discipline": 0.9
+            },
+            "mind_after": {
+              "aggression": 0.5,
+              "caution": 0.8,
+              "courage": 0.65999997,
+              "teamwork": 0.90999997,
+              "patience": 0.8,
+              "self_preservation": 0.67999995,
+              "discipline": 0.9
+            },
+            "psyche_before": {
+              "isolation": {
+                "reaction": "Attachment",
+                "intensity": 0.55
+              },
+              "encirclement": {
+                "reaction": "Fear",
+                "intensity": 0.55
+              },
+              "ally_loss": {
+                "reaction": "None",
+                "intensity": 0.0
+              },
+              "failed_charge": {
+                "reaction": "None",
+                "intensity": 0.0
+              },
+              "confidence": 0.0
+            },
+            "psyche_after": {
+              "isolation": {
+                "reaction": "Attachment",
+                "intensity": 1.0
+              },
+              "encirclement": {
+                "reaction": "Fear",
+                "intensity": 0.8333334
+              },
+              "ally_loss": {
+                "reaction": "None",
+                "intensity": 0.0
+              },
+              "failed_charge": {
+                "reaction": "None",
+                "intensity": 0.0
+              },
+              "confidence": 0.0
+            }
+          },
+          "title": "General",
+          "name": "GENERAL",
+          "class": "Paladin",
+          "health": 0.0,
+          "max_health": 306.0,
+          "damage": 150.7804,
+          "healing": 0.0,
+          "xp": 32,
+          "new_wounds": 0,
+          "weapon_training": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "discoveries": []
+        }
+      ]
+    ]
+  },
+  "schema_version": 1,
+  "teams": [
+    {
+      "inventory": [],
+      "rival_style": null,
+      "heraldry": {
+        "accent": [
+          0.96,
+          0.94,
+          0.85
+        ],
+        "emblem": "Sun"
+      },
+      "standard_bearer": 2,
+      "name": "Sunward",
+      "color": [
+        1.0,
+        0.72,
+        0.08
+      ],
+      "fighters": [
+        {
+          "theus": {
+            "version": 1,
+            "attributes": [
+              11,
+              10,
+              10,
+              11
+            ],
+            "practice": [
+              93,
+              0,
+              16,
+              0,
+              17,
+              0
+            ]
+          },
+          "skills": null,
+          "mastery": {
+            "practice": [
+              125,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "18e3bcbd1be95db7-0-0",
+          "name": "KING",
+          "title": "King",
+          "class": "Warrior",
+          "mind": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.855,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.27999997,
+            "discipline": 0.3
+          },
+          "experience": 125,
+          "battles": 3,
+          "wins": 1,
+          "history": [
+            {
+              "battle_id": 0,
+              "seed": 200,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 2,
+                  "seed": 200,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": false,
+              "survived": false,
+              "damage": 265.08112,
+              "experience_gained": 35,
+              "lost_limbs": 0,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 1,
+              "seed": 201,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 201,
+                  "destroyed": 4,
+                  "lesson": "ridge",
+                  "cover_extra": 1,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": false,
+              "survived": false,
+              "damage": 381.63217,
+              "experience_gained": 35,
+              "lost_limbs": 0,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 2,
+              "seed": 202,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 202,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": true,
+              "survived": true,
+              "damage": 612.81476,
+              "experience_gained": 55,
+              "lost_limbs": 0,
+              "prosthetics": 0
+            }
+          ],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "OverAggression",
+              "intensity": 1.0
+            },
+            "encirclement": {
+              "reaction": "OverAggression",
+              "intensity": 1.0
+            },
+            "ally_loss": {
+              "reaction": "OverAggression",
+              "intensity": 0.5
+            },
+            "failed_charge": {
+              "reaction": "OverAggression",
+              "intensity": 0.5
+            },
+            "confidence": 0.07753201
+          }
+        },
+        {
+          "theus": {
+            "version": 1,
+            "attributes": [
+              11,
+              10,
+              10,
+              11
+            ],
+            "practice": [
+              0,
+              47,
+              10,
+              0,
+              4,
+              0
+            ]
+          },
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              108,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              108,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "18e3bcbd1be95db7-0-1",
+          "name": "QUEEN",
+          "title": "Queen",
+          "class": "RockThrower",
+          "mind": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.855,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.27999997,
+            "discipline": 0.3
+          },
+          "experience": 108,
+          "battles": 3,
+          "wins": 1,
+          "history": [
+            {
+              "battle_id": 0,
+              "seed": 200,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 2,
+                  "seed": 200,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": false,
+              "survived": false,
+              "damage": 174.37329,
+              "experience_gained": 33,
+              "lost_limbs": 2,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 1,
+              "seed": 201,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 201,
+                  "destroyed": 4,
+                  "lesson": "ridge",
+                  "cover_extra": 1,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": false,
+              "survived": false,
+              "damage": 267.9037,
+              "experience_gained": 35,
+              "lost_limbs": 6,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 2,
+              "seed": 202,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 202,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": true,
+              "survived": false,
+              "damage": 9.031593,
+              "experience_gained": 40,
+              "lost_limbs": 6,
+              "prosthetics": 0
+            }
+          ],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 6,
+          "prosthetics": 0,
+          "wounds": [
+            {
+              "battle_id": 0,
+              "limb": 2
+            },
+            {
+              "battle_id": 1,
+              "limb": 4
+            }
+          ],
+          "psyche": {
+            "isolation": {
+              "reaction": "OverAggression",
+              "intensity": 1.0
+            },
+            "encirclement": {
+              "reaction": "OverAggression",
+              "intensity": 1.0
+            },
+            "ally_loss": {
+              "reaction": "OverAggression",
+              "intensity": 0.35
+            },
+            "failed_charge": {
+              "reaction": "OverAggression",
+              "intensity": 0.55
+            },
+            "confidence": 0.0
+          }
+        },
+        {
+          "theus": {
+            "version": 1,
+            "attributes": [
+              11,
+              10,
+              10,
+              11
+            ],
+            "practice": [
+              113,
+              0,
+              10,
+              0,
+              23,
+              0
+            ]
+          },
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              125,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "18e3bcbd1be95db7-0-2",
+          "name": "GENERAL",
+          "title": "General",
+          "class": "Paladin",
+          "mind": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.855,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.27999997,
+            "discipline": 0.3
+          },
+          "experience": 125,
+          "battles": 3,
+          "wins": 1,
+          "history": [
+            {
+              "battle_id": 0,
+              "seed": 200,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 2,
+                  "seed": 200,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": false,
+              "survived": false,
+              "damage": 272.94934,
+              "experience_gained": 35,
+              "lost_limbs": 0,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 1,
+              "seed": 201,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 201,
+                  "destroyed": 4,
+                  "lesson": "ridge",
+                  "cover_extra": 1,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": false,
+              "survived": false,
+              "damage": 271.93497,
+              "experience_gained": 35,
+              "lost_limbs": 1,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 2,
+              "seed": 202,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 202,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": true,
+              "survived": true,
+              "damage": 435.10834,
+              "experience_gained": 55,
+              "lost_limbs": 1,
+              "prosthetics": 0
+            }
+          ],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 1,
+          "prosthetics": 0,
+          "wounds": [
+            {
+              "battle_id": 1,
+              "limb": 1
+            }
+          ],
+          "psyche": {
+            "isolation": {
+              "reaction": "OverAggression",
+              "intensity": 0.55833334
+            },
+            "encirclement": {
+              "reaction": "OverAggression",
+              "intensity": 1.0
+            },
+            "ally_loss": {
+              "reaction": "OverAggression",
+              "intensity": 0.5
+            },
+            "failed_charge": {
+              "reaction": "OverAggression",
+              "intensity": 0.3
+            },
+            "confidence": 0.07753201
+          }
+        }
+      ],
+      "salvage": 22,
+      "gold": 160
+    },
+    {
+      "inventory": [],
+      "rival_style": null,
+      "heraldry": {
+        "accent": [
+          0.96,
+          0.94,
+          0.85
+        ],
+        "emblem": "Crescent"
+      },
+      "standard_bearer": 2,
+      "name": "Moonward",
+      "color": [
+        0.1,
+        0.8,
+        0.72
+      ],
+      "fighters": [
+        {
+          "theus": {
+            "version": 1,
+            "attributes": [
+              11,
+              11,
+              11,
+              11
+            ],
+            "practice": [
+              112,
+              0,
+              14,
+              0,
+              4,
+              0
+            ]
+          },
+          "skills": null,
+          "mastery": {
+            "practice": [
+              145,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "18e3bcbd1be95db7-1-0",
+          "name": "KING",
+          "title": "King",
+          "class": "Warrior",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65999997,
+            "teamwork": 0.90999997,
+            "patience": 0.8,
+            "self_preservation": 0.66999996,
+            "discipline": 0.9
+          },
+          "experience": 145,
+          "battles": 3,
+          "wins": 2,
+          "history": [
+            {
+              "battle_id": 0,
+              "seed": 200,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 2,
+                  "seed": 200,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": true,
+              "survived": true,
+              "damage": 446.6469,
+              "experience_gained": 55,
+              "lost_limbs": 0,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 1,
+              "seed": 201,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 201,
+                  "destroyed": 4,
+                  "lesson": "ridge",
+                  "cover_extra": 1,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": true,
+              "survived": true,
+              "damage": 404.4369,
+              "experience_gained": 55,
+              "lost_limbs": 0,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 2,
+              "seed": 202,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 202,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": false,
+              "survived": false,
+              "damage": 570.2643,
+              "experience_gained": 35,
+              "lost_limbs": 0,
+              "prosthetics": 0
+            }
+          ],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 0.8833333
+            },
+            "encirclement": {
+              "reaction": "Fear",
+              "intensity": 0.7416667
+            },
+            "ally_loss": {
+              "reaction": "Attachment",
+              "intensity": 0.75
+            },
+            "failed_charge": {
+              "reaction": "Hesitation",
+              "intensity": 0.4
+            },
+            "confidence": 0.060809996
+          }
+        },
+        {
+          "theus": {
+            "version": 1,
+            "attributes": [
+              11,
+              11,
+              11,
+              11
+            ],
+            "practice": [
+              0,
+              75,
+              11,
+              0,
+              12,
+              0
+            ]
+          },
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              143,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              143,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "18e3bcbd1be95db7-1-1",
+          "name": "QUEEN",
+          "title": "Queen",
+          "class": "RockThrower",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65999997,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.67999995,
+            "discipline": 0.90999997
+          },
+          "experience": 143,
+          "battles": 3,
+          "wins": 2,
+          "history": [
+            {
+              "battle_id": 0,
+              "seed": 200,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 2,
+                  "seed": 200,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": true,
+              "survived": true,
+              "damage": 231.39706,
+              "experience_gained": 55,
+              "lost_limbs": 1,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 1,
+              "seed": 201,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 201,
+                  "destroyed": 4,
+                  "lesson": "ridge",
+                  "cover_extra": 1,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": true,
+              "survived": true,
+              "damage": 297.0084,
+              "experience_gained": 55,
+              "lost_limbs": 1,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 2,
+              "seed": 202,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 202,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": false,
+              "survived": false,
+              "damage": 177.73888,
+              "experience_gained": 33,
+              "lost_limbs": 1,
+              "prosthetics": 0
+            }
+          ],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 1,
+          "prosthetics": 0,
+          "wounds": [
+            {
+              "battle_id": 0,
+              "limb": 1
+            }
+          ],
+          "psyche": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 1.0
+            },
+            "encirclement": {
+              "reaction": "Fear",
+              "intensity": 0.65000004
+            },
+            "ally_loss": {
+              "reaction": "Attachment",
+              "intensity": 0.75
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.060492795
+          }
+        },
+        {
+          "theus": {
+            "version": 1,
+            "attributes": [
+              11,
+              11,
+              11,
+              11
+            ],
+            "practice": [
+              78,
+              0,
+              6,
+              0,
+              1,
+              0
+            ]
+          },
+          "skills": null,
+          "mastery": {
+            "practice": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              132,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "weapons": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "equipment": {
+            "owned": 0,
+            "slots": [
+              null,
+              null,
+              null
+            ],
+            "inventory_version": 0,
+            "items": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "equipped": [
+              null,
+              null,
+              null
+            ]
+          },
+          "fighter_id": "18e3bcbd1be95db7-1-2",
+          "name": "GENERAL",
+          "title": "General",
+          "class": "Paladin",
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65999997,
+            "teamwork": 0.90999997,
+            "patience": 0.8,
+            "self_preservation": 0.67999995,
+            "discipline": 0.9
+          },
+          "experience": 132,
+          "battles": 3,
+          "wins": 2,
+          "history": [
+            {
+              "battle_id": 0,
+              "seed": 200,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 2,
+                  "seed": 200,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": true,
+              "survived": false,
+              "damage": 323.738,
+              "experience_gained": 50,
+              "lost_limbs": 0,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 1,
+              "seed": 201,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 201,
+                  "destroyed": 4,
+                  "lesson": "ridge",
+                  "cover_extra": 1,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": true,
+              "survived": false,
+              "damage": 277.76578,
+              "experience_gained": 50,
+              "lost_limbs": 0,
+              "prosthetics": 0
+            },
+            {
+              "battle_id": 2,
+              "seed": 202,
+              "arena": {
+                "pressure": {
+                  "generator": 1,
+                  "layout": 1,
+                  "seed": 202,
+                  "destroyed": 0,
+                  "lesson": "exposure",
+                  "cover_extra": 0,
+                  "wide": false,
+                  "reach": 1
+                }
+              },
+              "won": false,
+              "survived": false,
+              "damage": 150.7804,
+              "experience_gained": 32,
+              "lost_limbs": 0,
+              "prosthetics": 0
+            }
+          ],
+          "appearance": {
+            "female": null,
+            "hair": 0,
+            "face": 0,
+            "eyes": 0,
+            "nose": 0,
+            "skin": 0,
+            "hair_color": 0,
+            "cheeks": 0,
+            "mouth": 0,
+            "brows": 0
+          },
+          "lost_limbs": 0,
+          "prosthetics": 0,
+          "wounds": [],
+          "psyche": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 1.0
+            },
+            "encirclement": {
+              "reaction": "Fear",
+              "intensity": 0.8333334
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        }
+      ],
+      "salvage": 26,
+      "gold": 175
+    }
+  ],
+  "next_battle_id": 3,
+  "last_settled_id": 2
+}

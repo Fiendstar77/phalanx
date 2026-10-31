@@ -1,6 +1,6 @@
 # PHALANX v0.4 — first measured baseline
 
-This is an exploratory simulation study and a trained PyTorch imitation model. The live game continues to use utility AI. The network is an offline baseline; it has not been deployed as a combat controller.
+This is the historical v0.4 exploratory simulation study and trained PyTorch imitation model. At this snapshot the network was an offline baseline. It was subsequently deployed as a live controller; see the [v0.5 combat comparison](../v05/README.md) and [current AI engineering guide](../../ai/README.md). The measurements below remain tied to the captured v0.4 source.
 
 ## Data and protocol
 

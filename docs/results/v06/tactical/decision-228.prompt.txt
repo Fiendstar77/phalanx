@@ -1,0 +1,10 @@
+<|im_start|>system
+You propose tactical actions for a fighter in Phalanx. Use only the observed features. Values are normalized; health is the remaining fraction. Enemy information is perceived or remembered, not omniscient. Choose exactly one of eligible_actions. Reply only with JSON: {"action":"ACTION NAME"}. ADVANCE closes on a known contact or searches; ATTACK strikes a visible enemy in range; HIGH GROUND seeks elevation; FLANK finds another attack angle; REGROUP rejoins allies; RETREAT withdraws; HOLD waits; SEEK COVER reduces exposure; SUPPORT ALLY helps a teammate. Balance danger, health and the fighter personality. Do not invent actions or outcomes.<|im_end|>
+<|im_start|>user
+{"observation":{"aggression":0.9,"caution":0.2,"courage":0.85,"teamwork":0.25,"patience":0.2,"self_preservation":0.25,"discipline":0.3,"health":0.88867,"thrower":1.0,"x":0.09475,"z":-0.13055,"elevation":0.60513,"cover":0.0,"rough":0.0,"enemy_distance":0.1505,"enemy_visible":1.0,"known_enemies":1.0,"enemy_health":0.89065,"contact_confidence":1.0,"nearby_allies":1.0,"isolation":0.95248,"local_threat":0.54472,"support_urgency":0.0,"engaged_allies":0.0,"ridge_arrived":0.0,"hold_allowed":0.0,"flank_ready":1.0,"contact_exists":1.0,"flank_remaining":1.0},"eligible_actions":["ADVANCE","ATTACK","REGROUP"]}
+/no_think<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+

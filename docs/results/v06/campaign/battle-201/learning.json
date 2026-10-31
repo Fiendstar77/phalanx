@@ -1,0 +1,547 @@
+{
+  "team_names": [
+    "Sunward",
+    "Moonward"
+  ],
+  "arena": {
+    "pressure": {
+      "generator": 1,
+      "layout": 1,
+      "seed": 201,
+      "destroyed": 0,
+      "lesson": "ridge",
+      "cover_extra": 1,
+      "wide": false,
+      "reach": 1
+    }
+  },
+  "battle_id": 1,
+  "seed": 201,
+  "winner": 1,
+  "gold": [
+    15,
+    30
+  ],
+  "salvage": [
+    6,
+    10
+  ],
+  "fighters": [
+    [
+      {
+        "learning": {
+          "fighter_id": "18e3bcbd1be95db7-0-0",
+          "experience": [
+            35,
+            70
+          ],
+          "class_practice": [
+            35,
+            70
+          ],
+          "mind_before": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.85,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.26,
+            "discipline": 0.3
+          },
+          "mind_after": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.85,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.26999998,
+            "discipline": 0.3
+          },
+          "psyche_before": {
+            "isolation": {
+              "reaction": "OverAggression",
+              "intensity": 0.55
+            },
+            "encirclement": {
+              "reaction": "OverAggression",
+              "intensity": 0.55
+            },
+            "ally_loss": {
+              "reaction": "OverAggression",
+              "intensity": 0.25
+            },
+            "failed_charge": {
+              "reaction": "OverAggression",
+              "intensity": 0.2
+            },
+            "confidence": 0.0
+          },
+          "psyche_after": {
+            "isolation": {
+              "reaction": "OverAggression",
+              "intensity": 1.0
+            },
+            "encirclement": {
+              "reaction": "OverAggression",
+              "intensity": 1.0
+            },
+            "ally_loss": {
+              "reaction": "OverAggression",
+              "intensity": 0.25
+            },
+            "failed_charge": {
+              "reaction": "OverAggression",
+              "intensity": 0.2
+            },
+            "confidence": 0.0
+          }
+        },
+        "title": "King",
+        "name": "KING",
+        "class": "Warrior",
+        "health": 0.0,
+        "max_health": 330.0,
+        "damage": 381.63217,
+        "healing": 0.0,
+        "xp": 35,
+        "new_wounds": 0,
+        "weapon_training": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "discoveries": []
+      },
+      {
+        "learning": {
+          "fighter_id": "18e3bcbd1be95db7-0-1",
+          "experience": [
+            33,
+            68
+          ],
+          "class_practice": [
+            33,
+            68
+          ],
+          "mind_before": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.85,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.26,
+            "discipline": 0.3
+          },
+          "mind_after": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.85,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.26999998,
+            "discipline": 0.3
+          },
+          "psyche_before": {
+            "isolation": {
+              "reaction": "OverAggression",
+              "intensity": 0.55
+            },
+            "encirclement": {
+              "reaction": "OverAggression",
+              "intensity": 0.35833332
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          },
+          "psyche_after": {
+            "isolation": {
+              "reaction": "OverAggression",
+              "intensity": 1.0
+            },
+            "encirclement": {
+              "reaction": "OverAggression",
+              "intensity": 0.9083333
+            },
+            "ally_loss": {
+              "reaction": "OverAggression",
+              "intensity": 0.35
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        "title": "Queen",
+        "name": "QUEEN",
+        "class": "RockThrower",
+        "health": 0.0,
+        "max_health": 330.0,
+        "damage": 267.9037,
+        "healing": 0.0,
+        "xp": 35,
+        "new_wounds": 4,
+        "weapon_training": [
+          35,
+          0,
+          0,
+          0
+        ],
+        "discoveries": []
+      },
+      {
+        "learning": {
+          "fighter_id": "18e3bcbd1be95db7-0-2",
+          "experience": [
+            35,
+            70
+          ],
+          "class_practice": [
+            35,
+            70
+          ],
+          "mind_before": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.85,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.26,
+            "discipline": 0.3
+          },
+          "mind_after": {
+            "aggression": 0.9,
+            "caution": 0.2,
+            "courage": 0.85,
+            "teamwork": 0.25,
+            "patience": 0.2,
+            "self_preservation": 0.26999998,
+            "discipline": 0.3
+          },
+          "psyche_before": {
+            "isolation": {
+              "reaction": "OverAggression",
+              "intensity": 0.008333334
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          },
+          "psyche_after": {
+            "isolation": {
+              "reaction": "OverAggression",
+              "intensity": 0.55833334
+            },
+            "encirclement": {
+              "reaction": "OverAggression",
+              "intensity": 0.55
+            },
+            "ally_loss": {
+              "reaction": "OverAggression",
+              "intensity": 0.25
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        "title": "General",
+        "name": "GENERAL",
+        "class": "Paladin",
+        "health": 0.0,
+        "max_health": 300.0,
+        "damage": 271.93497,
+        "healing": 0.0,
+        "xp": 35,
+        "new_wounds": 1,
+        "weapon_training": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "discoveries": []
+      }
+    ],
+    [
+      {
+        "learning": {
+          "fighter_id": "18e3bcbd1be95db7-1-0",
+          "experience": [
+            55,
+            110
+          ],
+          "class_practice": [
+            55,
+            110
+          ],
+          "mind_before": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.655,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "mind_after": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65999997,
+            "teamwork": 0.905,
+            "patience": 0.8,
+            "self_preservation": 0.65999997,
+            "discipline": 0.9
+          },
+          "psyche_before": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 0.55
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "Attachment",
+              "intensity": 0.25
+            },
+            "failed_charge": {
+              "reaction": "Hesitation",
+              "intensity": 0.2
+            },
+            "confidence": 0.0553
+          },
+          "psyche_after": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 0.85833335
+            },
+            "encirclement": {
+              "reaction": "Fear",
+              "intensity": 0.55
+            },
+            "ally_loss": {
+              "reaction": "Attachment",
+              "intensity": 0.5
+            },
+            "failed_charge": {
+              "reaction": "Hesitation",
+              "intensity": 0.4
+            },
+            "confidence": 0.11081
+          }
+        },
+        "title": "King",
+        "name": "KING",
+        "class": "Warrior",
+        "health": 6.6152573,
+        "max_health": 330.0,
+        "damage": 404.4369,
+        "healing": 0.0,
+        "xp": 55,
+        "new_wounds": 0,
+        "weapon_training": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "discoveries": []
+      },
+      {
+        "learning": {
+          "fighter_id": "18e3bcbd1be95db7-1-1",
+          "experience": [
+            55,
+            110
+          ],
+          "class_practice": [
+            55,
+            110
+          ],
+          "mind_before": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.655,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65999997,
+            "discipline": 0.905
+          },
+          "mind_after": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65999997,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.66999996,
+            "discipline": 0.90999997
+          },
+          "psyche_before": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 0.55
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "Attachment",
+              "intensity": 0.25
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0553
+          },
+          "psyche_after": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 1.0
+            },
+            "encirclement": {
+              "reaction": "Fear",
+              "intensity": 0.55
+            },
+            "ally_loss": {
+              "reaction": "Attachment",
+              "intensity": 0.5
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.110492796
+          }
+        },
+        "title": "Queen",
+        "name": "QUEEN",
+        "class": "RockThrower",
+        "health": 35.241714,
+        "max_health": 330.0,
+        "damage": 297.0084,
+        "healing": 0.0,
+        "xp": 55,
+        "new_wounds": 0,
+        "weapon_training": [
+          55,
+          0,
+          0,
+          0
+        ],
+        "discoveries": [
+          "ThrowingSpear"
+        ]
+      },
+      {
+        "learning": {
+          "fighter_id": "18e3bcbd1be95db7-1-2",
+          "experience": [
+            50,
+            100
+          ],
+          "class_practice": [
+            50,
+            100
+          ],
+          "mind_before": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.655,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65999997,
+            "discipline": 0.9
+          },
+          "mind_after": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65999997,
+            "teamwork": 0.905,
+            "patience": 0.8,
+            "self_preservation": 0.66999996,
+            "discipline": 0.9
+          },
+          "psyche_before": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 0.55
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          },
+          "psyche_after": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 0.55
+            },
+            "encirclement": {
+              "reaction": "Fear",
+              "intensity": 0.55
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        "title": "General",
+        "name": "GENERAL",
+        "class": "Paladin",
+        "health": 0.0,
+        "max_health": 300.0,
+        "damage": 277.76578,
+        "healing": 0.0,
+        "xp": 50,
+        "new_wounds": 0,
+        "weapon_training": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "discoveries": []
+      }
+    ]
+  ]
+}

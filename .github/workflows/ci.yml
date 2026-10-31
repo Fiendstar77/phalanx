@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m unittest analysis.test_analysis analysis.test_bonsai
+      - run: python -m unittest analysis.test_analysis analysis.test_bonsai analysis.test_ai_evidence
       - run: python tools/validate_character_assets.py
       - run: python tools/validate_face_assets.py
   pytorch-smoke:

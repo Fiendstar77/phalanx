@@ -25,7 +25,7 @@ Battle summaries and manifests record version, source/binary hashes, seed, arena
 
 Decision JSONL records include tick, unit ID, exact pre-movement state, observed contacts, 29 perceived-state features, eligibility masks, scores, selected action, target, and reason. Damage events and start/end records accompany decisions. Recording is tested against unrecorded replay.
 
-Future generative-controller records should add model/settings, validity outcomes, decision latency, token use, and fallback reasons. Current PyTorch evaluation separately records forward-pass timing; it is not a per-battle model-integration benchmark.
+Native Bonsai shadow records now add model/runtime hashes, prompt and raw completion, settings, validity outcomes, request latency and fallback reasons. The [v0.6 evidence](results/v06/README.md) includes successful offline requests and a failed deadline probe. Request timing includes model loading; exact generated token usage is not currently recorded. PyTorch evaluation separately records forward-pass timing; the two scopes are not an architecture speed comparison.
 
 ## Analysis
 
@@ -43,4 +43,4 @@ Use a separate consent-based playtest protocol to assess decision readability, p
 
 ## Current evidence
 
-Mechanics, perception/coordination, replay, and local CPU timing checks have been performed. The first exploratory trait studies and a PyTorch imitation-training run are complete; [results and limitations](results/v04/README.md) include counterbalanced outcomes, uncertainty, baselines, and held-out evaluation. Formal playtests, learned-controller combat rollouts, and generative-controller comparisons remain future work.
+Mechanics, perception/coordination, replay, and local CPU timing checks have been performed. The [v0.4 trait and imitation studies](results/v04/README.md) include counterbalanced outcomes, uncertainty, baselines and held-out evaluation. The [v0.5 learned-controller rollouts](results/v05/README.md) compare a frozen deployed policy with utility on matched Choke seeds and sides; their uncertainty does not establish superiority. The [v0.6 campaign and Bonsai evidence](results/v06/README.md) adds persisted learning receipts and native tactical shadow/fallback probes. Formal player studies and controlled battles in which a generative controller actually executes its proposals remain future work. [Architecture and inspection guide](ai/README.md).

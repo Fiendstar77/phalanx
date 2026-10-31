@@ -4,6 +4,10 @@
 
 Players shape battlefields and agent personalities, then observe autonomous teams fight. PHALANX explores how terrain, individual psychology, and teamwork affect collective behavior—and how to make those decisions explainable and measurable.
 
+**Inspect the AI engineering:** [Architecture, learning and measured results](docs/ai/README.md) · [Code and test walkthrough](docs/ai/code-review.md) · [Browsable experiment evidence](docs/results/v06/README.md) · [GitHub Actions](https://github.com/Fiendstar77/phalanx/actions/workflows/ci.yml)
+
+The AI work spans partial observations and shared contact memory, personality-weighted tactical planning, a trained PyTorch policy deployed through verified Rust inference, persistent campaign adaptation, and native Bonsai experiments with explicit validation and fallback. Reports expose the inputs, proposals, executed actions and limitations. **PyTorch can control live combat; Bonsai currently runs separate text and tactical shadow studies.**
+
 > **Status: early playable prototype.** The default Founders setup starts each team with a King, Queen, and General. The Lab keeps its original 5-versus-5 standard battles and 10-versus-10 Citadel arena, personality-weighted routes, cover, rough ground, ten arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
 
 **New playable opening:** name your phalanx, choose three founders, then face five NPC tutorial teams. Compact fighter cards, three persistent tactical styles, seeded procedural battlefields, heartbeat-driven splatter, critical-health panic and ten replacement 3D hair concepts. Extra fighter slots still cost gold. [Play controls, current limits and validation](docs/player-experience.md) · [Short gameplay recording](docs/media/opening-campaign.mp4) · [Hair lineup](docs/images/hair-lineup.png).
@@ -82,13 +86,13 @@ Seven personality traits influence tactical utility: aggression, caution, courag
 
 **Does selective generative reasoning improve autonomous tactics enough to justify its latency and computational cost?**
 
-The project first establishes deterministic combat and terrain-aware navigation. A later local LLM may propose an action from a validated set when tactical choices are ambiguous. The simulation retains authority over movement, damage, and world state.
+The project establishes deterministic combat and terrain-aware navigation, then tests learned and generative proposals against that environment. Bonsai currently proposes actions on recorded decision-time observations; live LLM control remains a further experiment. The simulation retains authority over movement, damage, and world state.
 
 ## Stack and planned extensions
 
 - **Rust / Bevy 0.19.1:** implemented interactive simulation, tactical pathfinding, combat, and agent inspection.
 - **Python:** implemented sequential telemetry collection, counterbalanced experiment batches, seed-block bootstrap intervals, and standalone plots.
-- **Optional local LLM:** structured tactical proposals, legality validation, deterministic fallback.
+- **Native Bonsai experiment:** structured tactical shadow proposals, validity checks, deadlines and utility fallback; live LLM integration remains planned.
 - **PyTorch:** a trained, reload-verified imitation policy with disjoint training/validation/test seeds; held-out evaluation, simple baselines, and live controller comparison.
 
 The live game runs the exported trained weights through an equivalent Rust CPU forward pass verified against PyTorch. No generative model has been integrated.

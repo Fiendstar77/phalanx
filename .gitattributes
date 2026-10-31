@@ -2,3 +2,5 @@
 *.csv -text whitespace=cr-at-eol
 # The imported roadmap uses intentional Markdown two-space hard line breaks.
 PHALANX_COMMERCIAL_GAME_ROADMAP_v0.1.md whitespace=-blank-at-eol
+# Preserve the exact model input, including the intentional non-thinking suffix.
+docs/results/v06/**/*.prompt.txt whitespace=-blank-at-eof

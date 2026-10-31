@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "model": "models/bonsai-1.7b/Bonsai-1.7B.gguf",
+  "model_bytes": 248302272,
+  "model_sha256": "3d7c6c90dd98717a203adb22d5eacd2581850e40aa5327e144b97766cae5f7e3",
+  "runtime_commit": "c96baf4abe24d11a50f326e40b6223b687449d63",
+  "native_library_sha256": "262f82c0fee6d877e07798ecda33665b103b5386b2801eb138c0ffac9e06c4dc",
+  "example_sha256": "9a5bdba74c80ec545c52038e331a9a75b63fa87be57498f21fe4a62794ac4943",
+  "cpu_threads": 4,
+  "gpu_layers": 0,
+  "sampler": "greedy",
+  "external_service": false,
+  "game_integration": false,
+  "scope": "Native inference and output shape only; semantic quality requires human review.",
+  "cases": [
+    {
+      "name": "protect_ally",
+      "situation": "Your ally is hurt. You move between the ally and the attacker.",
+      "text": "I'll move to help.",
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_seconds": 0.746,
+      "peak_rss_kib": 524572,
+      "format_ok": true,
+      "issues": []
+    },
+    {
+      "name": "retreat",
+      "situation": "You are badly hurt and retreat toward your living teammates.",
+      "text": "I'm not going to fight anymore. I'm just going to retreat.",
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_seconds": 0.813,
+      "peak_rss_kib": 525268,
+      "format_ok": true,
+      "issues": []
+    },
+    {
+      "name": "ranged_warning",
+      "situation": "You are throwing a rock toward an enemy. Warn your teammates.",
+      "text": "Rock is coming. Warn your teammates.",
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_seconds": 0.748,
+      "peak_rss_kib": 526012,
+      "format_ok": true,
+      "issues": []
+    }
+  ],
+  "runner_sha256": "9a64fac7c00603819dac8cff3e2717c34418c508893b020be3607ae6c642a893",
+  "passed": true
+}

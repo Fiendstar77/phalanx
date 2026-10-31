@@ -1,0 +1,656 @@
+[
+  {
+    "trace_line": 2,
+    "tick": 0,
+    "unit": 0,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3,
+        "health": 1.0,
+        "thrower": 0.0,
+        "x": -0.72222,
+        "z": -0.12308,
+        "elevation": 0.04815,
+        "cover": 0.0,
+        "rough": 0.0,
+        "enemy_distance": 1.0,
+        "enemy_visible": 0.0,
+        "known_enemies": 0.0,
+        "enemy_health": 0.0,
+        "contact_confidence": 0.0,
+        "nearby_allies": 1.0,
+        "isolation": 0.48,
+        "local_threat": -0.0,
+        "support_urgency": 0.0,
+        "engaged_allies": 0.0,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 1.0,
+        "flank_ready": 1.0,
+        "contact_exists": 0.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "HIGH GROUND",
+        "REGROUP",
+        "SEEK COVER"
+      ]
+    },
+    "raw_completion": "{\"action\":\"ADVANCE\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "ADVANCE"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ADVANCE",
+      "learned": "ADVANCE",
+      "actual_action": "ADVANCE"
+    }
+  },
+  {
+    "trace_line": 54,
+    "tick": 40,
+    "unit": 4,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9,
+        "health": 1.0,
+        "thrower": 1.0,
+        "x": 0.49591,
+        "z": -0.54343,
+        "elevation": 0.0435,
+        "cover": 0.0,
+        "rough": 0.35,
+        "enemy_distance": 1.0,
+        "enemy_visible": 0.0,
+        "known_enemies": 0.0,
+        "enemy_health": 0.0,
+        "contact_confidence": 0.0,
+        "nearby_allies": 0.5,
+        "isolation": 0.25119,
+        "local_threat": -0.0,
+        "support_urgency": 0.0,
+        "engaged_allies": 0.0,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 1.0,
+        "flank_ready": 1.0,
+        "contact_exists": 0.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "HIGH GROUND",
+        "SEEK COVER"
+      ]
+    },
+    "raw_completion": "{\"action\":\"SEEK COVER\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "SEEK COVER"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ADVANCE",
+      "learned": "HIGH GROUND",
+      "actual_action": "ADVANCE"
+    }
+  },
+  {
+    "trace_line": 106,
+    "tick": 90,
+    "unit": 0,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3,
+        "health": 1.0,
+        "thrower": 0.0,
+        "x": 0.30339,
+        "z": -0.1251,
+        "elevation": 0.03822,
+        "cover": 0.0,
+        "rough": 0.0,
+        "enemy_distance": 0.30751,
+        "enemy_visible": 1.0,
+        "known_enemies": 0.66667,
+        "enemy_health": 1.0,
+        "contact_confidence": 1.0,
+        "nearby_allies": 1.0,
+        "isolation": 0.44402,
+        "local_threat": -0.0,
+        "support_urgency": 0.0,
+        "engaged_allies": 0.0,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 1.0,
+        "flank_ready": 1.0,
+        "contact_exists": 1.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "HIGH GROUND",
+        "REGROUP",
+        "SEEK COVER"
+      ]
+    },
+    "raw_completion": "{\"action\":\"ADVANCE\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "ADVANCE"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ADVANCE",
+      "learned": "ADVANCE",
+      "actual_action": "ADVANCE"
+    }
+  },
+  {
+    "trace_line": 165,
+    "tick": 135,
+    "unit": 3,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9,
+        "health": 1.0,
+        "thrower": 0.0,
+        "x": 0.35985,
+        "z": -0.38621,
+        "elevation": 0.09942,
+        "cover": 0.0,
+        "rough": 0.0,
+        "enemy_distance": 0.15032,
+        "enemy_visible": 0.0,
+        "known_enemies": 0.66667,
+        "enemy_health": 1.0,
+        "contact_confidence": 0.39024,
+        "nearby_allies": 0.5,
+        "isolation": 1.0,
+        "local_threat": 0.13008,
+        "support_urgency": 0.0,
+        "engaged_allies": 0.0,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 1.0,
+        "flank_ready": 1.0,
+        "contact_exists": 1.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "HIGH GROUND",
+        "REGROUP",
+        "SEEK COVER"
+      ]
+    },
+    "raw_completion": "{\"action\":\"SEEK COVER\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "SEEK COVER"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ADVANCE",
+      "learned": "REGROUP",
+      "actual_action": "ADVANCE"
+    }
+  },
+  {
+    "trace_line": 228,
+    "tick": 180,
+    "unit": 1,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3,
+        "health": 0.88867,
+        "thrower": 1.0,
+        "x": 0.09475,
+        "z": -0.13055,
+        "elevation": 0.60513,
+        "cover": 0.0,
+        "rough": 0.0,
+        "enemy_distance": 0.1505,
+        "enemy_visible": 1.0,
+        "known_enemies": 1.0,
+        "enemy_health": 0.89065,
+        "contact_confidence": 1.0,
+        "nearby_allies": 1.0,
+        "isolation": 0.95248,
+        "local_threat": 0.54472,
+        "support_urgency": 0.0,
+        "engaged_allies": 0.0,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 0.0,
+        "flank_ready": 1.0,
+        "contact_exists": 1.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "ATTACK",
+        "REGROUP"
+      ]
+    },
+    "raw_completion": "{\"action\":\"ATTACK\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "ATTACK"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ATTACK",
+      "learned": "ATTACK",
+      "actual_action": "ATTACK"
+    }
+  },
+  {
+    "trace_line": 290,
+    "tick": 220,
+    "unit": 5,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9,
+        "health": 0.59973,
+        "thrower": 0.0,
+        "x": 0.10406,
+        "z": 0.36065,
+        "elevation": 0.70858,
+        "cover": 0.0,
+        "rough": 0.0,
+        "enemy_distance": 0.0451,
+        "enemy_visible": 1.0,
+        "known_enemies": 1.0,
+        "enemy_health": 0.56197,
+        "contact_confidence": 1.0,
+        "nearby_allies": 0.5,
+        "isolation": 1.0,
+        "local_threat": 0.33333,
+        "support_urgency": 0.275,
+        "engaged_allies": 0.0,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 0.0,
+        "flank_ready": 1.0,
+        "contact_exists": 1.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "ATTACK",
+        "REGROUP",
+        "SUPPORT ALLY"
+      ]
+    },
+    "raw_completion": "{\"action\":\"ADVANCE\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "ADVANCE"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ATTACK",
+      "learned": "ATTACK",
+      "actual_action": "ATTACK"
+    }
+  },
+  {
+    "trace_line": 352,
+    "tick": 265,
+    "unit": 3,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9,
+        "health": 0.89103,
+        "thrower": 0.0,
+        "x": 0.20178,
+        "z": -0.30647,
+        "elevation": 0.57197,
+        "cover": 0.0,
+        "rough": 0.0,
+        "enemy_distance": 0.04721,
+        "enemy_visible": 1.0,
+        "known_enemies": 0.66667,
+        "enemy_health": 0.5884,
+        "contact_confidence": 1.0,
+        "nearby_allies": 0.5,
+        "isolation": 1.0,
+        "local_threat": 0.33333,
+        "support_urgency": 0.37068,
+        "engaged_allies": 0.0,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 0.0,
+        "flank_ready": 1.0,
+        "contact_exists": 1.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "ATTACK",
+        "REGROUP",
+        "SUPPORT ALLY"
+      ]
+    },
+    "raw_completion": "{\"action\":\"ADVANCE\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "ADVANCE"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ATTACK",
+      "learned": "ATTACK",
+      "actual_action": "ATTACK"
+    }
+  },
+  {
+    "trace_line": 417,
+    "tick": 310,
+    "unit": 1,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3,
+        "health": 0.40456,
+        "thrower": 1.0,
+        "x": 0.15217,
+        "z": -0.33009,
+        "elevation": 0.69981,
+        "cover": 0.0,
+        "rough": 0.0,
+        "enemy_distance": 0.04721,
+        "enemy_visible": 1.0,
+        "known_enemies": 0.66667,
+        "enemy_health": 0.77572,
+        "contact_confidence": 1.0,
+        "nearby_allies": 0.0,
+        "isolation": 0.0,
+        "local_threat": 0.33333,
+        "support_urgency": 0.0,
+        "engaged_allies": 0.0,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 0.0,
+        "flank_ready": 1.0,
+        "contact_exists": 1.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "ATTACK",
+        "RETREAT"
+      ]
+    },
+    "raw_completion": "{\"action\":\"ATTACK\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "ATTACK"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ATTACK",
+      "learned": "ATTACK",
+      "actual_action": "ATTACK"
+    }
+  },
+  {
+    "trace_line": 480,
+    "tick": 350,
+    "unit": 5,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9,
+        "health": 0.24842,
+        "thrower": 0.0,
+        "x": 0.10406,
+        "z": 0.36065,
+        "elevation": 0.70858,
+        "cover": 0.0,
+        "rough": 0.0,
+        "enemy_distance": 0.0451,
+        "enemy_visible": 1.0,
+        "known_enemies": 1.0,
+        "enemy_health": 0.12101,
+        "contact_confidence": 1.0,
+        "nearby_allies": 0.5,
+        "isolation": 1.0,
+        "local_threat": 0.66667,
+        "support_urgency": 0.0,
+        "engaged_allies": 0.0,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 0.0,
+        "flank_ready": 1.0,
+        "contact_exists": 1.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "ATTACK",
+        "REGROUP",
+        "RETREAT"
+      ]
+    },
+    "raw_completion": "{\"action\":\"ADVANCE\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "ADVANCE"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ATTACK",
+      "learned": "ATTACK",
+      "actual_action": "ATTACK"
+    }
+  },
+  {
+    "trace_line": 547,
+    "tick": 400,
+    "unit": 1,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.9,
+        "caution": 0.2,
+        "courage": 0.85,
+        "teamwork": 0.25,
+        "patience": 0.2,
+        "self_preservation": 0.25,
+        "discipline": 0.3,
+        "health": 0.0757,
+        "thrower": 1.0,
+        "x": 0.15217,
+        "z": -0.33009,
+        "elevation": 0.69981,
+        "cover": 0.0,
+        "rough": 0.0,
+        "enemy_distance": 0.04721,
+        "enemy_visible": 1.0,
+        "known_enemies": 1.0,
+        "enemy_health": 0.69,
+        "contact_confidence": 1.0,
+        "nearby_allies": 0.0,
+        "isolation": 0.0,
+        "local_threat": 0.33333,
+        "support_urgency": 0.0,
+        "engaged_allies": 0.0,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 0.0,
+        "flank_ready": 1.0,
+        "contact_exists": 1.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "ATTACK",
+        "RETREAT"
+      ]
+    },
+    "raw_completion": "{\"action\":\"ADVANCE\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "ADVANCE"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ATTACK",
+      "learned": "ATTACK",
+      "actual_action": "ATTACK"
+    }
+  },
+  {
+    "trace_line": 614,
+    "tick": 480,
+    "unit": 3,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9,
+        "health": 0.66295,
+        "thrower": 0.0,
+        "x": -0.05828,
+        "z": 0.32678,
+        "elevation": 0.97044,
+        "cover": 0.0,
+        "rough": 0.0,
+        "enemy_distance": 0.04763,
+        "enemy_visible": 1.0,
+        "known_enemies": 0.33333,
+        "enemy_health": 0.51993,
+        "contact_confidence": 1.0,
+        "nearby_allies": 0.5,
+        "isolation": 0.37119,
+        "local_threat": 0.33333,
+        "support_urgency": 0.0,
+        "engaged_allies": 0.5,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 0.0,
+        "flank_ready": 1.0,
+        "contact_exists": 1.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "ATTACK"
+      ]
+    },
+    "raw_completion": "{\"action\":\"ATTACK\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "ATTACK"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ATTACK",
+      "learned": "ATTACK",
+      "actual_action": "ATTACK"
+    }
+  },
+  {
+    "trace_line": 685,
+    "tick": 565,
+    "unit": 4,
+    "sent_to_model": {
+      "observation": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9,
+        "health": 0.22104,
+        "thrower": 1.0,
+        "x": -0.26992,
+        "z": 0.34685,
+        "elevation": 0.26005,
+        "cover": 0.0,
+        "rough": 0.0,
+        "enemy_distance": 0.14342,
+        "enemy_visible": 1.0,
+        "known_enemies": 0.33333,
+        "enemy_health": 0.04391,
+        "contact_confidence": 1.0,
+        "nearby_allies": 0.5,
+        "isolation": 0.76368,
+        "local_threat": 0.33333,
+        "support_urgency": 0.50961,
+        "engaged_allies": 0.5,
+        "ridge_arrived": 0.0,
+        "hold_allowed": 0.0,
+        "flank_ready": 1.0,
+        "contact_exists": 1.0,
+        "flank_remaining": 1.0
+      },
+      "eligible_actions": [
+        "ADVANCE",
+        "ATTACK",
+        "REGROUP",
+        "SUPPORT ALLY"
+      ]
+    },
+    "raw_completion": "{\"action\":\"ATTACK\"}",
+    "governor": {
+      "accepted": true,
+      "fallback_reason": null,
+      "governed_action": "ATTACK"
+    },
+    "references_not_sent_to_model": {
+      "utility": "ATTACK",
+      "learned": "SUPPORT ALLY",
+      "actual_action": "ATTACK"
+    }
+  }
+]
