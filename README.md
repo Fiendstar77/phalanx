@@ -138,6 +138,14 @@ Start the game with:
 cargo run --locked --bin phalanx
 ```
 
+To try the staged wounded-Scout composition immediately, launch
+`cargo run --locked --bin phalanx -- --opportunity-demo --seed 6`.
+It starts paused: **Space** runs/pauses, **N** steps, **R** restores the fixture.
+The opponent's attacks are suppressed; training, injury and remembered contact
+are granted. Normal movement and opposed strikes resolve the attempt. Demo
+autosaving is disabled and manual saves use `outputs/opportunity-demo-save.json`.
+The completed battle opens its real learning report and Legend Ledger.
+
 The window prefers a high-performance GPU. Set `WGPU_ADAPTER_NAME` to pick a specific adapter. A window initialization pass works around the [Bevy startup presentation issue](https://github.com/bevyengine/bevy/issues/22733); graphics validation remains enabled.
 
 On Linux, Bevy requires graphical drivers and development libraries for the window/input stack. On Debian/Ubuntu, install `build-essential pkg-config libudev-dev libwayland-dev libxkbcommon-dev libx11-dev libxi-dev libxrandr-dev libasound2-dev`.

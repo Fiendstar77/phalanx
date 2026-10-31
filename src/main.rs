@@ -4,6 +4,7 @@ mod camp;
 mod exchange;
 mod founding;
 mod front;
+mod opportunity_demo;
 mod player;
 mod presentation;
 mod rewards;
@@ -38,6 +39,7 @@ fn frame_zoom(arena: Arena) -> f32 {
 
 #[derive(Resource)]
 struct Session {
+    opportunity_demo: Option<u64>,
     founding: founding::Draft,
     renaming: Option<(usize, String)>,
     harvesting: bool,
@@ -100,6 +102,7 @@ impl Session {
                         | "--player-demo"
                         | "--memory-soak"
                         | "--ninja-demo"
+                        | "--opportunity-demo"
                 )
         });
         let mut campaign = if path.exists() {
@@ -158,6 +161,7 @@ impl Session {
         let founders_cinema = battle.founders;
         let founding = founding::Draft::new(&campaign, false);
         let mut session = Self {
+            opportunity_demo: None,
             founding,
             renaming: None,
             harvesting: false,
@@ -357,6 +361,7 @@ impl Session {
         }
     }
     fn restart_founders(&mut self, seed: u64, arena: Arena, controller: Controller) {
+        self.opportunity_demo = None;
         match self.campaign.begin_battle(seed, arena, controller) {
             Ok((id, b)) => {
                 self.battle = b;
@@ -374,6 +379,43 @@ impl Session {
         for unit in &self.battle.units {
             self.previous_positions[unit.id] = unit.position;
         }
+    }
+    fn restart_opportunity_demo(&mut self, seed: u64) {
+        let (campaign, id, battle) = opportunity_demo::fixture(seed);
+        self.opportunity_demo = Some(seed);
+        self.campaign = campaign;
+        self.battle = battle;
+        self.active_battle_id = Some(id);
+        self.rewarded = false;
+        self.autosave = false;
+        self.save_path = "outputs/opportunity-demo-save.json".into();
+        self.founding.open = false;
+        self.menu = false;
+        self.camp_page = None;
+        self.map_briefing = false;
+        self.running = false;
+        self.accumulator = 0.;
+        self.speed = 1.;
+        self.selected = 0;
+        self.paths = 1;
+        self.player.details = true;
+        self.player.research = false;
+        self.cinema = Default::default();
+        self.cinema_on = false;
+        self.cinema_grabbed = true;
+        self.camera_follow = false;
+        self.camera_target = Vec3::new(0.5, 0.7, -5.);
+        self.zoom = 12.;
+        self.pitch = 0.65;
+        self.orbit = 0.;
+        self.disagreement_pair = None;
+        self.logged_disagreements = 0;
+        self.run_id += 1;
+        self.study = None;
+        self.study_failed_run = None;
+        self.previous_positions = self.battle.units.iter().map(|u| u.position).collect();
+        self.save_notice = "STAGED DEMO | Wounded, trained Mira; remembered contact; opponent attacks suppressed. Space: run/pause | N: step | R: replay. Saves stay separate.".into();
+        self.refresh_preview();
     }
     fn presented(&self, id: usize) -> [f32; 2] {
         let current = self.battle.units[id].position;
@@ -405,6 +447,49 @@ impl Session {
         ]
     }
 }
+#[cfg(test)]
+mod opportunity_demo_controls {
+    use super::*;
+
+    #[test]
+    fn interactive_demo_is_paused_isolated_and_reset_restores_the_composed_attempt() {
+        let mut session = Session::new(Battle::new(6, false));
+        session.restart_opportunity_demo(6);
+        assert!(!session.autosave && !session.running && !session.menu);
+        assert!(session.save_path.ends_with("opportunity-demo-save.json"));
+        let start = session.battle.units[0].position;
+        let health = session.battle.units[0].health;
+        let run = session.run_id;
+        while !session.battle.finished {
+            session.battle.step();
+        }
+        session.settle_finished();
+        assert!(session.rewarded && session.menu);
+        assert_eq!(session.camp_page, Some(camp::Page::Report));
+        assert_eq!(session.campaign.teams[0].fighters[0].legend_count, 1);
+        let mut app = App::new();
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::KeyR);
+        app.insert_resource(session)
+            .insert_resource(keys)
+            .add_systems(Update, keyboard);
+        app.update();
+        let mut session = app.world_mut().resource_mut::<Session>();
+        assert_eq!(session.run_id, run + 1);
+        assert!(!session.running && !session.menu && !session.autosave);
+        assert!(!session.rewarded);
+        assert_eq!(session.battle.tick, 0);
+        assert_eq!(session.battle.units[0].position, start);
+        assert_eq!(session.battle.units[0].health, health);
+        assert!(session.battle.opportunities.completed.is_empty());
+        assert_eq!(session.campaign.teams[0].fighters[0].legend_count, 0);
+        while !session.battle.finished {
+            session.battle.step();
+        }
+        assert_eq!(session.battle.opportunities.completed.len(), 1);
+    }
+}
+
 #[derive(Component)]
 struct Pawn(usize);
 #[derive(Component)]
@@ -961,6 +1046,10 @@ fn main() {
         session.menu = true;
         session.running = false;
         session.camp_page = Some(camp::Page::Report);
+    }
+    if args.iter().any(|a| a == "--opportunity-demo") {
+        session.restart_opportunity_demo(seed);
+        session.running = visual_witness;
     }
     std::fs::create_dir_all("outputs").expect("create log directory");
     let log_path = format!(
@@ -1620,6 +1709,12 @@ fn apply(control: Control, session: &mut Session) {
     }
     debug!(?control, "Battle control");
     session.settle_finished();
+    if matches!(control, Control::Reset)
+        && let Some(seed) = session.opportunity_demo
+    {
+        session.restart_opportunity_demo(seed);
+        return;
+    }
     if session.exchange.live.is_some() {
         if matches!(control, Control::Reset) {
             exchange::reset(session);
@@ -2490,6 +2585,10 @@ fn keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
             session.menu = !session.menu;
         }
         session.running = false;
+        return;
+    }
+    if keys.just_pressed(KeyCode::KeyR) && session.opportunity_demo.is_some() {
+        apply(Control::Reset, &mut session);
         return;
     }
     if session.menu {

@@ -177,6 +177,24 @@ longer ledger sentence or epithet, but only from admitted receipts, with a
 factual template fallback. Neither eloquence nor a model's explanation creates
 history.
 
+## Try it interactively
+
+```bash
+cargo run --locked --bin phalanx -- --opportunity-demo --seed 6
+```
+
+The staged fixture starts paused with Mira selected and the camera framed on
+the wall. Press **Space** to run/pause, **N** to step, **I** to inspect the actual
+decision reason, and **R** to replay the original setup. At normal speed the
+first composed hit resolves about 3.7 simulation seconds after starting.
+Finishing the battle opens the growth report and Legend Ledger; scroll to read
+the earned moment. Each run writes study files under `outputs/studies`.
+
+This is the same attack-suppressed fixture as the headless example below, with
+explicit grants. It disables autosaving and routes manual saves to
+`outputs/opportunity-demo-save.json`. Launch without `--opportunity-demo` for
+the ordinary campaign.
+
 ## Verification
 
 [The integration tests](../tests/opportunity.rs) exercise geometry-dependent
