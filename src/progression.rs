@@ -254,6 +254,8 @@ impl Phalanx {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FighterResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub learning: Option<crate::learning::Learning>,
     #[serde(default)]
     pub title: Option<CommandTitle>,
     pub name: String,
@@ -299,6 +301,7 @@ impl BattleReport {
                             && f.max_health > 0.0
                             && f.health <= f.max_health
                             && f.xp <= 55
+                            && f.learning.as_ref().is_none_or(|learning| learning.valid())
                             && f.new_wounds <= 15
                             && f.weapon_training.iter().all(|p| *p <= 55)
                             && f.discoveries.len() <= 3
@@ -891,6 +894,18 @@ impl Campaign {
                         let slot = u.id % b.team_size();
                         let f = &updated.teams[team].fighters[slot];
                         FighterResult {
+                            learning: Some(crate::learning::Learning {
+                                fighter_id: f.fighter_id.clone(),
+                                experience: [u.experience, f.experience],
+                                class_practice: [
+                                    u.mastery.points(f.class),
+                                    f.mastery.points(f.class),
+                                ],
+                                mind_before: u.mind,
+                                mind_after: f.mind,
+                                psyche_before: u.psyche,
+                                psyche_after: f.psyche,
+                            }),
                             title: u.command_title,
                             name: f.name.clone(),
                             class: f.class,

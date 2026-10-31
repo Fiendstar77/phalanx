@@ -1,6 +1,6 @@
 # Measurement and PyTorch baseline
 
-This pipeline collects real Rust simulation output and trains a small imitation policy. The game uses utility AI; the learned network is an offline action-selection baseline, not an installed game controller or a generative model.
+This pipeline collects real Rust simulation output and trains an imitation policy. Utility is the default; the frozen learned policy can also control the live game. Separate native Bonsai tests evaluate text and tactical shadow proposals. [Automatic battle reports, persistent adaptation and study commands](../docs/ai-studies.md) explain what each system does and how to inspect its evidence.
 
 ## Setup
 

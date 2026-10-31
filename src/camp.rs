@@ -227,6 +227,16 @@ fn report(session: &Session) -> String {
         r.arena.name(),
         r.seed
     );
+    text.push_str("YOUR PHALANX IS CHANGING\nWhat this battle taught your fighters; these changes carry into the next battle.\n\n");
+    for fighter in &r.fighters[0] {
+        if let Some(learning) = &fighter.learning {
+            text.push_str(&format!("{}\n", fighter.name));
+            for change in learning.changes() {
+                text.push_str(&format!("  {change}\n"));
+            }
+        }
+    }
+    text.push('\n');
     for team in 0..2 {
         text.push_str(&format!(
             "{} | +{} gold | +{} salvage\n",
@@ -255,6 +265,11 @@ fn report(session: &Session) -> String {
         text.push('\n');
     }
     text.push_str("RECOVERY\nAll fighters return at full HP next battle. Missing limbs and psychological scars persist.\nFit prosthetics or change loadouts in the squad workshop before continuing.\n\nRewards are granted once. This report stays available after saving and restarting.");
+    if let Some((run, study)) = &session.study
+        && *run == session.run_id
+    {
+        text.push_str(&format!("\n\nSTUDY FILES\n{}/report.md\nRaw decisions and learning receipts are saved beside the report.", study.directory.display()));
+    }
     text
 }
 fn refresh(

@@ -68,6 +68,8 @@ struct Session {
     logged_disagreements: usize,
     run_id: u32,
     disagreement_log: Option<std::io::BufWriter<std::fs::File>>,
+    study: Option<(u32, phalanx::study::Recorder)>,
+    study_failed_run: Option<u32>,
     campaign: Campaign,
     active_battle_id: Option<u64>,
     rewarded: bool,
@@ -185,6 +187,8 @@ impl Session {
             logged_disagreements: 0,
             run_id: 0,
             disagreement_log: None,
+            study: None,
+            study_failed_run: None,
             campaign,
             active_battle_id,
             camp_page: None,
@@ -282,6 +286,13 @@ impl Session {
         {
             match self.campaign.settle(id, &self.battle) {
                 Ok(()) => {
+                    if let Some((run, study)) = &self.study
+                        && *run == self.run_id
+                        && let Some(report) = &self.campaign.last_report
+                        && let Err(error) = study.save_learning(report)
+                    {
+                        error!("Learning report write failed: {error}");
+                    }
                     self.rewarded = true;
                     self.menu = true;
                     self.running = false;
@@ -305,6 +316,44 @@ impl Session {
                     self.save_notice = format!("Rewards rejected: {e}");
                 }
             }
+        }
+    }
+    fn study_step(&mut self) {
+        if self.battle.finished {
+            return;
+        }
+        if self
+            .study
+            .as_ref()
+            .is_some_and(|(run, _)| *run != self.run_id)
+        {
+            self.study = None;
+        }
+        if self.study.is_none() && self.study_failed_run != Some(self.run_id) {
+            match phalanx::study::Recorder::start(
+                std::path::Path::new("outputs/studies"),
+                &self.battle,
+            ) {
+                Ok(study) => {
+                    info!("Battle study: {}", study.directory.display());
+                    self.study = Some((self.run_id, study));
+                }
+                Err(error) => {
+                    self.study_failed_run = Some(self.run_id);
+                    self.save_notice = format!("Study recording unavailable: {error}");
+                    error!("{}", self.save_notice);
+                }
+            }
+        }
+        if let Some((_, recorder)) = &mut self.study {
+            if let Err(error) = recorder.step(&mut self.battle) {
+                self.study = None;
+                self.study_failed_run = Some(self.run_id);
+                self.save_notice = format!("Study recording stopped: {error}");
+                error!("{}", self.save_notice);
+            }
+        } else {
+            self.battle.step();
         }
     }
     fn restart_founders(&mut self, seed: u64, arena: Arena, controller: Controller) {
@@ -722,7 +771,7 @@ fn main() {
                 .unwrap();
             session.restart_founders(42, Arena::OpenField, Controller::Utility);
             while !session.battle.finished {
-                session.battle.step();
+                session.study_step();
             }
             session.settle_finished();
             session.selected = 1;
@@ -2043,7 +2092,7 @@ fn apply(control: Control, session: &mut Session) {
         Control::Step => {
             session.running = false;
             session.remember_positions();
-            session.battle.step();
+            session.study_step();
         }
         Control::Reset => {
             session.battle = Battle::with_setup(
@@ -2487,7 +2536,7 @@ fn simulate(time: Res<Time>, mut session: ResMut<Session>) {
     while session.accumulator >= DT {
         session.accumulator -= DT;
         session.remember_positions();
-        session.battle.step();
+        session.study_step();
         if session.battle.finished {
             session.running = false;
             break;

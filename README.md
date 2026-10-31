@@ -93,6 +93,10 @@ The project first establishes deterministic combat and terrain-aware navigation.
 
 The live game runs the exported trained weights through an equivalent Rust CPU forward pass verified against PyTorch. No generative model has been integrated.
 
+**Local Bonsai experiment:** a separate native smoke test runs Bonsai 1.7B combat-bark prompts without a server. Run `python3 tools/bonsai_smoke.py` with the local model/runtime installed. [Setup, generated-output checks and integration limits](docs/bonsai.md).
+
+**Study how the phalanx changes:** completed live battles automatically save readable reports, raw decision traces and campaign learning receipts under `outputs/studies/`. The post-battle screen shows each fighter's actual habit, memory and practice changes. An isolated multi-battle runner saves/reloads the evolving campaign; Bonsai can shadow real recorded decisions with strict validation and utility fallback. [Run studies and interpret the evidence](docs/ai-studies.md). Campaign adaptation uses explicit rules; the model weights remain frozen.
+
 ## Milestones and acceptance criteria
 
 | Milestone | Deliverable | Evidence required |
