@@ -296,7 +296,12 @@ pub(super) fn update(
             continue;
         };
         // Expressions live on the new socketed head, never on the body texture.
-        let choice = [look(&session, body.id).skin, 0, 0, 0];
+        let choice = [
+            look(&session, body.id).skin,
+            u8::from(adolescent(&session, body.id)),
+            0,
+            0,
+        ];
         let reset = body.seed != session.battle.seed || session.battle.tick < body.tick;
         if reset {
             body.mask = 0;
@@ -426,6 +431,9 @@ pub(super) fn update(
             }
             painted.insert_indices(Indices::U32(selected_indices(&painted, mask, false)));
             super::garments::conceal_skin(&mut painted);
+            if adolescent(&session, body.id) {
+                adolescent_mesh(&mut painted);
+            }
             if let Some(mut target) = meshes.get_mut(&mesh.0) {
                 *target = painted;
             }

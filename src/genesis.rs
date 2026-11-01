@@ -62,6 +62,7 @@ pub fn reveal(word: &str, slot: usize, roll: u32, class: FighterClass) -> Result
     // Keep the same seeded draw for other traits; the starting Queen defaults to female.
     let female = pick(2) == 1;
     let appearance = Appearance {
+        age_years: 24,
         female: Some(slot == 1 || female),
         hair: 1 + pick(10) as u8,
         face: pick(17) as u8,

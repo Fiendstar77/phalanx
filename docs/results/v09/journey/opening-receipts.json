@@ -1,0 +1,49 @@
+{
+  "chapter": 3,
+  "waiting": [
+    [],
+    []
+  ],
+  "victories": [
+    {
+      "chapter": 0,
+      "battle_id": 1,
+      "seed": 43,
+      "tick": 243,
+      "participants": [
+        "18e3ce662fcb0ab8-0-0"
+      ]
+    },
+    {
+      "chapter": 1,
+      "battle_id": 2,
+      "seed": 44,
+      "tick": 653,
+      "participants": [
+        "18e3ce662fcb0ab8-0-0",
+        "18e3ce662fcb0ab8-0-1"
+      ]
+    },
+    {
+      "chapter": 2,
+      "battle_id": 6,
+      "seed": 48,
+      "tick": 413,
+      "participants": [
+        "18e3ce662fcb0ab8-0-0",
+        "18e3ce662fcb0ab8-0-1",
+        "18e3ce662fcb0ab8-0-2"
+      ]
+    }
+  ],
+  "joins": [
+    {
+      "fighter_id": "18e3ce662fcb0ab8-0-1",
+      "after_battle_id": 1
+    },
+    {
+      "fighter_id": "18e3ce662fcb0ab8-0-2",
+      "after_battle_id": 2
+    }
+  ]
+}

@@ -12,9 +12,11 @@ Players shape battlefields and agent personalities, then observe autonomous team
 
 The AI work spans partial observations and shared contact memory, personality-weighted tactical planning, a trained PyTorch policy deployed through verified Rust inference, persistent campaign adaptation, and native Bonsai experiments with explicit validation and fallback. Reports expose the inputs, proposals, executed actions and limitations. **PyTorch can control live combat; Bonsai currently runs separate text and tactical shadow studies.**
 
-> **Status: early playable prototype.** The default Founders setup starts each team with a King, Queen, and General. The Lab keeps its original 5-versus-5 standard battles and 10-versus-10 Citadel arena, personality-weighted routes, cover, rough ground, ten arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
+> **Status: early playable prototype.** New Game begins with a solo adolescent; chapter victories bring the future queen and general into the same persistent group. The classic three-founder creator remains available. The Lab keeps its original 5-versus-5 standard battles and 10-versus-10 Citadel arena, personality-weighted routes, cover, rough ground, ten arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
 
-**New playable opening:** name your phalanx, choose three founders, then face five NPC tutorial teams. Compact fighter cards, three persistent tactical styles, seeded procedural battlefields, heartbeat-driven splatter, critical-health panic and ten replacement 3D hair concepts. Extra fighter slots still cost gold. [Play controls, current limits and validation](docs/player-experience.md) · [Short gameplay recording](docs/media/opening-campaign.mp4) · [Hair lineup](docs/images/hair-lineup.png).
+**New playable opening:** one aspiring king at 16 → meet the future queen → meet the general → unlock the existing campaign. Encounters use actual Theus outcomes, with saved chapter progress and learning reports. [Opening and recruitment guide](docs/young-king-opening.md) · [Witnessed journey and receipts](docs/results/v09/README.md) · [Physical presentation](docs/physical-presentation.md).
+
+The earlier [gameplay recording](docs/media/opening-campaign.mp4) shows the classic three-founder route and older presentation. [Classic controls and validation](docs/player-experience.md) · [Hair lineup](docs/images/hair-lineup.png).
 
 ![Citadel: 20 agents and clickable disagreement highlights](docs/images/citadel-filter.png)
 
@@ -22,7 +24,7 @@ The AI work spans partial observations and shared contact memory, personality-we
 
 ## The first Phalanx
 
-Every starting squad has a **King, Queen, and General**. King and Queen wear basic gold/silver crowns and start at level 1 with **110 HP and +10% damage**; the General starts as a **Paladin**, with a military chevron badge, **100 HP**, and an aura that blesses and motivates nearby allies. Command titles are separate from combat roles: the initial King and General fight in melee, while the Queen throws rocks. Winning still requires eliminating the opposing team; losing royalty does not automatically end a battle.
+After the opening, the three veterans earn the **King, Queen, and General** offices. The classic creator starts with those offices immediately. King and Queen receive the existing royal health/damage bonus; the General mitigates incoming damage and defaults to Paladin training. Titles remain separate from classes and learned skills. Winning requires downing the opposing team; losing royalty does not automatically end a battle.
 
 ![King, Queen, and General](docs/images/founders.png)
 
@@ -142,6 +144,16 @@ Start the game with:
 ```bash
 cargo run --locked --bin phalanx
 ```
+
+**New Game / Before the crown** starts the playable opening: one aspiring king
+at 16, then the future queen, then the general. Real chapter victories unlock
+the next meeting and eventually the existing campaign. The same identities,
+learning and wounds persist. **Classic three-founder start** remains available;
+old saves retain their teams. See [the opening guide](docs/young-king-opening.md).
+
+Recruitment is now on the squad screens: **Character / Workshop > Recruit /
+slot 4: 250 gold**. The queen and general join through the opening; the fourth
+slot uses earned gold afterward. Playable leagues remain 3v3 and 4v4.
 
 To try the staged wounded-Scout composition immediately, launch
 `cargo run --locked --bin phalanx -- --opportunity-demo --seed 6`.

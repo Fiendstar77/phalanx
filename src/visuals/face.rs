@@ -553,7 +553,12 @@ fn apply(
             continue;
         };
         // Animation rewrites the bone first. Set scale absolutely so it cannot compound.
-        transform.scale = head.base * HEAD_CARICATURE;
+        let profile = if adolescent(&session, state.id) {
+            Vec3::new(0.98, 1.06, 1.02)
+        } else {
+            Vec3::ONE
+        };
+        transform.scale = head.base * HEAD_CARICATURE * profile;
         let wobble = if state.weights[RAGE] > 0.55 || state.weights[SHOUT] > 0.55 {
             Quat::from_rotation_z((state.clock * 21.0 + state.id as f32).sin() * 0.055)
         } else if state.weights[GRIN] > 0.30 && state.weights[FEAR] < 0.25 {

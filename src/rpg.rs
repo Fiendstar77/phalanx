@@ -456,7 +456,7 @@ fn ui_setup(mut commands: Commands, photo: Res<Photo>) {
                     }
                 });
                 label(p,Label::Notice,13.);
-                p.spawn(Node{flex_wrap:FlexWrap::Wrap,..default()}).with_children(|p|{button(p,"Next battle",Control::NextBattle);button(p,"Save squads",Control::Save);});
+                p.spawn(Node{flex_wrap:FlexWrap::Wrap,..default()}).with_children(|p|{button(p,"Opening chapters",Control::Camp(camp::Page::Prologue));button(p,"Recruit / slot 4: 250 gold",Control::Recruit);button(p,"Next battle",Control::NextBattle);button(p,"Save squads",Control::Save);});
             });
         });
     }
@@ -546,7 +546,7 @@ fn refresh(
     let unit = camp::prepared(&session, session.selected);
     for (kind, mut text) in &mut labels {
         let value=match kind{
-        Label::Header=>format!("{} / {} [{}]     |     {} gold    {} salvage",squad.name,f.name,f.title.name(),squad.gold,squad.salvage),
+        Label::Header=>format!("{} / {} [{}] | age {}     |     {} gold    {} salvage",squad.name,f.name,f.title.name(),f.appearance.age_years,squad.gold,squad.salvage),
         Label::Identity=>format!("{} / {}   Level {}\n{:.0} HP   Damage x{:.2}   Protection x{:.2}\n{}",f.title.name(),f.class.name(),unit.level(),unit.max_health(),unit.damage_multiplier(),unit.incoming_multiplier(),phalanx::theus_combat::description(&unit)),
         Label::Limbs=>format!("Missing: {}\nProsthetics: {}",limb_names(f.lost_limbs),limb_names(f.prosthetics)),
         Label::Notice=>format!("{}{}",if session.battle.tick>0&&!session.battle.finished{"Battle in progress: loadout changes are locked. "}else{"Drag items between the chest, personal inventory and matching equipment slots. "},session.save_notice),
@@ -563,7 +563,7 @@ fn refresh(
             text.0 = format!(
                 "{}\n{}\n{}",
                 session.team_name(u.team),
-                f.title.name(),
+                f.name,
                 f.class.name()
             );
         }

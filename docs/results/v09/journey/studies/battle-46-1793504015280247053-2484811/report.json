@@ -1,0 +1,268 @@
+{
+  "actions": [
+    {
+      "action": "ADVANCE",
+      "decisions": 173
+    },
+    {
+      "action": "ATTACK",
+      "decisions": 327
+    },
+    {
+      "action": "HIGH GROUND",
+      "decisions": 0
+    },
+    {
+      "action": "FLANK",
+      "decisions": 33
+    },
+    {
+      "action": "REGROUP",
+      "decisions": 15
+    },
+    {
+      "action": "RETREAT",
+      "decisions": 57
+    },
+    {
+      "action": "HOLD",
+      "decisions": 1
+    },
+    {
+      "action": "SEEK COVER",
+      "decisions": 5
+    },
+    {
+      "action": "SUPPORT ALLY",
+      "decisions": 57
+    }
+  ],
+  "arena": "choke",
+  "bonsai_controls_game": false,
+  "comparison": {
+    "action_pairs": [
+      [
+        65,
+        0,
+        0,
+        4,
+        5,
+        8,
+        1,
+        38,
+        52
+      ],
+      [
+        0,
+        202,
+        0,
+        0,
+        0,
+        50,
+        0,
+        0,
+        75
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        18,
+        0,
+        0,
+        0,
+        0,
+        15
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        4,
+        0,
+        0,
+        0,
+        10
+      ],
+      [
+        0,
+        0,
+        0,
+        3,
+        0,
+        46,
+        0,
+        4,
+        4
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        57
+      ]
+    ],
+    "actions": [
+      "ADVANCE",
+      "ATTACK",
+      "HIGH GROUND",
+      "FLANK",
+      "REGROUP",
+      "RETREAT",
+      "HOLD",
+      "SEEK COVER",
+      "SUPPORT ALLY"
+    ],
+    "agreement_rate": 0.5883233532934131,
+    "agreements": 393,
+    "compared": 668,
+    "top_disagreements": [
+      {
+        "count": 75,
+        "learned": "SUPPORT ALLY",
+        "utility": "ATTACK"
+      },
+      {
+        "count": 52,
+        "learned": "SUPPORT ALLY",
+        "utility": "ADVANCE"
+      },
+      {
+        "count": 50,
+        "learned": "RETREAT",
+        "utility": "ATTACK"
+      },
+      {
+        "count": 38,
+        "learned": "SEEK COVER",
+        "utility": "ADVANCE"
+      },
+      {
+        "count": 15,
+        "learned": "SUPPORT ALLY",
+        "utility": "FLANK"
+      },
+      {
+        "count": 10,
+        "learned": "SUPPORT ALLY",
+        "utility": "REGROUP"
+      },
+      {
+        "count": 8,
+        "learned": "RETREAT",
+        "utility": "ADVANCE"
+      },
+      {
+        "count": 5,
+        "learned": "REGROUP",
+        "utility": "ADVANCE"
+      },
+      {
+        "count": 4,
+        "learned": "FLANK",
+        "utility": "ADVANCE"
+      },
+      {
+        "count": 4,
+        "learned": "SEEK COVER",
+        "utility": "RETREAT"
+      },
+      {
+        "count": 4,
+        "learned": "SUPPORT ALLY",
+        "utility": "RETREAT"
+      },
+      {
+        "count": 3,
+        "learned": "FLANK",
+        "utility": "RETREAT"
+      },
+      {
+        "count": 3,
+        "learned": "ADVANCE",
+        "utility": "SEEK COVER"
+      },
+      {
+        "count": 2,
+        "learned": "SUPPORT ALLY",
+        "utility": "SEEK COVER"
+      },
+      {
+        "count": 1,
+        "learned": "HOLD",
+        "utility": "ADVANCE"
+      },
+      {
+        "count": 1,
+        "learned": "FLANK",
+        "utility": "REGROUP"
+      }
+    ],
+    "unavailable": 0
+  },
+  "complete": true,
+  "decision_records": 668,
+  "duration_seconds": 77.9000015258789,
+  "final_tick": 779,
+  "founders": true,
+  "initial_tick": 0,
+  "learned_fallbacks": 0,
+  "limitations": [
+    "Single battle; no superiority claim or independent-sample inference from ticks.",
+    "PyTorch weights are frozen. Campaign habit and memory adaptation is rule-based.",
+    "Initial setup and per-decision controller are recorded; interactive edits can prevent exact replay."
+  ],
+  "max_recorded_step_wall_ms": 0.8731099999999999,
+  "mean_recorded_step_wall_ms": 0.2559286765083441,
+  "opportunity_attempts": 0,
+  "opportunity_completions": 0,
+  "recorded_steps": 779,
+  "result": "Blue wins",
+  "schema_version": 1,
+  "seed": 46,
+  "simulation_version": "0.5.0",
+  "step_timing_scope": "Simulation and observation capture; excludes trace disk writes, rendering and model-specific timing.",
+  "survivors": [
+    0,
+    2
+  ]
+}

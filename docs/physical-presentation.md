@@ -80,6 +80,6 @@ physics tests exercise actual gravity, terrain contact, joint connectivity,
 pause and skin-pose writeback. Runtime captures and player testing are still
 required to assess the result.
 
-The [young king opening](young-king-opening.md) is the next campaign direction;
-its solo/two-person progression and adolescent assets are not delivered by this
-presentation pass.
+The subsequent [young king opening](young-king-opening.md) adds playable solo,
+duo and trio chapters and a stylized adolescent profile on these same rigs.
+It preserves the boundary between story transitions and real combat receipts.

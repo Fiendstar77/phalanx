@@ -174,6 +174,7 @@ fn appearance_is_backward_compatible_persistent_and_cannot_change_combat() {
     assert_eq!(restored.teams[0].fighters[0].appearance.hair, 0);
     assert!(restored.teams[0].fighters[0].psyche.is_blank());
     restored.teams[0].fighters[0].appearance = Appearance {
+        age_years: 24,
         female: Some(true),
         hair: 6,
         face: 16,

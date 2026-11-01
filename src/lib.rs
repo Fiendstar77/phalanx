@@ -23,6 +23,7 @@ pub mod perception;
 pub mod pressure;
 pub mod procedural;
 pub mod progression;
+pub mod prologue;
 pub mod psyche;
 pub mod rivals;
 pub mod skills;
@@ -825,7 +826,7 @@ impl Battle {
         founders: bool,
         size: usize,
     ) -> Self {
-        assert!((3..=4).contains(&size));
+        assert!((1..=4).contains(&size));
         let team_size = if founders { size } else { arena.team_size() };
         let units = (0..2 * team_size)
             .map(|id| {

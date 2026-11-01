@@ -46,8 +46,10 @@ pub struct History {
     pub prosthetics: u8,
 }
 /// Cosmetic choices only. Defaults keep older local saves readable.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Appearance {
+    #[serde(default = "adult_age")]
+    pub age_years: u8,
     pub female: Option<bool>,
     pub hair: u8,
     pub face: u8,
@@ -63,6 +65,26 @@ pub struct Appearance {
     pub mouth: u8,
     #[serde(default)]
     pub brows: u8,
+}
+fn adult_age() -> u8 {
+    24
+}
+impl Default for Appearance {
+    fn default() -> Self {
+        Self {
+            age_years: adult_age(),
+            female: None,
+            hair: 0,
+            face: 0,
+            eyes: 0,
+            nose: 0,
+            skin: 0,
+            hair_color: 0,
+            cheeks: 0,
+            mouth: 0,
+            brows: 0,
+        }
+    }
 }
 impl Appearance {
     /// Saved zeros mean this fighter was never customized. Painting uses a stable look.
@@ -82,6 +104,7 @@ impl Appearance {
             return self;
         }
         Self {
+            age_years: self.age_years,
             female: None,
             hair: 1 + ((slot + team * 3) % 6) as u8,
             face: 1 + ((slot * 3 + team * 5) % 16) as u8,
@@ -191,6 +214,13 @@ pub struct Phalanx {
 impl Phalanx {
     /// Validate one independently owned roster using its source battle sequence.
     pub fn validate(&self, next_battle_id: u64) -> Result<(), String> {
+        self.validate_roster(next_battle_id, 3)
+    }
+    pub(crate) fn validate_roster(
+        &self,
+        next_battle_id: u64,
+        minimum: usize,
+    ) -> Result<(), String> {
         if next_battle_id > 1_000_000 {
             return Err("invalid source battle sequence".into());
         }
@@ -205,7 +235,7 @@ impl Phalanx {
             || !valid_name(&team.name)
             || team.salvage > 1_000_000
             || team.gold > 1_000_000
-            || !(3..=4).contains(&team.fighters.len())
+            || !(minimum..=4).contains(&team.fighters.len())
             || team
                 .color
                 .iter()
@@ -264,6 +294,7 @@ impl Phalanx {
                     != f.wounds.len()
                 || f.lost_limbs > 15
                 || f.prosthetics & !f.lost_limbs != 0
+                || !(16..=100).contains(&f.appearance.age_years)
                 || f.appearance.hair > 10
                 || f.appearance.face > 16
                 || f.appearance.eyes > 15
@@ -334,7 +365,7 @@ impl BattleReport {
             && self.gold.iter().all(|g| *g <= 1000)
             && self.salvage.iter().all(|s| *s <= 10)
             && self.fighters.iter().all(|team| {
-                (3..=4).contains(&team.len())
+                (1..=4).contains(&team.len())
                     && team.iter().all(|f| {
                         !f.name.is_empty()
                             && f.name.chars().count() <= 64
@@ -372,6 +403,8 @@ impl BattleReport {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Campaign {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prologue: Option<crate::prologue::Progress>,
     #[serde(default)]
     pub origin: Option<crate::genesis::Origin>,
     #[serde(default = "legacy_founders_prepared")]
@@ -405,6 +438,7 @@ impl Campaign {
             .unwrap_or_default()
             .as_nanos();
         let mut campaign = Self {
+            prologue: None,
             origin: None,
             founders_prepared: false,
             tutorial: Default::default(),
@@ -527,6 +561,9 @@ impl Campaign {
         Ok(())
     }
     pub fn validate(&self) -> Result<(), String> {
+        if let Some(progress) = &self.prologue {
+            progress.validate(self)?;
+        }
         if self.origin.as_ref().is_some_and(|o| !o.valid()) {
             return Err("Invalid founder seed record".into());
         }
@@ -535,6 +572,7 @@ impl Campaign {
         }
         if self.last_report.as_ref().is_some_and(|r| {
             !r.valid()
+                || (self.prologue.is_none() && r.fighters[0].len() < 3)
                 || r.battle_id >= self.next_battle_id
                 || Some(r.battle_id) != self.last_settled_id
         }) {
@@ -552,14 +590,30 @@ impl Campaign {
             return Err("too many reserve rivals".into());
         }
         let mut ids = BTreeSet::new();
-        for team in self.teams.iter().chain(self.rivals.iter()) {
-            team.validate(self.next_battle_id)?;
-            if team.fighters.len() != self.teams[0].fighters.len() {
+        for (index, team) in self.teams.iter().chain(self.rivals.iter()).enumerate() {
+            let opening = self.prologue_active();
+            team.validate_roster(
+                self.next_battle_id,
+                if opening && index < 2 { 1 } else { 3 },
+            )?;
+            let expected = if opening && index >= 2 {
+                3
+            } else {
+                self.teams[0].fighters.len()
+            };
+            if team.fighters.len() != expected {
                 return Err("squad sizes must match".into());
             }
             for fighter in &team.fighters {
                 if !ids.insert(&fighter.fighter_id) {
                     return Err("duplicate persistent fighter identity".into());
+                }
+            }
+        }
+        if let Some(progress) = &self.prologue {
+            for fighter in progress.waiting.iter().flatten() {
+                if !ids.insert(&fighter.fighter_id) {
+                    return Err("duplicate companion identity".into());
                 }
             }
         }
@@ -572,6 +626,7 @@ impl Campaign {
         controller: Controller,
     ) -> Result<(u64, Battle), String> {
         self.validate()?;
+        let arena = self.prologue_arena().unwrap_or(arena);
         if self.next_battle_id >= 1_000_000 {
             return Err("battle sequence exhausted".into());
         }
@@ -597,6 +652,7 @@ impl Campaign {
             );
         }
         let size = b.team_size();
+        let opening = self.prologue_active();
         for u in &mut b.units {
             let f = &mut self.teams[u.team].fighters[u.id % size];
             u.command_title = Some(f.title);
@@ -611,7 +667,7 @@ impl Campaign {
             u.equipment = f.equipment;
             u.mastery = f.mastery;
             u.skills = f.skills;
-            u.carries_standard = u.id % size == self.teams[u.team].standard_bearer;
+            u.carries_standard = !opening && u.id % size == self.teams[u.team].standard_bearer;
             u.role = u.trained_role();
             u.ammunition = u.projectile_weapon().map(|w| w.ammunition()).unwrap_or(0);
             u.psyche = f.psyche;
@@ -626,6 +682,11 @@ impl Campaign {
             u.theus = Some(crate::theus::Actor::new(sheet));
             u.ninja = Some(Default::default());
             u.health = u.max_health();
+        }
+        if let Some(progress) = &self.prologue
+            && progress.active()
+        {
+            b.pressure_note = progress.briefing();
         }
         Ok((id, b))
     }
@@ -720,6 +781,9 @@ impl Campaign {
     /// First league milestone. Local opponent expands equally; no paid combat advantage.
     pub fn unlock_fourth(&mut self) -> Result<(), String> {
         self.validate()?;
+        if self.prologue_active() {
+            return Err("Meet your companions and finish the opening before recruiting.".into());
+        }
         if self.teams[0].fighters.len() != 3 {
             return Err("League 4 is already unlocked".into());
         }
@@ -772,6 +836,9 @@ impl Campaign {
         title: CommandTitle,
     ) -> Result<(), String> {
         self.validate()?;
+        if self.prologue_active() {
+            return Err("Offices are earned at the end of the opening.".into());
+        }
         let squad = self.teams.get_mut(team).ok_or("invalid squad")?;
         let old = squad.fighters.get(slot).ok_or("invalid fighter")?.title;
         if old == title {
@@ -848,6 +915,9 @@ impl Campaign {
         updated.capture_minds(b)?;
         updated.founders_prepared = true;
         let winner = b.winner();
+        if let Some(progress) = &mut updated.prologue {
+            progress.record(id, b);
+        }
         updated
             .tutorial
             .record(self.teams[1].rival_style, winner == Some(0));
@@ -1021,6 +1091,9 @@ impl Campaign {
     }
     pub fn select_rival(&mut self, index: usize) -> Result<(), String> {
         self.validate()?;
+        if self.prologue_active() {
+            return Err("Complete the opening before choosing rival phalanxes.".into());
+        }
         crate::rivals::initialize(self);
         let rival = self.rivals.get_mut(index).ok_or("invalid rival")?;
         std::mem::swap(&mut self.teams[1], rival);

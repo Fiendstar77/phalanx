@@ -47,6 +47,8 @@ struct Crafted {
 }
 #[derive(Component)]
 struct Garment {
+    source: Handle<Mesh>,
+    adolescent: Option<bool>,
     equipment: Equipment,
     id: usize,
     layer: u8,
@@ -408,6 +410,7 @@ pub(super) fn ready(
                     .collect::<Vec<_>>();
                 garment.insert_indices(Indices::U32(selected.clone()));
                 garment.remove_attribute(Mesh::ATTRIBUTE_COLOR);
+                let source = meshes.add(garment.clone());
                 let material = materials.add(StandardMaterial {
                     perceptual_roughness: 0.85,
                     ..default()
@@ -415,6 +418,8 @@ pub(super) fn ready(
                 commands.entity(entity).with_children(|p| {
                     p.spawn((
                         Garment {
+                            source: source.clone(),
+                            adolescent: None,
                             equipment: Equipment::default(),
                             id: model.id,
                             layer,
@@ -796,6 +801,19 @@ fn update(
             continue;
         };
         let class = unit.class.unwrap_or(Class::Warrior);
+        let young = adolescent(&session, garment.id);
+        if garment.adolescent != Some(young) {
+            if let Some(mut restored) = meshes.get(&garment.source).cloned() {
+                if young {
+                    adolescent_mesh(&mut restored);
+                }
+                if let Some(mut target) = meshes.get_mut(&mesh.0) {
+                    *target = restored;
+                }
+            }
+            garment.mask = u8::MAX;
+            garment.adolescent = Some(young);
+        }
         let c = session.team_color(unit.team).to_srgba();
         let color = [c.red, c.green, c.blue];
         if garment.class != Some(class)

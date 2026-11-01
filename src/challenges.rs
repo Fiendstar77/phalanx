@@ -138,6 +138,7 @@ impl Challenge {
     pub fn start(&self) -> Result<(Campaign, Battle), String> {
         self.validate()?;
         let mut campaign = Campaign {
+            prologue: None,
             origin: None,
             founders_prepared: true,
             tutorial: Default::default(),

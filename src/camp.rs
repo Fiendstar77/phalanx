@@ -3,6 +3,7 @@ use super::*;
 use phalanx::equipment::Gear;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Page {
+    Prologue,
     Report,
     Workshop,
     Skills,
@@ -18,6 +19,7 @@ struct Panel(Page);
 struct CampScroll(Page);
 #[derive(Component)]
 enum Label {
+    Prologue,
     Report,
     Fighter,
     Heraldry,
@@ -53,7 +55,13 @@ fn label(p: &mut ChildSpawnerCommands, kind: Label, size: f32) {
     ));
 }
 fn setup_camp(mut commands: Commands) {
-    for page in [Page::Report, Page::Training, Page::Rivals, Page::Challenges] {
+    for page in [
+        Page::Prologue,
+        Page::Report,
+        Page::Training,
+        Page::Rivals,
+        Page::Challenges,
+    ] {
         commands.spawn((Panel(page), GlobalZIndex(105), Interaction::default(), Node {
             position_type: PositionType::Absolute, width: percent(100), height: percent(100),
             align_items: AlignItems::Center, justify_content: JustifyContent::Center, display: Display::None, ..default()
@@ -61,9 +69,10 @@ fn setup_camp(mut commands: Commands) {
         .with_children(|root| {
             root.spawn((Node { width: px(1180), max_width: vw(94), height: vh(92), padding: UiRect::all(px(24)), flex_direction: FlexDirection::Column, row_gap: px(12), ..default() }, BackgroundColor(Color::srgb(0.035, 0.055, 0.075))))
             .with_children(|p| {
-                p.spawn((Text::new(if page == Page::Report { "BRING THEM HOME | BATTLE REPORT" } else if page == Page::Rivals { "THE RIVAL PHALANXES" } else if page == Page::Challenges { "PHALANX EXCHANGE | SNAPSHOT CHALLENGES" } else { "SQUAD WORKSHOP" }), font(28.), TextColor(Color::srgb(1.,0.72,0.08))));
+                p.spawn((Text::new(if page == Page::Prologue { "BEFORE THE CROWN | YOUR STORY" } else if page == Page::Report { "BRING THEM HOME | BATTLE REPORT" } else if page == Page::Rivals { "THE RIVAL PHALANXES" } else if page == Page::Challenges { "PHALANX EXCHANGE | SNAPSHOT CHALLENGES" } else { "SQUAD WORKSHOP" }), font(28.), TextColor(Color::srgb(1.,0.72,0.08))));
                 p.spawn(Node { flex_wrap: FlexWrap::Wrap, ..default() }).with_children(|row| {
-                    button(row, "Next tutorial / rematch", Control::NextTutorial);
+                    button(row, "Opening chapters", Control::Camp(Page::Prologue));
+                    button(row, "Next chapter / tutorial", Control::NextTutorial);
                     button(row, "Battle report", Control::Camp(Page::Report));
                     button(row, "Character", Control::Camp(Page::Workshop));
                     button(row, "Skills", Control::Camp(Page::Skills));
@@ -71,13 +80,19 @@ fn setup_camp(mut commands: Commands) {
                     button(row, "Training & titles", Control::Camp(Page::Training));
                     button(row, "Rival phalanxes", Control::Camp(Page::Rivals));
                     button(row, "Snapshot challenges", Control::Camp(Page::Challenges));
+                    button(row, "Recruit / slot 4: 250 gold", Control::Recruit);
                     button(row, "Return to arena", Control::Continue);
                     button(row, "Main menu", Control::Menu);
                 });
                 p.spawn((CampScroll(page), ScrollPosition::default(), Node {
                     flex_grow: 1., min_height: px(0), overflow: Overflow::scroll_y(), flex_direction: FlexDirection::Column, row_gap: px(12), ..default()
                 })).with_children(|body| {
-                    if page == Page::Report {
+                    if page == Page::Prologue {
+                        label(body, Label::Prologue, 23.);
+                        button(body,"Play this chapter",Control::Continue);
+                        button(body,"Next meeting / retry after battle",Control::PrologueNext);
+                        button(body,"Name and prepare your fighter",Control::Camp(Page::Workshop));
+                    } else if page == Page::Report {
                         label(body, Label::Report, 17.);
                     } else if page == Page::Challenges {
                         label(body, Label::Exchange, 16.);
@@ -162,8 +177,8 @@ pub(crate) fn prepared(session: &Session, id: usize) -> phalanx::Unit {
             .unwrap_or_else(|| phalanx::theus_combat::sheet(&unit)),
     ));
     unit.skills = fighter.skills;
-    unit.carries_standard =
-        id % session.battle.team_size() == session.campaign.teams[unit.team].standard_bearer;
+    unit.carries_standard = !session.campaign.prologue_active()
+        && id % session.battle.team_size() == session.campaign.teams[unit.team].standard_bearer;
     unit.class = Some(fighter.class);
     unit.experience = fighter.experience;
     unit.lost_limbs = fighter.lost_limbs;
@@ -227,6 +242,20 @@ fn report(session: &Session) -> String {
         r.arena.name(),
         r.seed
     );
+    if let Some(p) = session.campaign.prologue.as_ref().filter(|p| p.active()) {
+        text.insert_str(
+            0,
+            &format!(
+                "{}\n{}\n\n",
+                p.title(),
+                if p.cleared() {
+                    "Victory witnessed. Open Opening chapters, then Next meeting."
+                } else {
+                    "This chapter is still open. Prepare your fighter, then retry."
+                }
+            ),
+        );
+    }
     text.push_str("YOUR PHALANX IS CHANGING\nWhat this battle taught your fighters; these changes carry into the next battle.\n\n");
     for fighter in &r.fighters[0] {
         if let Some(learning) = &fighter.learning {
@@ -347,6 +376,14 @@ fn refresh(
     }
     for (kind, mut text) in &mut texts {
         let value = match kind {
+            Label::Prologue => session.campaign.prologue.as_ref().map_or_else(|| "Choose New Game to start Before the crown. Established campaigns keep their earned history.".into(), |p| {
+                let mut text = p.briefing();
+                text.push_str("\n\nYOUR PEOPLE\n");
+                for f in &session.campaign.teams[0].fighters { text.push_str(&format!("{} | age {} | {} battles | {} practice XP\n",f.name,f.appearance.age_years,f.battles,f.experience)); }
+                if p.cleared() { text.push_str("\nChapter won. Next meeting is ready.\n"); }
+                for v in &p.victories { text.push_str(&format!("\nChapter {} witnessed victory: battle {}, seed {}, tick {}.",v.chapter+1,v.battle_id+1,v.seed,v.tick)); }
+                text
+            }),
             Label::Exchange => exchange::summary(&session),
             Label::ExchangeFile(index) => session
                 .exchange

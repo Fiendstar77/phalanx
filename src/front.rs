@@ -12,7 +12,28 @@ struct CampaignOptions;
 impl Plugin for FrontEnd {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup_menu.after(setup))
-            .add_systems(Update, (menu, quit, scroll_menu).after(controls));
+            .add_systems(Update, (menu, quit, scroll_menu).after(controls))
+            .add_systems(PostUpdate, opening_controls);
+    }
+}
+fn opening_controls(session: Res<Session>, mut nodes: Query<(&Control, &mut Node)>) {
+    for (control, mut node) in &mut nodes {
+        if matches!(
+            control,
+            Control::Camp(camp::Page::Training | camp::Page::Rivals | camp::Page::Challenges)
+                | Control::Title(_)
+                | Control::Ladder
+                | Control::Setup
+                | Control::GenerateArena
+                | Control::Arena
+                | Control::ChooseRival(_)
+        ) {
+            node.display = if session.campaign.prologue_active() {
+                Display::None
+            } else {
+                Display::Flex
+            };
+        }
     }
 }
 fn setup_menu(mut commands: Commands) {
@@ -28,9 +49,11 @@ fn setup_menu(mut commands: Commands) {
                     p.spawn((Text::new("A game by Guillaume Heinerth"),font(13.0),TextColor(Color::srgb(0.65,0.75,0.80))));
                     p.spawn((Text::new("Build their minds. Watch them fight. Bring them home."),font(16.0)));
                     p.spawn((MenuSummary,Text::new(""),font(15.0),TextColor(Color::srgb(0.65,0.82,0.84))));
-                    button(p,"New Game",Control::NewGame);
+                    button(p,"New Game / Before the crown",Control::NewGame);
+                    button(p,"Classic three-founder start",Control::LegacyNewGame);
                     button(p,"Load Game",Control::Load);
                     button(p,"Continue",Control::Continue);
+                    button(p,"Opening chapters / meet your companions",Control::Camp(camp::Page::Prologue));
                     p.spawn((CampaignOptions,Node {flex_direction:FlexDirection::Column,row_gap:px(6),..default()})).with_children(|p| {
                     button(p,"Begin / continue NPC tutorials",Control::NextTutorial);
                     button(p,"Tutorial teams & tactical lessons",Control::Camp(camp::Page::Rivals));
@@ -82,7 +105,9 @@ fn menu(
     mut summaries: Query<&mut Text, With<MenuSummary>>,
 ) {
     for mut node in &mut options {
-        node.display = if session.campaign.founders_prepared || !session.battle.founders {
+        node.display = if !session.campaign.prologue_active()
+            && (session.campaign.founders_prepared || !session.battle.founders)
+        {
             Display::Flex
         } else {
             Display::None
@@ -101,7 +126,16 @@ fn menu(
     }
     for mut text in &mut summaries {
         let team = &session.campaign.teams[0];
-        let content = if !session.campaign.founders_prepared && session.battle.founders {
+        let content = if let Some(p) = session.campaign.prologue.as_ref().filter(|p| p.active()) {
+            format!(
+                "{}\n{} | {} companions | {} gold\n{}",
+                p.title(),
+                team.fighters[0].name,
+                team.fighters.len() - 1,
+                team.gold,
+                session.save_notice
+            )
+        } else if !session.campaign.founders_prepared && session.battle.founders {
             format!(
                 "Start a new phalanx, load a saved game, or continue creating your founders.\n{}",
                 session.save_notice
@@ -137,6 +171,7 @@ fn install_campaign(
 ) -> Result<(), String> {
     let arena = phalanx::pressure::generate(&campaign.teams, seed);
     let (id, battle) = campaign.begin_battle(seed, arena, controller)?;
+    let arena = battle.arena;
     session.campaign = campaign;
     session.battle = battle;
     session.active_battle_id = Some(id);
@@ -168,9 +203,25 @@ fn install_campaign(
     session.logged_disagreements = 0;
     session.run_id += 1;
     session.refresh_preview();
+    if session.campaign.prologue_active() {
+        session.zoom = 13.;
+        session.camera_follow = true;
+        session.map_briefing = false;
+    }
     Ok(())
 }
 pub(super) fn new_game(session: &mut Session) {
+    match install_campaign(session, Campaign::new_prologue(), 42, Controller::Utility) {
+        Ok(()) => {
+            session.camp_page = Some(camp::Page::Prologue);
+            session.save_notice =
+                "Your story starts with one person. Play the chapter to earn the next meeting."
+                    .into();
+        }
+        Err(e) => session.save_notice = format!("New game failed: {e}"),
+    }
+}
+pub(super) fn legacy_new_game(session: &mut Session) {
     match install_campaign(session, Campaign::new(), 42, Controller::Utility) {
         Ok(()) => {
             session.founding.open = true;
@@ -179,6 +230,55 @@ pub(super) fn new_game(session: &mut Session) {
                     .into();
         }
         Err(e) => session.save_notice = format!("New game failed: {e}"),
+    }
+}
+pub(super) fn next_prologue(session: &mut Session) {
+    if !session.campaign.prologue_active() {
+        session.camp_page = Some(camp::Page::Rivals);
+        session.menu = true;
+        return;
+    }
+    if session.battle.tick > 0 && !session.battle.finished {
+        session.save_notice = "Finish the current chapter encounter before advancing.".into();
+        return;
+    }
+    if session.battle.finished
+        || session
+            .campaign
+            .prologue
+            .as_ref()
+            .is_some_and(|p| p.cleared())
+    {
+        match session.campaign.advance_prologue() {
+            Ok(message) => session.save_notice = message,
+            Err(error) => {
+                session.save_notice = error;
+                return;
+            }
+        }
+        let seed = session.battle.seed.wrapping_add(1);
+        session.restart_founders(seed, Arena::OpenField, session.battle.controller);
+        session.previous_positions = session.battle.units.iter().map(|u| u.position).collect();
+        session.selected = 0;
+        session.accumulator = 0.;
+        session.run_id += 1;
+        session.refresh_preview();
+        session.zoom = if session.campaign.prologue_active() {
+            13. + 4. * session.campaign.prologue.as_ref().unwrap().chapter as f32
+        } else {
+            frame_zoom(session.battle.arena)
+        };
+    }
+    session.menu = true;
+    session.camp_page = Some(if session.campaign.prologue_active() {
+        camp::Page::Prologue
+    } else {
+        camp::Page::Rivals
+    });
+    session.running = false;
+    session.map_briefing = false;
+    if session.autosave {
+        session.save_campaign();
     }
 }
 pub(super) fn load_game(session: &mut Session) -> bool {
@@ -198,7 +298,10 @@ pub(super) fn load_game(session: &mut Session) -> bool {
         Ok(()) => {
             session.autosave = true;
             session.founding.open = !session.campaign.founders_prepared;
-            session.menu = session.founding.open;
+            session.menu = session.founding.open || session.campaign.prologue_active();
+            if session.campaign.prologue_active() {
+                session.camp_page = Some(camp::Page::Prologue);
+            }
             session.save_notice =
                 "Loaded your saved phalanx and campaign progress. Ready for battle.".into();
             true
@@ -293,13 +396,97 @@ mod tests {
         app.world_mut().despawn(entity);
     }
     #[test]
-    fn new_game_preserves_the_old_save_until_new_founders_are_accepted() {
+    fn new_game_opens_one_adolescent_and_saves_story_progress_without_rebuilding_the_roster() {
+        let (mut app, directory) = fixture();
+        let path = directory.join("campaign.json");
+        let previous = std::fs::read(&path).unwrap();
+        click(&mut app, Control::NewGame);
+        let s = app.world().resource::<Session>();
+        assert_eq!(s.battle.units.len(), 2);
+        assert_eq!(s.camp_page, Some(camp::Page::Prologue));
+        assert!(!s.founding.open && !s.running);
+        assert_eq!(s.campaign.teams[0].fighters[0].appearance.age_years, 16);
+        assert_eq!(s.campaign.teams[0].fighters[0].title, CommandTitle::Member);
+        assert_eq!(std::fs::read(&path).unwrap(), previous);
+        let identity = s.campaign.teams[0].fighters[0].fighter_id.clone();
+        click(&mut app, Control::StandardBearer);
+        assert!(
+            app.world()
+                .resource::<Session>()
+                .battle
+                .units
+                .iter()
+                .all(|u| !u.carries_standard)
+        );
+        click(&mut app, Control::PrologueNext);
+        click(&mut app, Control::Continue);
+        assert!(!app.world().resource::<Session>().menu);
+        assert_eq!(
+            Campaign::load(&path).unwrap().teams[0].fighters[0].fighter_id,
+            identity
+        );
+        click(&mut app, Control::Load);
+        let s = app.world().resource::<Session>();
+        assert_eq!(s.battle.team_size(), 1);
+        assert_eq!(s.camp_page, Some(camp::Page::Prologue));
+        assert_eq!(s.campaign.teams[0].fighters[0].fighter_id, identity);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+    #[test]
+    fn chapter_buttons_expand_live_snapshots_and_unlock_the_existing_tutorials() {
+        let (mut app, directory) = fixture();
+        click(&mut app, Control::NewGame);
+        let identity = app.world().resource::<Session>().campaign.teams[0].fighters[0]
+            .fighter_id
+            .clone();
+        for _ in 0..24 {
+            {
+                let mut session = app.world_mut().resource_mut::<Session>();
+                while !session.battle.finished {
+                    session.battle.step();
+                }
+                session.settle_finished();
+                assert_eq!(session.camp_page, Some(camp::Page::Report));
+                assert!(session.rewarded);
+            }
+            click(&mut app, Control::PrologueNext);
+            let session = app.world().resource::<Session>();
+            assert_eq!(session.previous_positions.len(), session.battle.units.len());
+            assert_eq!(session.selected, 0);
+            assert_eq!(session.campaign.teams[0].fighters[0].fighter_id, identity);
+            assert_eq!(
+                session.battle.team_size(),
+                session.campaign.teams[0].fighters.len()
+            );
+            if !session.campaign.prologue_active() {
+                break;
+            }
+        }
+        assert!(!app.world().resource::<Session>().campaign.prologue_active());
+        assert_eq!(app.world().resource::<Session>().battle.team_size(), 3);
+        click(&mut app, Control::NextTutorial);
+        assert_eq!(
+            app.world().resource::<Session>().campaign.teams[1].rival_style,
+            Some(phalanx::rivals::RivalStyle::Bloodhound)
+        );
+        assert_eq!(
+            app.world()
+                .resource::<Session>()
+                .campaign
+                .tutorial
+                .completed(),
+            0
+        );
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+    #[test]
+    fn classic_new_game_preserves_the_old_save_until_new_founders_are_accepted() {
         let (mut app, directory) = fixture();
         let path = directory.join("campaign.json");
         let original = std::fs::read(&path).unwrap();
         app.world_mut().resource_mut::<Session>().selected = 7;
         app.world_mut().resource_mut::<Session>().battle.step();
-        click(&mut app, Control::NewGame);
+        click(&mut app, Control::LegacyNewGame);
         let session = app.world().resource::<Session>();
         assert!(session.menu && session.founding.open && !session.running);
         assert_eq!(session.founding.stage, 0);
@@ -331,7 +518,7 @@ mod tests {
         let (mut app, directory) = fixture();
         let path = directory.join("campaign.json");
         let bytes = std::fs::read(&path).unwrap();
-        click(&mut app, Control::NewGame);
+        click(&mut app, Control::LegacyNewGame);
         click(&mut app, Control::FoundingStep);
         click(&mut app, Control::FounderLook(0, 2));
         let edited = app.world().resource::<Session>().founding.cards[0].appearance;

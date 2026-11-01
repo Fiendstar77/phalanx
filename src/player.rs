@@ -427,10 +427,12 @@ fn update(
         }
     }
     let own = &session.campaign.teams[0];
-    let recruitment = if count == 3 {
+    let recruitment = if session.campaign.prologue_active() {
+        "Queen and general join through the opening chapters; later slots use earned gold.".into()
+    } else if count == 3 {
         let price = phalanx::progression::slot_cost(4).unwrap_or(0);
         format!(
-            "Next recruit: {} / {price} gold | Buy slot 4 in the menu",
+            "Next recruit: {} / {price} gold | Workshop > Recruit",
             own.gold
         )
     } else {
@@ -443,13 +445,22 @@ fn update(
         .iter()
         .find(|l| Some(l.rival) == session.campaign.teams[1].rival_style);
     let lesson_name = lesson.map(|l| l.title).unwrap_or("Free sparring");
-    let notice = format!(
-        "Trial {} / 5 · {}\n{} · {} salvage",
-        session.campaign.tutorial.completed(),
-        lesson_name,
-        recruitment,
-        own.salvage
-    );
+    let notice = if let Some(p) = session.campaign.prologue.as_ref().filter(|p| p.active()) {
+        format!(
+            "{} · Chapter {} / 3\n{}",
+            p.title(),
+            p.chapter + 1,
+            recruitment
+        )
+    } else {
+        format!(
+            "Trial {} / 5 · {}\n{} · {} salvage",
+            session.campaign.tutorial.completed(),
+            lesson_name,
+            recruitment,
+            own.salvage
+        )
+    };
     for mut t in &mut text.p3() {
         if t.0 != notice {
             t.0 = notice.clone();

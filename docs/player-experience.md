@@ -1,8 +1,16 @@
 # The opening campaign
 
-The main menu starts with **New Game**, **Load Game** and **Continue**. New Game opens a fresh three-founder creator; the previous save stays available until the new founders are accepted. **Back to main menu** or **Escape** leaves the draft available through Continue. Load Game restores saved fighters, equipment, appearances and campaign progress at battle preparation; the current save format does not resume an unfinished fight mid-action. Opening the game or an unaccepted creator does not overwrite the save. **Save Game** is available for established squads, and replacement saves retain the existing automatic backup.
+**Default New Game now uses [Before the crown](young-king-opening.md):** a solo
+16-year-old, then the future queen, then the general, with actual chapter
+victories and saved progress. The creator and recording below describe the
+**Classic three-founder start**. The five NPC teams remain sequential opponents
+after the opening. Recruitment is on Character/Workshop and report screens:
+**Recruit / slot 4: 250 gold**, after completing the story opening.
 
-Fresh campaigns begin by naming the phalanx and choosing the classes of its three founders. King, Queen and General remain command titles; each can start in any of the ten classes. Type the team name, choose each fighter's class and confirm to enter the first trial, paused at normal speed. The class stage also allocates Theus attributes with a shared point budget. Initial class choices are free once; later retraining costs 10 gold. Existing saves retain their established squads and skip this setup.
+
+The main menu starts with **New Game**, **Load Game** and **Continue**. Classic three-founder start opens a fresh three-founder creator; the previous save stays available until the new founders are accepted. **Back to main menu** or **Escape** leaves the draft available through Continue. Load Game restores saved fighters, equipment, appearances and campaign progress at battle preparation; the current save format does not resume an unfinished fight mid-action. Opening the game or an unaccepted creator does not overwrite the save. **Save Game** is available for established squads, and replacement saves retain the existing automatic backup.
+
+Classic campaigns begin by naming the phalanx and choosing the classes of its three founders. King, Queen and General remain command titles; each can start in any of the ten classes. Type the team name, choose each fighter's class and confirm to enter the first trial, paused at normal speed. The class stage also allocates Theus attributes with a shared point budget. Initial class choices are free once; later retraining costs 10 gold. Existing saves retain their established squads and skip this setup.
 
 For an established team, use **Begin / continue NPC tutorials** in the main menu. The opening chapter has five tactical lessons, each backed by an actual rival team. Wins clear lessons; defeats give the ordinary battle XP and resources and leave the lesson available for another attempt. Rivals retain their existing authored development, equipment and wounds. There are no fabricated victories or tutorial reward multipliers.
 
@@ -18,7 +26,7 @@ The default play view has fighter cards, health bars, clear selection, a compact
 
 Three free, persistent **battle styles** replace the whole mind: Vanguard pursues aggressively, Protector values team support, and Skirmisher takes a cautious approach. These are authored mind presets, not new trained policies. The play view’s Mind & fighter panel shows the same seven traits as Research, with plus and minus on each one. Roster cards print a short readout (A C R T / P S D). Styles cannot be changed during combat. A single trait can. Postbattle style changes prepare the next fight and preserve the completed result.
 
-Fighters still start in a three-person squad. Slot four costs **250 gold**. The existing purchase ladder continues toward twenty; playable Founders leagues currently stop at four. Card pagination is checked for twenty fighters per side, preparing the interface without claiming that 20v20 campaign combat is delivered.
+After the story opening, and in the classic route, the campaign uses a three-person squad. Slot four costs **250 gold**. The existing purchase ladder continues toward twenty; playable Founders leagues currently stop at four. Card pagination is checked for twenty fighters per side, preparing the interface without claiming that 20v20 campaign combat is delivered.
 
 ## Splatter and panic
 
@@ -28,7 +36,7 @@ Up to 12,288 droplets follow gravity and swept surface contacts. Walls, bridge s
 
 Limb loss no longer follows half/quarter-health thresholds. A living fighter at or below 65% health has a 3% deterministic severing chance on an individual cutting melee hit worth at least 4% of maximum HP. Blunt hits, projectiles, small hits and dead targets cannot cause a persistent sever. These rolls consume none of the tactical RNG stream. One fifth of seeded deaths show one extra cosmetic sever. Both sides of a cut receive flesh/muscle/bone caps; surviving caps keep the body skinning.
 
-Below 30% health, living fighters use two new authored clips: **NearDeathPanic** at rest and **WoundedStagger** while moving. Frantic glances, fear expressions and critical-health barks support the gesture. Attacks, hit reactions and deaths keep priority. These are presentation reactions to real health, not extra movement, status effects or changes to the controller's chosen action. Deaths retain their existing three variants.
+Below 30% health, living fighters use two new authored clips: **NearDeathPanic** at rest and **WoundedStagger** while moving. Frantic glances, fear expressions and critical-health barks support the gesture. Attacks, hit reactions and deaths keep priority. These are presentation reactions to real health, not extra movement, status effects or changes to the controller's chosen action. Actual deaths now hand over to jointed physical ragdolls; authored death clips remain as a fallback. See [physical presentation](physical-presentation.md).
 
 ## The late arena reveal
 

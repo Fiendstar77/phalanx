@@ -21,7 +21,12 @@ pub struct Draft {
 }
 impl Draft {
     pub fn new(c: &Campaign, open: bool) -> Self {
-        let classes = std::array::from_fn(|i| c.teams[0].fighters[i].class);
+        let classes = std::array::from_fn(|i| {
+            c.teams[0]
+                .fighters
+                .get(i)
+                .map_or(FighterClass::Warrior, |f| f.class)
+        });
         Self {
             open,
             name: String::new(),

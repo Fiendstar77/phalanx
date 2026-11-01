@@ -103,6 +103,7 @@ impl Session {
                         | "--memory-soak"
                         | "--ninja-demo"
                         | "--opportunity-demo"
+                        | "--prologue-demo"
                 )
         });
         let mut campaign = if path.exists() {
@@ -240,6 +241,10 @@ impl Session {
     fn unit_label(&self, id: usize) -> String {
         let u = &self.battle.units[id];
         if self.battle.founders {
+            if self.campaign.prologue_active() {
+                return self.campaign.teams[u.team].fighters[u.id % self.battle.team_size()]
+                    .display_name();
+            }
             format!(
                 "{} {}",
                 self.team_name(u.team),
@@ -537,6 +542,8 @@ struct DivergenceSummary;
 struct PairRow(usize);
 #[derive(Component, Clone, Copy, Debug)]
 enum Control {
+    LegacyNewGame,
+    PrologueNext,
     Menu,
     NewGame,
     CreatorMenu,
@@ -1050,6 +1057,20 @@ fn main() {
     if args.iter().any(|a| a == "--opportunity-demo") {
         session.restart_opportunity_demo(seed);
         session.running = visual_witness;
+    }
+    if args.iter().any(|a| a == "--prologue-demo") {
+        front::new_game(&mut session);
+        session.autosave = false;
+        session.save_path = "outputs/prologue-demo-save.json".into();
+        if visual_witness && !args.iter().any(|a| a == "--prologue-page-witness") {
+            session.menu = false;
+            session.camp_page = None;
+            session.running = true;
+            session.speed = 1.;
+            session.map_briefing = false;
+            session.zoom = 13.;
+            session.camera_follow = true;
+        }
     }
     std::fs::create_dir_all("outputs").expect("create log directory");
     let log_path = format!(
@@ -1763,6 +1784,8 @@ fn apply(control: Control, session: &mut Session) {
     }
     match control {
         Control::NewGame => front::new_game(session),
+        Control::LegacyNewGame => front::legacy_new_game(session),
+        Control::PrologueNext => front::next_prologue(session),
         Control::CreatorMenu => {
             session.founding.open = false;
             session.menu = true;
@@ -1848,6 +1871,10 @@ fn apply(control: Control, session: &mut Session) {
             }
         }
         Control::NextTutorial => {
+            if session.campaign.prologue_active() {
+                front::next_prologue(session);
+                return;
+            }
             if !session.battle.founders || (session.battle.tick > 0 && !session.battle.finished) {
                 session.save_notice = "Finish this battle before starting another tutorial".into();
                 return;
@@ -2025,6 +2052,10 @@ fn apply(control: Control, session: &mut Session) {
         | Control::FlagAccent
         | Control::FlagPrimary
         | Control::StandardBearer => {
+            if session.campaign.prologue_active() {
+                session.save_notice = "Your Phalanx standard is raised after the opening.".into();
+                return;
+            }
             if !session.battle.founders || (session.battle.tick > 0 && !session.battle.finished) {
                 session.save_notice =
                     "Prepare your standard before or after a Founders battle".into();
@@ -2217,6 +2248,10 @@ fn apply(control: Control, session: &mut Session) {
             session.accumulator = 0.0;
         }
         Control::NextBattle => {
+            if session.campaign.prologue_active() {
+                front::next_prologue(session);
+                return;
+            }
             if !session.battle.founders || !session.battle.finished {
                 session.save_notice = "Finish a Founders battle before advancing".into();
                 return;
@@ -2505,6 +2540,8 @@ fn controls(
                     control,
                     Control::Continue
                         | Control::NewGame
+                        | Control::LegacyNewGame
+                        | Control::PrologueNext
                         | Control::CreatorMenu
                         // The creator keeps the menu open until founders are accepted.
                         | Control::FoundingStep

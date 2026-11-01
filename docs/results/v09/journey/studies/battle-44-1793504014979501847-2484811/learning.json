@@ -1,0 +1,364 @@
+{
+  "team_names": [
+    "The Uncrowned",
+    "Road challengers"
+  ],
+  "arena": "ridge",
+  "battle_id": 2,
+  "seed": 44,
+  "winner": 0,
+  "gold": [
+    30,
+    15
+  ],
+  "salvage": [
+    10,
+    6
+  ],
+  "fighters": [
+    [
+      {
+        "learning": {
+          "fighter_id": "18e3ce662fcb0ab8-0-0",
+          "experience": [
+            90,
+            140
+          ],
+          "class_practice": [
+            90,
+            140
+          ],
+          "mind_before": {
+            "aggression": 0.65,
+            "caution": 0.8,
+            "courage": 0.6326,
+            "teamwork": 0.45,
+            "patience": 0.7508,
+            "self_preservation": 0.82,
+            "discipline": 0.65
+          },
+          "mind_after": {
+            "aggression": 0.65,
+            "caution": 0.8,
+            "courage": 0.6376,
+            "teamwork": 0.45,
+            "patience": 0.7508,
+            "self_preservation": 0.83,
+            "discipline": 0.65
+          },
+          "psyche_before": {
+            "isolation": {
+              "reaction": "Fear",
+              "intensity": 1.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.049389224
+          },
+          "psyche_after": {
+            "isolation": {
+              "reaction": "Fear",
+              "intensity": 1.0
+            },
+            "encirclement": {
+              "reaction": "Fear",
+              "intensity": 0.55
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        "title": "Member",
+        "name": "Corian",
+        "class": "Warrior",
+        "health": 0.0,
+        "max_health": 300.0,
+        "damage": 317.79657,
+        "healing": 0.0,
+        "xp": 50,
+        "new_wounds": 0,
+        "weapon_training": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "discoveries": []
+      },
+      {
+        "learning": {
+          "fighter_id": "18e3ce662fcb0ab8-0-1",
+          "experience": [
+            0,
+            55
+          ],
+          "class_practice": [
+            0,
+            55
+          ],
+          "mind_before": {
+            "aggression": 0.65,
+            "caution": 0.8,
+            "courage": 0.64320004,
+            "teamwork": 0.45,
+            "patience": 0.7964,
+            "self_preservation": 0.8,
+            "discipline": 0.65
+          },
+          "mind_after": {
+            "aggression": 0.65,
+            "caution": 0.8,
+            "courage": 0.64820004,
+            "teamwork": 0.45,
+            "patience": 0.7964,
+            "self_preservation": 0.81,
+            "discipline": 0.655
+          },
+          "psyche_before": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          },
+          "psyche_after": {
+            "isolation": {
+              "reaction": "Fear",
+              "intensity": 0.55
+            },
+            "encirclement": {
+              "reaction": "Fear",
+              "intensity": 0.033333335
+            },
+            "ally_loss": {
+              "reaction": "Fear",
+              "intensity": 0.25
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.050298885
+          }
+        },
+        "title": "Member",
+        "name": "Belian",
+        "class": "RockThrower",
+        "health": 64.7966,
+        "max_health": 300.0,
+        "damage": 256.33206,
+        "healing": 0.0,
+        "xp": 55,
+        "new_wounds": 0,
+        "weapon_training": [
+          55,
+          0,
+          0,
+          0
+        ],
+        "discoveries": []
+      }
+    ],
+    [
+      {
+        "learning": {
+          "fighter_id": "18e3ce662fcb0ab8-1-0",
+          "experience": [
+            90,
+            125
+          ],
+          "class_practice": [
+            90,
+            125
+          ],
+          "mind_before": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.655,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.66999996,
+            "discipline": 0.9
+          },
+          "mind_after": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.655,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.67999995,
+            "discipline": 0.9
+          },
+          "psyche_before": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 1.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0053000003
+          },
+          "psyche_after": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 1.0
+            },
+            "encirclement": {
+              "reaction": "Fear",
+              "intensity": 0.48333332
+            },
+            "ally_loss": {
+              "reaction": "Attachment",
+              "intensity": 0.25
+            },
+            "failed_charge": {
+              "reaction": "Hesitation",
+              "intensity": 0.55
+            },
+            "confidence": 0.0
+          }
+        },
+        "title": "Member",
+        "name": "Road duelist",
+        "class": "Warrior",
+        "health": 0.0,
+        "max_health": 300.0,
+        "damage": 302.96225,
+        "healing": 0.0,
+        "xp": 35,
+        "new_wounds": 0,
+        "weapon_training": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "discoveries": []
+      },
+      {
+        "learning": {
+          "fighter_id": "18e3ce662fcb0ab8-1-1",
+          "experience": [
+            0,
+            35
+          ],
+          "class_practice": [
+            0,
+            35
+          ],
+          "mind_before": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65,
+            "discipline": 0.9
+          },
+          "mind_after": {
+            "aggression": 0.5,
+            "caution": 0.8,
+            "courage": 0.65,
+            "teamwork": 0.9,
+            "patience": 0.8,
+            "self_preservation": 0.65999997,
+            "discipline": 0.9
+          },
+          "psyche_before": {
+            "isolation": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          },
+          "psyche_after": {
+            "isolation": {
+              "reaction": "Attachment",
+              "intensity": 0.35
+            },
+            "encirclement": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "ally_loss": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "failed_charge": {
+              "reaction": "None",
+              "intensity": 0.0
+            },
+            "confidence": 0.0
+          }
+        },
+        "title": "Member",
+        "name": "Road scout",
+        "class": "Scout",
+        "health": 0.0,
+        "max_health": 255.0,
+        "damage": 233.28505,
+        "healing": 0.0,
+        "xp": 35,
+        "new_wounds": 0,
+        "weapon_training": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "discoveries": []
+      }
+    ]
+  ]
+}

@@ -1115,6 +1115,27 @@ fn look(session: &Session, id: usize) -> phalanx::progression::Appearance {
                 .resolved(team, id % session.battle.team_size())
         })
 }
+pub(super) fn adolescent(session: &Session, id: usize) -> bool {
+    look(session, id).age_years < 18
+}
+/// Stylized late-adolescent build. Keep height, joints and hands; reduce torso
+/// bulk instead of uniformly shrinking an adult. Clothing uses the same map.
+pub(super) fn adolescent_mesh(mesh: &mut Mesh) {
+    use bevy::mesh::VertexAttributeValues;
+    if let Some(VertexAttributeValues::Float32x3(points)) =
+        mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
+    {
+        for p in points {
+            let lower = ((p[1] - 0.68) / 0.22).clamp(0., 1.);
+            let upper = ((1.35 - p[1]) / 0.15).clamp(0., 1.);
+            let central = ((0.60 - p[0].abs()) / 0.30).clamp(0., 1.);
+            let amount = lower * upper * central;
+            p[0] *= 1. - 0.12 * amount;
+            p[2] *= 1. - 0.18 * amount;
+        }
+    }
+    mesh.compute_normals();
+}
 pub(super) fn skin_color(session: &Session, id: usize) -> Color {
     let colors = [
         [1.0, 0.82, 0.69],
@@ -1674,6 +1695,33 @@ mod crown_follow {
 
 #[cfg(test)]
 mod animation_regressions {
+    #[test]
+    fn adolescent_profile_changes_bulk_without_shrinking_height_or_the_hands() {
+        use super::*;
+        use bevy::mesh::VertexAttributeValues;
+        let mut mesh = Mesh::from(Cuboid::new(0.4, 0.4, 0.3));
+        if let Some(VertexAttributeValues::Float32x3(points)) =
+            mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
+        {
+            for p in points {
+                p[1] += 1.;
+            }
+        }
+        let old = mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap().clone();
+        adolescent_mesh(&mut mesh);
+        let VertexAttributeValues::Float32x3(old) = old else {
+            panic!()
+        };
+        let Some(VertexAttributeValues::Float32x3(new)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+        else {
+            panic!()
+        };
+        for (before, after) in old.iter().zip(new) {
+            assert_eq!(before[1], after[1]);
+            assert!(after[0].abs() < before[0].abs());
+            assert!(after[2].abs() < before[2].abs());
+        }
+    }
     use super::*;
     #[test]
     fn grounded_strikes_do_not_claim_aerial_primitives() {

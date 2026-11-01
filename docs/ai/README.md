@@ -147,7 +147,11 @@ conditioned reactions change the same decision.
 
 ![Scripted post-battle UI fixture showing actual persisted changes](../results/v06/learning-screen.png)
 
-The campaign begins at 3v3 and currently supports progression to 4v4. Five NPC
+The [playable opening](../young-king-opening.md) grows one adolescent protagonist
+into a duo and then a trio through witnessed chapter victories. It exports
+ordinary decision studies and learning reports; story meetings do not claim
+relationship-driven AI. The existing campaign then begins at 3v3 and currently
+supports progression to 4v4. Five NPC
 tutorial teams are sequential opponents. Historical Lab experiments use their
 own explicitly documented 5v5/10v10 configurations.
 
