@@ -400,8 +400,9 @@ fn isolation_fear_and_recklessness_change_the_same_decision() {
             unit.mind = phalanx::Mind::aggressive();
         }
         battle.units[0].position = [-6.0, 0.0];
-        battle.units[1].position = [6.0, 3.0];
-        battle.units[2].position = [6.0, -3.0];
+        // Separated enough to trigger isolation, within the 8 m ally channel.
+        battle.units[1].position = [0.0, 3.0];
+        battle.units[2].position = [0.0, -3.0];
     }
     fear.units[0].psyche.isolation = Response {
         reaction: Reaction::Fear,

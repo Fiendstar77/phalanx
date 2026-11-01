@@ -155,6 +155,16 @@ supports progression to 4v4. Five NPC
 tutorial teams are sequential opponents. Historical Lab experiments use their
 own explicitly documented 5v5/10v10 configurations.
 
+The [solo-decision regressions](../../tests/solo_decisions.rs) cover an observed
+failure after accumulated isolation fear: both duelists reopened REGROUP despite
+having no ally, targeting their own position indefinitely. Ally-dependent
+actions are now revalidated after proposal modifiers, before both Utility and
+learned selection. Solo ally-count features normalize to zero instead of NaN.
+Tests include the final survivor of a larger team and retain legitimate fear-
+driven regrouping toward an available ally. Existing scars are preserved. The
+[v09 capture](../results/v09/README.md) predates this fix and documents its null
+solo features; passing the earlier tests did not establish that this case worked.
+
 ## Composed opportunities
 
 The new [Opportunity Composition and Legend Ledger](../opportunity-composition.md)

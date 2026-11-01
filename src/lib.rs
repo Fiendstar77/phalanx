@@ -1525,13 +1525,13 @@ impl Battle {
                         .as_ref()
                         .map(|e| e.confidence(self.tick))
                         .unwrap_or(0.0),
-                    allies.len() as f32 / (team_size - 1) as f32,
+                    allies.len() as f32 / team_size.saturating_sub(1).max(1) as f32,
                     isolation,
                     local_threat,
                     support
                         .map(|(_, urgency)| (urgency / 2.0).min(1.0))
                         .unwrap_or(0.0),
-                    engaged as f32 / (team_size - 1) as f32,
+                    engaged as f32 / team_size.saturating_sub(1).max(1) as f32,
                     f32::from(distance(unit.position, ridge) < 0.9),
                     f32::from(self.tick < 180),
                     f32::from(self.tick >= old_flank_until),
@@ -1542,6 +1542,15 @@ impl Battle {
                 ];
                 if let Some(plan) = &bow_plan {
                     unit.scores[plan.action] = unit.scores[plan.action].max(4.0);
+                }
+                // Conditioned reactions may reopen tactical preferences, but
+                // cannot create an ally or a support recipient. Revalidate
+                // after all proposal modifiers so both controllers use this mask.
+                if allies.is_empty() {
+                    unit.scores[4] = -1.0;
+                }
+                if support.is_none() {
+                    unit.scores[8] = -1.0;
                 }
                 let utility_action = unit
                     .scores

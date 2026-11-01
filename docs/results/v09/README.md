@@ -1,5 +1,14 @@
 # A witnessed opening journey
 
+**Historical limitation found afterward:** solo traces in this snapshot contain
+`null` for the `nearby_allies` and `engaged_allies` features because the old
+normalization divided by zero. Repeated losses could also reinforce isolation
+fear until a lone fighter selected REGROUP with no ally and stalled. The later
+solo-decision fix makes those features zero and revalidates ally-dependent
+actions after psychological modifiers. This archive retains its original
+receipts and source hashes; its affected solo rows must not be used as training
+data. See [the regression tests](../../../tests/solo_decisions.rs).
+
 This archive is one sequential, real Theus campaign journey from the new
 solo/duo/trio opening. It uses the authored starting people and encounters,
 normal autonomous Utility control, permanent battle-conditioned changes and
