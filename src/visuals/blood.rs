@@ -10,7 +10,7 @@ const INTENSITY: usize = 12;
 const MAX_FOUNTAINS: usize = 24;
 const BLOOD_VOLUME: usize = 12;
 const EMISSION_STEP: f32 = 0.025;
-const SIZE: usize = 2048;
+pub(super) const SIZE: usize = 4096;
 #[derive(Component)]
 pub(super) struct Particle(usize);
 #[derive(Component)]
@@ -244,7 +244,7 @@ fn setup(
         MeshMaterial3d(stain),
         Transform::default(),
     ));
-    let drop = meshes.add(Sphere::new(1.0).mesh().uv(6, 4));
+    let drop = meshes.add(Sphere::new(1.0).mesh().uv(12, 8));
     let wet = materials.add(StandardMaterial {
         base_color: Color::srgb(0.46, 0.006, 0.014),
         perceptual_roughness: 0.17,
@@ -312,14 +312,15 @@ impl Fx {
                 let dy = (y as f32 - cy) * half[1] / half[0];
                 let u = (dx * cos + dy * sin) / (r * stretch);
                 let v = (-dx * sin + dy * cos) / r;
-                let noise = ((x * 73 + y * 131) % 19) as f32 / 19.0;
                 let q = u * u + v * v;
-                if q > 0.82 + noise * 0.28 {
+                let angle = v.atan2(u);
+                let edge = 0.94 + 0.045 * (angle * 7.).sin() + 0.025 * (angle * 13.).cos();
+                let coverage = ((edge - q.sqrt()) * r.max(1.)).clamp(0., 1.);
+                if coverage <= 0. {
                     continue;
                 }
                 let i = (y as usize * SIZE + x as usize) * 4;
-                let alpha =
-                    (((1.0 - q) * 18.).clamp(0.0, 1.0) * strength * 180.0 + 20.0).min(220.0) as u8;
+                let alpha = ((strength * 180.0 + 20.0).min(220.0) * coverage) as u8;
                 let old = self.pixels[i + 3] as u32;
                 self.pixels[i] = if old > 150 { 65 } else { 96 };
                 self.pixels[i + 1] = 3;
@@ -706,9 +707,13 @@ pub(super) fn effects(
     }
     fx.upload += time.delta_secs();
     if fx.upload >= 0.1 && (fx.dirty || dt > 0.) {
-        let bytes = fx.pixels.clone();
-        if let Some(mut image) = images.get_mut(&fx.image) {
-            image.data = Some(bytes);
+        // The 4K dry canvas changes only when a droplet actually lands. Pool
+        // flow still updates independently; idle rendering must not copy 64 MiB.
+        if fx.dirty {
+            let bytes = fx.pixels.clone();
+            if let Some(mut image) = images.get_mut(&fx.image) {
+                image.data = Some(bytes);
+            }
         }
         if let Some(mut image) = images.get_mut(&fx.wet_image) {
             image.data = Some(fx.pools.texture());

@@ -1,7 +1,7 @@
 //! Presentation-only, conservative thin-film flow on a sampled height field.
 //! This does not change terrain, damage, movement or authoritative simulation RNG.
 use phalanx::terrain::Arena;
-pub(super) const SIDE: usize = 256;
+pub(super) const SIDE: usize = 384;
 pub(crate) struct Pools {
     pub height: Vec<f32>,
     volume: Vec<f32>,
@@ -90,7 +90,11 @@ impl Pools {
                     let gradient = self.height[i] + self.depth(i) - self.height[j] - self.depth(j);
                     let (from, to) = if gradient > 0. { (i, j) } else { (j, i) };
                     // Four outgoing edges can never spend more than the source contains.
-                    let flux = (gradient.abs() * self.area * dt * 6.).min(self.volume[from] * 0.20);
+                    // Conductance uses world-space cell size, so increasing the
+                    // canvas density does not slow downhill transport.
+                    let spacing = 2. * self.half[usize::from(j == i + SIDE)] / SIDE as f32;
+                    let flux = (gradient.abs() * self.area * dt * 0.06 / (spacing * spacing))
+                        .min(self.volume[from] * 0.20);
                     self.delta[from] -= flux;
                     self.delta[to] += flux;
                 }
@@ -148,7 +152,7 @@ mod tests {
         a.solid.fill(false);
         for z in 0..SIDE {
             for x in 0..SIDE {
-                a.height[z * SIDE + x] = x as f32 * 0.001;
+                a.height[z * SIDE + x] = a.position(x, z)[0] * 0.015;
             }
         }
         a.deposit([0., 0.], 0.04);
@@ -156,7 +160,7 @@ mod tests {
             p.volume
                 .iter()
                 .enumerate()
-                .map(|(i, v)| (i % SIDE) as f32 * v)
+                .map(|(i, v)| p.position(i % SIDE, i / SIDE)[0] * v)
                 .sum::<f32>()
                 / p.total()
         };
@@ -167,7 +171,11 @@ mod tests {
         for _ in 0..100 {
             a.step(0.05);
         }
-        assert!(moment(&a) < before - 1.);
+        assert!(
+            moment(&a) < before - 0.005,
+            "downhill displacement in world metres: {}",
+            before - moment(&a)
+        );
         assert!((a.total() - 0.04).abs() < 0.000_001);
     }
 }

@@ -31,6 +31,7 @@ jobs:
       - run: python -m unittest analysis.test_analysis analysis.test_bonsai analysis.test_ai_evidence
       - run: python tools/validate_character_assets.py
       - run: python tools/validate_face_assets.py
+      - run: python tools/validate_motion.py
   pytorch-smoke:
     runs-on: ubuntu-latest
     steps:

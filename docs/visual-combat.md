@@ -1,5 +1,9 @@
 # Character and veteran combat slice
 
+The latest [physical presentation pass](physical-presentation.md) adds rebaked
+grounded motion, gait timing, higher-resolution blood and jointed whole-body
+death reactions. Detached gibs retain their separate simple visual physics.
+
 ## Current models
 
 The runtime now uses the artist's new rigged male and female bases with fitted

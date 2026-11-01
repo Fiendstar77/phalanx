@@ -7,7 +7,7 @@ publish = false
 
 [features]
 default = ["graphics"]
-graphics = ["dep:bevy"]
+graphics = ["dep:bevy", "dep:avian3d"]
 
 [[bin]]
 name = "phalanx"
@@ -31,6 +31,7 @@ name = "phalanx-study"
 path = "src/study_cli.rs"
 
 [dependencies]
+avian3d = { version = "=0.7.0", optional = true, default-features = false, features = ["3d", "f32", "parry-f32", "xpbd_joints"] }
 bevy = { version = "=0.19.1", optional = true, default-features = false, features = ["3d", "ui", "bevy_audio", "wav"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }

@@ -230,6 +230,7 @@ fn demo(
     music: Res<super::super::audio::Audit>,
     stains: Res<super::stains::Stains>,
     blood: Res<super::blood::Fx>,
+    physics: Res<super::ragdoll::Audit>,
     mut state: Local<Demo>,
     mut commands: Commands,
     mut exit: MessageWriter<AppExit>,
@@ -265,6 +266,10 @@ fn demo(
             "theus_combinations":audit.combinations,"theus_defences":audit.defences,
             "animation_clips_seen":audit.clips,"theus_max_height_metres":audit.max_height,
             "theus_enabled":session.battle.units.iter().all(|u|u.theus.is_some()),
+            "ragdoll_bodies":physics.bodies,"ragdoll_joints":physics.joints,
+            "ragdoll_pose_updates":physics.pose_updates,"ragdoll_invalid_poses":physics.invalid_poses,
+            "ragdoll_max_pose_offset":physics.max_pose_offset,
+            "blood_ground_resolution":super::blood::SIZE,"pool_resolution":super::pooling::SIDE,
         });
         std::fs::write(
             "outputs/wirefu-demo/audit.json",

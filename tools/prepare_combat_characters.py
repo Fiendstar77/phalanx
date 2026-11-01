@@ -240,7 +240,9 @@ def extended_pose(rig,name,u):
    rot(rig,side+'Arm',(0,1,0),sign*.9*arc)
   rot(rig,'RightArm',(1,0,0),-1.8*hit)
  elif name in ['WallKickStrike','ShadowStep']:
-  root_offset(rig,(.8 if name=='WallKickStrike' else .12)*arc)
+  # The real vault owns height. A second visual jump would detach the skin
+  # from its physical path; only tuck/turn/landing compression belongs here.
+  root_offset(rig,-.045*arc if name=='WallKickStrike' else .12*arc)
   rot(rig,'Hips',(0,0,1),math.tau*ease(u) if name=='WallKickStrike' else .7*arc)
   rot(rig,'Spine',(1,0,0),-.35*arc)
   rot(rig,'LeftUpLeg',(1,0,0),-1.2*arc);rot(rig,'RightLeg',(1,0,0),1.5*arc)
@@ -289,16 +291,85 @@ def extended_pose(rig,name,u):
   rot(rig,'Head',(1,0,0),.2*hit);rot(rig,'LeftArm',(1,0,0),-.65*hit)
   root_offset(rig,-.055*hit)
 
+def flowing_strike(rig,name,u):
+ # Weight arrives through the pelvis, then chest, then weapon. A short strike
+ # follows a readable coil; the trailing arm and head recover a little later.
+ def track(t, knots):
+  for (a,x),(b,y) in zip(knots,knots[1:]):
+   if t<=b:return x+(y-x)*ease((t-a)/(b-a))
+  return knots[-1][1]
+ drive=track(u,[(0,0),(.16,-.28),(.31,.82),(.45,1),(.76,.12),(1,0)])
+ chest=track(u,[(0,0),(.20,-.32),(.34,1),(.52,.90),(.84,0),(1,0)])
+ blade=track(u,[(0,0),(.22,-.35),(.36,1),(.53,.65),(.90,0),(1,0)])
+ heavy=name=='AttackHeavy';quick=name=='AttackQuick';counter=name=='CounterCut'
+ strength=1.15 if heavy else (.78 if quick else 1.)
+ root_offset(rig,-.06-.045*abs(drive),.025*drive,.035*drive)
+ rot(rig,'Hips',(0,0,1),-.24*drive)
+ rot(rig,'Spine',(0,0,1),-.23*chest)
+ rot(rig,'Spine2',(0,0,1),-.42*chest*strength)
+ rot(rig,'Spine',(1,0,0),-.07*drive)
+ rot(rig,'Head',(0,0,1),.24*chest)
+ rot(rig,'RightArm',(1,0,0),-1.10*blade*strength)
+ rot(rig,'RightArm',(0,0,1),(-.72 if counter else -.48)*blade)
+ rot(rig,'RightForeArm',(1,0,0),.78*blade)
+ rot(rig,'LeftArm',(1,0,0),-.22*chest)
+ rot(rig,'LeftForeArm',(1,0,0),-.16*blade)
+ rot(rig,'LeftUpLeg',(1,0,0),-.12*drive)
+ rot(rig,'RightLeg',(1,0,0),.18*abs(drive))
+ for side in ['Left','Right']:
+  foot=rig.pose.bones['mixamorig'+side+'Foot']
+  place_foot(rig,side,foot.bone.head_local)
+
+def fk(bone):
+ basis=Matrix.LocRotScale(bone.location,bone.rotation_quaternion,bone.scale)
+ if not bone.parent:return bone.bone.matrix_local@basis
+ return fk(bone.parent)@bone.parent.bone.matrix_local.inverted()@bone.bone.matrix_local@basis
+def point_bone(bone,child,direction):
+ current=fk(bone).to_quaternion()
+ axis=bone.bone.matrix_local.to_quaternion().inverted()@(child.bone.head_local-bone.bone.head_local).normalized()
+ wanted=(current@axis).rotation_difference(direction.normalized())@current
+ parent=fk(bone.parent)@bone.parent.bone.matrix_local.inverted()@bone.bone.matrix_local
+ bone.rotation_quaternion=parent.to_quaternion().inverted()@wanted
+def place_foot(rig,side,target):
+ thigh=rig.pose.bones['mixamorig'+side+'UpLeg'];shin=rig.pose.bones['mixamorig'+side+'Leg'];foot=rig.pose.bones['mixamorig'+side+'Foot']
+ hip=fk(thigh).translation;delta=target-hip
+ a=(shin.bone.head_local-thigh.bone.head_local).length;b=(foot.bone.head_local-shin.bone.head_local).length
+ d=max(.01,min(delta.length,a+b-.0001));axis=delta.normalized()
+ bend=Vector((0,-1,0));bend=(bend-axis*bend.dot(axis)).normalized()
+ cosine=max(-1,min(1,(a*a+d*d-b*b)/(2*a*d)))
+ knee=hip+axis*(a*cosine)+bend*(a*math.sqrt(max(0,1-cosine*cosine)))
+ point_bone(thigh,shin,knee-hip);point_bone(shin,foot,target-fk(shin).translation)
+ parent=fk(foot.parent)@foot.parent.bone.matrix_local.inverted()@foot.bone.matrix_local
+ foot.rotation_quaternion=parent.to_quaternion().inverted()@foot.bone.matrix_local.to_quaternion()
+def grounded_gait(rig,name,u):
+ run=name in ['Run','SprintLow','SprintBlade'];low=name in ['SneakStep','SprintLow']
+ duty=.48 if run else .62;stride=.50 if run else .36
+ root_offset(rig,(-.14 if low else (-.12 if run else -.08))+.012*(1-math.cos(u*math.tau*2)))
+ rot(rig,'Spine',(1,0,0),-.18 if run else -.06)
+ rot(rig,'Spine2',(0,0,1),.07*math.sin(u*math.tau))
+ for index,side in enumerate(['Left','Right']):
+  phase=(u+index*.5)%1.;swing=max(0,(phase-duty)/(1-duty))
+  forward=stride*(.5-phase/duty) if phase<duty else stride*(-.5+ease(swing))
+  lift=(.18 if run else .10)*math.sin(math.pi*swing)**1.4
+  foot=rig.pose.bones['mixamorig'+side+'Foot']
+  target=foot.bone.head_local+Vector((0,-forward,lift))
+  place_foot(rig,side,target)
+  rot(rig,side+'Arm',(1,0,0),(.30 if run else .18)*math.sin(phase*math.tau))
+
 def bake(rig):
  rig.data.pose_position="POSE"
  for name,duration in CLIPS:
   action=bpy.data.actions.new(name);rig.animation_data_create();rig.animation_data.action=action
-  frames=round(duration*30)
+  frames=round(duration*60)
   for frame in range(frames+1):
    u=frame/frames;phase=u*math.tau;wave=math.sin(phase)
    for b in rig.pose.bones:b.rotation_mode='QUATERNION';b.rotation_quaternion=Quaternion();b.location=Vector()
    fighting_stance(rig)
-   if name in [n for n,_ in CLIPS[22:]]:
+   if name in ['Attack','AttackQuick','AttackHeavy','CounterCut']:
+    flowing_strike(rig,name,u)
+   elif name in ['Walk','Run','SneakStep','SprintLow','SprintBlade','GuardStrafe']:
+    grounded_gait(rig,name,u)
+   elif name in [n for n,_ in CLIPS[22:]]:
     extended_pose(rig,name,u)
    elif name in [n for n,_ in CLIPS[17:22]]:
     wire_pose(rig,name,u)
@@ -333,7 +404,7 @@ def bake(rig):
     if b.name=='mixamorigHips':b.keyframe_insert('location',frame=frame)
   rig.animation_data.action=None
   track=rig.animation_data.nla_tracks.new();track.name=name;strip=track.strips.new(name,0,action);strip.action_frame_start=0;strip.action_frame_end=frames
- bpy.context.scene.render.fps=30
+ bpy.context.scene.render.fps=60
  # Neutral authored rest state: exporter bakes each NLA track independently.
  for b in rig.pose.bones:b.rotation_quaternion=Quaternion();b.location=Vector()
  bpy.context.scene.frame_set(0)

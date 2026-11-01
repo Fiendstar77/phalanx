@@ -5,6 +5,7 @@ mod barks;
 mod blood;
 pub(super) mod organs;
 mod pooling;
+mod ragdoll;
 mod stain_patch;
 pub(super) mod stains;
 pub(super) use blood::Fx;
@@ -44,6 +45,7 @@ impl Plugin for BattleVisuals {
         equipment::install(app);
         spectacle::install(app);
         team_actions::install(app);
+        ragdoll::install(app);
         app.add_systems(Update, portrait_camera.after(super::camera_motion))
             .add_systems(
                 PostUpdate,
@@ -191,11 +193,11 @@ fn attack_clip(unit: &phalanx::Unit, ordinal: u32) -> usize {
                         41
                     }
                 }
-                T::Pincer => 36,
+                T::Pincer => 44,
                 T::WallKick => 37,
                 T::BurstStep => 38,
                 T::Counter => 44,
-                _ => [34, 35, 36, 43, 7, 44][(ordinal as usize + unit.id) % 6],
+                _ => [3, 7, 44, 8][(ordinal as usize + unit.id) % 4],
             }
         };
     }
@@ -298,6 +300,7 @@ struct Actor {
     replays: u32,
     attacks: u32,
     lost_limbs: u8,
+    gait_speed: f32,
 }
 struct Blend {
     node: AnimationNodeIndex,
@@ -356,7 +359,8 @@ pub(crate) fn load_visuals(
                 .observe(equipment::ready)
                 .observe(standards::ready)
                 .observe(archery::ready)
-                .observe(stains::ready);
+                .observe(stains::ready)
+                .observe(ragdoll::ready);
             });
         }
     }
@@ -583,12 +587,18 @@ fn animate(
             actor.receipt = None;
             actor.ninja_receipt = None;
             actor.windup_tick = 0;
+            actor.gait_speed = 0.;
         }
         let dt = if dt > 0.0 {
             dt
         } else {
             session.battle.tick.saturating_sub(actor.tick).min(4) as f32 * phalanx::DT
         };
+        if session.battle.tick > actor.tick {
+            actor.gait_speed = p.distance(actor.position)
+                / (session.battle.tick - actor.tick) as f32
+                / phalanx::DT;
+        }
         actor.lock = (actor.lock - dt).max(0.0);
         let damage = (actor.health - unit.health).max(0.0);
         let limb_loss = unit.lost_limbs & !actor.lost_limbs != 0;
@@ -684,7 +694,7 @@ fn animate(
                 phalanx::theus::Technique::MeteorRelay => 41,
                 phalanx::theus::Technique::AegisLaunch => 39,
                 phalanx::theus::Technique::Crossfire => 42,
-                _ => 36,
+                _ => 44,
             };
             if !bow && clip != desired {
                 clip = desired;
@@ -756,7 +766,61 @@ fn animate(
         } else {
             dt
         };
-        advance_clip(&mut actor, &mut player, clip, node, clip_dt, retrigger);
+        let cadence = if matches!(clip, 1 | 2 | 25..=28) && actor.id != super::rpg::PREVIEW_ID {
+            // Cycle distance is authored in model metres, including model scale.
+            (actor.gait_speed * CLIP_DURATIONS[clip]
+                / if matches!(clip, 2 | 26 | 27) {
+                    0.70
+                } else {
+                    0.50
+                })
+            .clamp(0.35, 2.2)
+        } else {
+            1.
+        };
+        advance_clip(
+            &mut actor,
+            &mut player,
+            clip,
+            node,
+            clip_dt * cadence,
+            retrigger,
+        );
+        let tick = if session.running {
+            session.battle.tick.saturating_sub(1) as f32 + session.accumulator / phalanx::DT
+        } else {
+            session.battle.tick as f32
+        };
+        let synchronized = if clip == 37 {
+            unit.ninja
+                .as_ref()
+                .and_then(|n| n.leap.as_ref())
+                .map(|leap| ((tick - leap.start as f32) / 14.).clamp(0., 1.) * CLIP_DURATIONS[clip])
+        } else if matches!(clip, 3 | 7 | 8 | 44) {
+            unit.theus
+                .as_ref()
+                .filter(|a| a.windup_target.is_some())
+                .map(|a| {
+                    ((tick - a.strike_at.saturating_sub(2) as f32) / 2.).clamp(0., 1.)
+                        * CLIP_DURATIONS[clip]
+                        * 0.34
+                })
+        } else {
+            None
+        };
+        if let Some(clock) = synchronized {
+            actor.clock = clock;
+            if let Some(animation) = player.animation_mut(node) {
+                animation.set_seek_time(clock);
+            }
+        } else if matches!(clip, 3 | 7 | 8 | 44)
+            && receipt.is_some_and(|e| e.attacker == unit.id && e.tick == actor.windup_tick)
+        {
+            actor.clock = CLIP_DURATIONS[clip] * 0.34;
+            if let Some(animation) = player.animation_mut(node) {
+                animation.set_seek_time(actor.clock);
+            }
+        }
         actor.health = unit.health;
         actor.lost_limbs = unit.lost_limbs;
         actor.cooldown = unit.cooldown;
@@ -787,13 +851,25 @@ fn advance_clip(
     retrigger: bool,
 ) {
     if clip != actor.clip || (retrigger && clip > 2 && !death_clip(clip)) {
+        let phase = if actor.clip < CLIP_NAMES.len() && loop_clip(actor.clip) && loop_clip(clip) {
+            actor.clock % CLIP_DURATIONS[actor.clip] / CLIP_DURATIONS[actor.clip]
+        } else {
+            0.
+        };
+        let duration = if matches!(clip, 5 | 11 | 12 | 20 | 50 | 51) {
+            0.055
+        } else if !loop_clip(clip) {
+            0.085
+        } else {
+            0.16
+        };
         let previous = if actor.clip != clip && actor.clip < CLIP_NAMES.len() {
             actor.node.map(|node| Blend {
                 node,
                 clip: actor.clip,
                 clock: actor.clock,
-                left: 0.14,
-                duration: 0.14,
+                left: duration,
+                duration,
             })
         } else {
             None
@@ -802,7 +878,7 @@ fn advance_clip(
             actor.replays += 1;
         }
         actor.clip = clip;
-        actor.clock = 0.0;
+        actor.clock = phase * CLIP_DURATIONS[clip];
         player.stop_all();
         if let Some(old) = &previous {
             let playing = player.play(old.node);
@@ -831,7 +907,8 @@ fn advance_clip(
     if let Some(blend) = &mut actor.blend {
         blend.left = (blend.left - dt).max(0.);
         blend.clock += dt;
-        let amount = blend.left / blend.duration;
+        let linear = blend.left / blend.duration;
+        let amount = linear * linear * (3. - 2. * linear);
         let old_time = if loop_clip(blend.clip) {
             blend.clock % CLIP_DURATIONS[blend.clip]
         } else {
@@ -1310,6 +1387,7 @@ fn witness(
     joints: Query<(Entity, &JointWitness, &Transform)>,
     fx: Res<Fx>,
     bow_audit: Res<archery::Audit>,
+    physics: Res<ragdoll::Audit>,
     mut witness: ResMut<Witness>,
     mut exit: MessageWriter<AppExit>,
     gibs: Query<&body::Gib>,
@@ -1536,7 +1614,7 @@ fn witness(
     {
         println!(
             "VISUAL_WITNESS {}",
-            serde_json::json!({"clip_names":&CLIP_NAMES[..],"clips":&witness.seen[..],"blood":witness.blood,"actors":actors.iter().count(),"finished":session.battle.finished,"seconds":witness.seconds,"bow_poses":bow_audit.poses,"bow_grip_error":bow_audit.max_grip_error,"bow_string_error":bow_audit.max_string_error,"bow_draw":bow_audit.max_draw,"arrows_blocked":session.battle.units.iter().map(|u|u.arrow_blocks).sum::<u32>(),"weapon_windup":witness.winding_seen,"shaft_projectile":witness.shaft_seen,"selected_weapon":session.battle.units[session.selected].weapon_status(),"selected_shots":session.battle.units[session.selected].weapon_shots,"selected_healing":session.battle.units[session.selected].healing_done,"particle_capacity":fx.particles.len(),"stained_pixels":fx.stained_pixels(),"detached_limbs":witness.gibs,"surviving_wounded":witness.wounded,"face_expressions":face_audit.seen,"eye_rotation":face_audit.eye_rotation,"face_morph_meshes":face_audit.meshes,"repeated_gestures":actors.iter().map(|a|a.replays).sum::<u32>(),"skeleton_motion":witness.skeleton_motion,"male_female_motion":witness.model_motion,"sound_effects":audio_audit.emitted})
+            serde_json::json!({"ragdoll_bodies":physics.bodies,"ragdoll_joints":physics.joints,"ragdoll_pose_updates":physics.pose_updates,"ragdoll_invalid_poses":physics.invalid_poses,"ragdoll_max_pose_offset":physics.max_pose_offset,"ground_blood_resolution":blood::SIZE,"pool_resolution":pooling::SIDE,"clip_names":&CLIP_NAMES[..],"clips":&witness.seen[..],"blood":witness.blood,"actors":actors.iter().count(),"finished":session.battle.finished,"seconds":witness.seconds,"bow_poses":bow_audit.poses,"bow_grip_error":bow_audit.max_grip_error,"bow_string_error":bow_audit.max_string_error,"bow_draw":bow_audit.max_draw,"arrows_blocked":session.battle.units.iter().map(|u|u.arrow_blocks).sum::<u32>(),"weapon_windup":witness.winding_seen,"shaft_projectile":witness.shaft_seen,"selected_weapon":session.battle.units[session.selected].weapon_status(),"selected_shots":session.battle.units[session.selected].weapon_shots,"selected_healing":session.battle.units[session.selected].healing_done,"particle_capacity":fx.particles.len(),"stained_pixels":fx.stained_pixels(),"detached_limbs":witness.gibs,"surviving_wounded":witness.wounded,"face_expressions":face_audit.seen,"eye_rotation":face_audit.eye_rotation,"face_morph_meshes":face_audit.meshes,"repeated_gestures":actors.iter().map(|a|a.replays).sum::<u32>(),"skeleton_motion":witness.skeleton_motion,"male_female_motion":witness.model_motion,"sound_effects":audio_audit.emitted})
         );
         exit.write(AppExit::Success);
     }
@@ -1597,6 +1675,38 @@ mod crown_follow {
 #[cfg(test)]
 mod animation_regressions {
     use super::*;
+    #[test]
+    fn grounded_strikes_do_not_claim_aerial_primitives() {
+        let mut campaign = phalanx::progression::Campaign::new();
+        let (_, battle) = campaign
+            .begin_battle(6, Arena::OpenField, phalanx::learned::Controller::Utility)
+            .unwrap();
+        let unit = &battle.units[0];
+        for ordinal in 0..32 {
+            assert!(matches!(attack_clip(unit, ordinal), 3 | 7 | 8 | 44));
+        }
+    }
+    #[test]
+    fn gait_changes_keep_phase_and_pause_freezes_the_blend() {
+        let (_, nodes) = AnimationGraph::from_clips(
+            (0..CLIP_NAMES.len()).map(|_| Handle::<AnimationClip>::default()),
+        );
+        let mut actor = Actor {
+            clip: usize::MAX,
+            ..default()
+        };
+        let mut player = AnimationPlayer::default();
+        advance_clip(&mut actor, &mut player, 1, nodes[1], 0., false);
+        advance_clip(&mut actor, &mut player, 1, nodes[1], 0.3, false);
+        advance_clip(&mut actor, &mut player, 2, nodes[2], 0., false);
+        assert!((actor.clock / CLIP_DURATIONS[2] - 0.3 / CLIP_DURATIONS[1]).abs() < 0.0001);
+        advance_clip(&mut actor, &mut player, 2, nodes[2], 0.04, false);
+        let clock = player.animation(nodes[2]).unwrap().seek_time();
+        let remaining = actor.blend.as_ref().unwrap().left;
+        advance_clip(&mut actor, &mut player, 2, nodes[2], 0., false);
+        assert_eq!(player.animation(nodes[2]).unwrap().seek_time(), clock);
+        assert_eq!(actor.blend.as_ref().unwrap().left, remaining);
+    }
     #[test]
     fn critical_health_loops_panic_and_stagger_without_changing_tactics() {
         let b = phalanx::Battle::with_founders(42, false, phalanx::terrain::Arena::OpenField);

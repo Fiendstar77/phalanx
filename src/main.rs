@@ -2668,6 +2668,7 @@ fn sync_team_colors(
 }
 fn sync_pawns(
     session: Res<Session>,
+    time: Res<Time>,
     assets: Res<PawnAssets>,
     mut pawns: Query<(&Pawn, &mut Transform, &mut Visibility)>,
     mut parts: Query<
@@ -2710,7 +2711,9 @@ fn sync_pawns(
             {
                 facing
             } else {
-                transform.rotation.slerp(facing, 0.18)
+                transform
+                    .rotation
+                    .slerp(facing, 1. - (-18. * time.delta_secs().min(0.1)).exp())
             };
         }
         // Corpses remain visible so the death clip can finish.
