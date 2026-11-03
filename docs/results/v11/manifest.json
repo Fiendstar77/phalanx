@@ -1,0 +1,37 @@
+{
+  "asset_comparison_base": "49d17b7d220e79372c84e480d14dbd39818e40a8",
+  "asset_changes": "18 facial normal accessors and export marker per asset; geometry and animation unchanged",
+  "staged_creator_fixture": true,
+  "creator_runtime_result": "KING_CREATOR_REVIEW_OK",
+  "source_save_unchanged": true,
+  "single_instance_lock_test": "pass",
+  "game_processes_after_review": 0,
+  "validation": {
+    "headless_tests": 187,
+    "graphics_tests": 67,
+    "focused_prologue_tests": 3,
+    "python_analysis_tests": 10,
+    "headless_strict_clippy": "pass",
+    "fmt": "pass",
+    "character_face_motion_validators": "pass"
+  },
+  "sha256": {
+    "surface-before.png": "fcf1236f05e4fd584b82ec5fc2ccd052bc1b9ccc512876137701b6c29b0ac700",
+    "surface-after.png": "ccc4ba78c57ad66796b28a385916a5d25d3c8142fec9d1fb09d30e1eb174c878",
+    "king-appearance.png": "9fee8d7845354b49733a97abd0d83f4152041a474a9c075cc24624b7252e82e9",
+    "king-class.png": "a32f85b10891684f133cfdf68a3971128a675f28b8a05bce67fa595d316d34da",
+    "opening.png": "6df3701ddaa992110fa92e7aa48562cbdd17d7f51b15de46bc298b99378ba2f6"
+  },
+  "source_files_sha256": {
+    "src/founding.rs": "16992d1577af69e7fbe431650c900313f3e465b77eab6f8c65c49f8b5b71ffe7",
+    "src/front.rs": "b93f3d05a83693f1c6e5e2486439c77fd06b5353e12ecb2c1366b586d5a29182",
+    "src/main.rs": "dae65f673f483fbf6966cf68b07c58b14d3351786fed1549b520ded7e817838d",
+    "src/prologue.rs": "0dbb807f8edc4463b04f32f9659e0af852b2e6fefed8eb594126758697be17db",
+    "src/single_instance.rs": "d3e5cf32b12d2d3353a8f4f1347566ccbbe9a87e16d2f6baca7289f8904b2a1b",
+    "src/visuals.rs": "e14b09a63de44c933df69d5928851dc65c5f4e1e28c6db2ba1cc22bbd6bee1f8",
+    "src/visuals/garments.rs": "7803cd23a3e1f258fa5fca97b6c85886ab3daa4499f81dce54b10d8e719c13d5",
+    "tools/smooth_character_surfaces.py": "e3be46d7fa8d70dd6b6ee05ebf0c1b40c9b4cb1197775e9f705843f9468ecf46",
+    "assets/characters/male.glb": "014f0e974e3d5dce440182ef2da1cbfcda7d5d2f1f2694d74fa9312b1299ec3c",
+    "assets/characters/female.glb": "715fe9229c4b458381cdbc265963ce3dc2dd24fcf5344a445554d4ccf9cd9970"
+  }
+}

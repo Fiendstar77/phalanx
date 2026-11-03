@@ -103,3 +103,12 @@ for sex in ('male','female'):
                 midpoint=tuple((x+y+z)/3 for x,y,z in zip(a,b,c))
                 assert sum(x*y for x,y in zip(normal,subtract(midpoint,centre)))>0,(sex,side,'inward eyelid triangle',i)
     print(sex,'head support vertices',count,'all exported eyelid triangles outward')
+    assert doc.get('extras',{}).get('phalanx_surface_normals') == 1
+    for primitive in head['primitives']:
+        normals=read(primitive['attributes']['NORMAL'])
+        assert all(abs(math.sqrt(sum(x*x for x in n))-1)<1e-5 for n in normals)
+        for target in primitive['targets']:
+            delta=read(target['NORMAL'])
+            assert all(abs(math.sqrt(sum((x+y)**2 for x,y in zip(n,d)))-1)<1e-5
+                       for n,d in zip(normals,delta))
+    print(sex,'filtered base and expression normals are finite unit vectors')

@@ -83,3 +83,23 @@ required to assess the result.
 The subsequent [young king opening](young-king-opening.md) adds playable solo,
 duo and trio chapters and a stylized adolescent profile on these same rigs.
 It preserves the boundary between story transitions and real combat receipts.
+
+## Surface corrections
+
+The adolescent warp now transforms the existing smooth normals using its local
+Jacobian. Recomputing them after UV splitting and skin concealment introduced
+harsh triangle shading, including on hands outside the warped torso. Fitted
+clothing offsets all copies of a seam vertex in the same averaged direction;
+offsetting each copy by a different normal opened visible cracks in the shell.
+
+The runtime exports also filter noisy facial normals and every expression's
+normal deltas together. The exporter calls
+[`smooth_character_surfaces.py`](../tools/smooth_character_surfaces.py); positions,
+topology, UVs, skeletons and animation samples are preserved. This improves the
+current sculpt's shading; it does not introduce a new character model.
+
+An OS instance lock prevents overlapping graphics applications before assets
+load. Visual checks must run one at a time, with the previous process closed.
+
+See the [surface and creator captures](results/v11/README.md) for local runtime
+evidence and the scope of verification.

@@ -1092,7 +1092,7 @@ struct PortraitPhoto(Handle<Image>);
 #[derive(Component)]
 pub(super) struct PortraitCamera;
 fn look(session: &Session, id: usize) -> phalanx::progression::Appearance {
-    if session.founding.open && id < 3 {
+    if session.founding.open && id < session.founding.count() {
         return session.founding.cards[id].appearance;
     }
     let id = if id == super::rpg::PREVIEW_ID {
@@ -1122,19 +1122,48 @@ pub(super) fn adolescent(session: &Session, id: usize) -> bool {
 /// bulk instead of uniformly shrinking an adult. Clothing uses the same map.
 pub(super) fn adolescent_mesh(mesh: &mut Mesh) {
     use bevy::mesh::VertexAttributeValues;
+    fn warp(p: Vec3) -> Vec3 {
+        let lower = ((p.y - 0.68) / 0.22).clamp(0., 1.);
+        let upper = ((1.35 - p.y) / 0.15).clamp(0., 1.);
+        let central = ((0.60 - p.x.abs()) / 0.30).clamp(0., 1.);
+        let amount = lower * upper * central;
+        p * Vec3::new(1. - 0.12 * amount, 1., 1. - 0.18 * amount)
+    }
+    // Keep the artist's smooth normals across UV seams. Recomputing normals
+    // after triangle selection gives every cut/seam a different shading edge.
+    if let (
+        Some(VertexAttributeValues::Float32x3(points)),
+        Some(VertexAttributeValues::Float32x3(normals)),
+    ) = (
+        mesh.attribute(Mesh::ATTRIBUTE_POSITION),
+        mesh.attribute(Mesh::ATTRIBUTE_NORMAL),
+    ) {
+        let adjusted: Vec<_> = points
+            .iter()
+            .zip(normals)
+            .map(|(p, n)| {
+                let p = Vec3::from_array(*p);
+                let e = 0.0001;
+                let derivative = |axis: Vec3| (warp(p + axis * e) - warp(p - axis * e)) / (2. * e);
+                let jacobian = Mat3::from_cols(
+                    derivative(Vec3::X),
+                    derivative(Vec3::Y),
+                    derivative(Vec3::Z),
+                );
+                (jacobian.inverse().transpose() * Vec3::from_array(*n))
+                    .normalize_or(Vec3::Y)
+                    .to_array()
+            })
+            .collect();
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, adjusted);
+    }
     if let Some(VertexAttributeValues::Float32x3(points)) =
         mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
     {
         for p in points {
-            let lower = ((p[1] - 0.68) / 0.22).clamp(0., 1.);
-            let upper = ((1.35 - p[1]) / 0.15).clamp(0., 1.);
-            let central = ((0.60 - p[0].abs()) / 0.30).clamp(0., 1.);
-            let amount = lower * upper * central;
-            p[0] *= 1. - 0.12 * amount;
-            p[2] *= 1. - 0.18 * amount;
+            *p = warp(Vec3::from_array(*p)).to_array();
         }
     }
-    mesh.compute_normals();
 }
 pub(super) fn skin_color(session: &Session, id: usize) -> Color {
     let colors = [
@@ -1695,6 +1724,34 @@ mod crown_follow {
 
 #[cfg(test)]
 mod animation_regressions {
+    #[test]
+    fn adolescent_normals_remain_smooth_across_separate_triangles_and_uv_seams() {
+        use super::*;
+        use bevy::mesh::VertexAttributeValues;
+        let mut mesh = Mesh::from(Cuboid::new(0.4, 0.4, 0.3));
+        mesh.duplicate_vertices();
+        // An exposed hand outside the torso warp must retain its smooth normals,
+        // even when the source has separate vertices for each triangle.
+        if let Some(VertexAttributeValues::Float32x3(points)) =
+            mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
+        {
+            for p in points {
+                p[0] += 0.9;
+                p[1] += 1.;
+            }
+        }
+        let smooth = Vec3::new(1., 0.2, 0.3).normalize().to_array();
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![smooth; mesh.count_vertices()]);
+        adolescent_mesh(&mut mesh);
+        let Some(VertexAttributeValues::Float32x3(normals)) =
+            mesh.attribute(Mesh::ATTRIBUTE_NORMAL)
+        else {
+            panic!()
+        };
+        for normal in normals {
+            assert!(Vec3::from_array(*normal).distance(Vec3::from_array(smooth)) < 0.001);
+        }
+    }
     #[test]
     fn adolescent_profile_changes_bulk_without_shrinking_height_or_the_hands() {
         use super::*;

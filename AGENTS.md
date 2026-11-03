@@ -26,5 +26,7 @@ working foundations from future work.
 
 For Rust changes, run focused tests, `cargo fmt --check`, and strict headless
 Clippy. Run the affected graphics tests when UI or presentation changes.
+Before launching a graphical game or visual witness, close the previous
+instance and verify that no PHALANX game process remains. Run witnesses serially.
 Keep Founders' 3v3 then 4v4 progression distinct from the five sequential NPC
 tutorial teams and the original Lab rosters.

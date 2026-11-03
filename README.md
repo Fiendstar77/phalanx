@@ -145,8 +145,10 @@ Start the game with:
 cargo run --locked --bin phalanx
 ```
 
-**New Game / Before the crown** starts the playable opening: one aspiring king
-at 16, then the future queen, then the general. Real chapter victories unlock
+**New Game / Before the crown** opens the single King creator: choose a name,
+appearance, class and Theus attributes at age 16, then accept to begin the opening.
+Your previous save stays available until acceptance. The future queen and general
+join through play. Real chapter victories unlock
 the next meeting and eventually the existing campaign. The same identities,
 learning and wounds persist. **Classic three-founder start** remains available;
 old saves retain their teams. See [the opening guide](docs/young-king-opening.md).
@@ -164,6 +166,9 @@ autosaving is disabled and manual saves use `outputs/opportunity-demo-save.json`
 The completed battle opens its real learning report and Legend Ledger.
 
 The window prefers a high-performance GPU. Set `WGPU_ADAPTER_NAME` to pick a specific adapter. A window initialization pass works around the [Bevy startup presentation issue](https://github.com/bevyengine/bevy/issues/22733); graphics validation remains enabled.
+
+Only one graphical PHALANX instance can run at a time. Close it before launching
+another game or visual witness; an OS lock rejects duplicates before asset loading.
 
 On Linux, Bevy requires graphical drivers and development libraries for the window/input stack. On Debian/Ubuntu, install `build-essential pkg-config libudev-dev libwayland-dev libxkbcommon-dev libx11-dev libxi-dev libxrandr-dev libasound2-dev`.
 

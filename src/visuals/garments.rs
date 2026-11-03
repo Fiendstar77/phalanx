@@ -16,10 +16,26 @@ pub(super) fn fitted(source: &Mesh, layer: u8) -> Mesh {
         Some(VertexAttributeValues::Float32x3(n)) => n.clone(),
         _ => return out,
     };
+    // UV and hard-normal seams duplicate a physical point. Offset all copies
+    // along the same averaged direction so the fitted shell stays watertight.
+    let key = |p: [f32; 3]| p.map(|v| (v * 100_000.).round() as i32);
+    let mut directions = std::collections::HashMap::<[i32; 3], Vec3>::new();
+    if let Some(VertexAttributeValues::Float32x3(points)) =
+        source.attribute(Mesh::ATTRIBUTE_POSITION)
+    {
+        for (p, n) in points.iter().zip(&normals) {
+            *directions.entry(key(*p)).or_default() += Vec3::from_array(*n);
+        }
+    }
     if let Some(VertexAttributeValues::Float32x3(p)) = out.attribute_mut(Mesh::ATTRIBUTE_POSITION) {
         for (p, n) in p.iter_mut().zip(normals) {
             *p = (Vec3::from_array(*p)
-                + Vec3::from_array(n).normalize_or_zero() * if layer == 0 { 0.024 } else { 0.018 })
+                + directions
+                    .get(&key(*p))
+                    .copied()
+                    .unwrap_or(Vec3::from_array(n))
+                    .normalize_or_zero()
+                    * if layer == 0 { 0.024 } else { 0.018 })
             .to_array();
         }
     }
@@ -84,7 +100,29 @@ mod tests {
                 .inverse()
                 .transpose()
                 .transform_vector3(Vec3::from_array(*n));
-            assert!(d.dot(normal) > 0.023);
+            assert!(d.dot(normal) > 0.01);
+        }
+    }
+    #[test]
+    fn normal_seams_do_not_open_cracks_in_the_clothing_shell() {
+        let source = Mesh::from(Cuboid::new(0.4, 0.4, 0.3));
+        let shell = fitted(&source, 1);
+        let Some(VertexAttributeValues::Float32x3(before)) =
+            source.attribute(Mesh::ATTRIBUTE_POSITION)
+        else {
+            panic!()
+        };
+        let Some(VertexAttributeValues::Float32x3(after)) =
+            shell.attribute(Mesh::ATTRIBUTE_POSITION)
+        else {
+            panic!()
+        };
+        for i in 0..before.len() {
+            for j in 0..i {
+                if before[i] == before[j] {
+                    assert_eq!(after[i], after[j]);
+                }
+            }
         }
     }
     #[test]

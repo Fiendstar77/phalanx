@@ -1,5 +1,40 @@
 use phalanx::{CommandTitle, learned::Controller, progression::Campaign, terrain::Arena};
 
+#[test]
+fn king_creation_validates_atomically_and_cannot_replace_an_established_life() {
+    let mut c = Campaign::new_prologue();
+    c.founders_prepared = false;
+    c.validate().unwrap();
+    let before = serde_json::to_value(&c).unwrap();
+    let mut king = phalanx::genesis::reveal("ASH", 0, 0, phalanx::FighterClass::Scout).unwrap();
+    let origin = phalanx::genesis::Origin {
+        version: 1,
+        word: "ASH".into(),
+        rolls: [0; 3],
+    };
+    king.name = String::new();
+    assert!(
+        c.found_king("The Uncrowned", king.clone(), origin.clone())
+            .is_err()
+    );
+    assert_eq!(serde_json::to_value(&c).unwrap(), before);
+    king.name = "Aurel".into();
+    c.found_king("The Uncrowned", king.clone(), origin.clone())
+        .unwrap();
+    let accepted = serde_json::to_value(&c).unwrap();
+    assert_eq!(c.teams[0].fighters[0].appearance.age_years, 16);
+    assert_eq!(
+        c.teams[0].fighters[0].fighter_id,
+        before["teams"][0]["fighters"][0]["fighter_id"]
+    );
+    assert_eq!(
+        accepted["prologue"]["waiting"],
+        before["prologue"]["waiting"]
+    );
+    assert!(c.found_king("Another", king, origin).is_err());
+    assert_eq!(serde_json::to_value(&c).unwrap(), accepted);
+}
+
 fn encounter(c: &mut Campaign, seed: u64) -> phalanx::Battle {
     let (id, mut battle) = c
         .begin_battle(seed, Arena::OpenField, Controller::Utility)

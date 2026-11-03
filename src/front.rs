@@ -213,9 +213,11 @@ fn install_campaign(
 pub(super) fn new_game(session: &mut Session) {
     match install_campaign(session, Campaign::new_prologue(), 42, Controller::Utility) {
         Ok(()) => {
-            session.camp_page = Some(camp::Page::Prologue);
+            session.campaign.founders_prepared = false;
+            session.founding = founding::Draft::new(&session.campaign, true);
+            session.founding.stage = 1;
             session.save_notice =
-                "Your story starts with one person. Play the chapter to earn the next meeting."
+                "Create your King at age 16. Your current save stays available until you accept."
                     .into();
         }
         Err(e) => session.save_notice = format!("New game failed: {e}"),
@@ -233,6 +235,12 @@ pub(super) fn legacy_new_game(session: &mut Session) {
     }
 }
 pub(super) fn next_prologue(session: &mut Session) {
+    if !session.campaign.founders_prepared {
+        session.founding.open = true;
+        session.menu = true;
+        session.save_notice = "Finish creating your King before beginning the opening.".into();
+        return;
+    }
     if !session.campaign.prologue_active() {
         session.camp_page = Some(camp::Page::Rivals);
         session.menu = true;
@@ -403,12 +411,41 @@ mod tests {
         click(&mut app, Control::NewGame);
         let s = app.world().resource::<Session>();
         assert_eq!(s.battle.units.len(), 2);
-        assert_eq!(s.camp_page, Some(camp::Page::Prologue));
-        assert!(!s.founding.open && !s.running);
+        assert_eq!(s.camp_page, None);
+        assert!(s.founding.open && s.founding.solo && !s.running);
+        assert_eq!(s.founding.count(), 1);
         assert_eq!(s.campaign.teams[0].fighters[0].appearance.age_years, 16);
         assert_eq!(s.campaign.teams[0].fighters[0].title, CommandTitle::Member);
         assert_eq!(std::fs::read(&path).unwrap(), previous);
         let identity = s.campaign.teams[0].fighters[0].fighter_id.clone();
+        let waiting = serde_json::to_value(&s.campaign.prologue.as_ref().unwrap().waiting).unwrap();
+        click(&mut app, Control::CreatorMenu);
+        click(&mut app, Control::Save);
+        assert_eq!(std::fs::read(&path).unwrap(), previous);
+        click(&mut app, Control::Continue);
+        click(&mut app, Control::RevealFounder(0));
+        app.world_mut().resource_mut::<Session>().founding.cards[0].name = "Aurel".into();
+        click(&mut app, Control::FounderLook(0, 2));
+        let look = app.world().resource::<Session>().founding.cards[0].appearance;
+        click(&mut app, Control::FoundingStep);
+        click(&mut app, Control::StarterClass(0, FighterClass::Guardian));
+        click(&mut app, Control::FounderAttribute(0, 0, 1));
+        let sheet = app.world().resource::<Session>().founding.cards[0].theus;
+        click(&mut app, Control::ConfirmFounders);
+        let s = app.world().resource::<Session>();
+        assert!(!s.founding.open && !s.running);
+        assert_eq!(s.camp_page, Some(camp::Page::Prologue));
+        assert_eq!(s.campaign.teams[0].fighters[0].name, "Aurel");
+        assert_eq!(
+            s.campaign.teams[0].fighters[0].class,
+            FighterClass::Guardian
+        );
+        assert_eq!(s.campaign.teams[0].fighters[0].appearance, look);
+        assert_eq!(s.campaign.teams[0].fighters[0].theus, sheet);
+        assert_eq!(
+            serde_json::to_value(&s.campaign.prologue.as_ref().unwrap().waiting).unwrap(),
+            waiting
+        );
         click(&mut app, Control::StandardBearer);
         assert!(
             app.world()
@@ -430,12 +467,17 @@ mod tests {
         assert_eq!(s.battle.team_size(), 1);
         assert_eq!(s.camp_page, Some(camp::Page::Prologue));
         assert_eq!(s.campaign.teams[0].fighters[0].fighter_id, identity);
+        assert_eq!(s.campaign.teams[0].fighters[0].appearance, look);
+        assert_eq!(s.campaign.teams[0].fighters[0].theus, sheet);
         std::fs::remove_dir_all(directory).unwrap();
     }
     #[test]
     fn chapter_buttons_expand_live_snapshots_and_unlock_the_existing_tutorials() {
         let (mut app, directory) = fixture();
         click(&mut app, Control::NewGame);
+        click(&mut app, Control::RevealFounder(0));
+        click(&mut app, Control::FoundingStep);
+        click(&mut app, Control::ConfirmFounders);
         let identity = app.world().resource::<Session>().campaign.teams[0].fighters[0]
             .fighter_id
             .clone();

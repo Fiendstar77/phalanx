@@ -1,7 +1,11 @@
 # Before the crown: playable opening
 
-**New Game / Before the crown** starts with one persistent 16-year-old aspiring
-king. **Classic three-founder start** retains the existing creator. Established
+**New Game / Before the crown** opens a creator for one persistent 16-year-old
+aspiring king. Edit the phalanx name and King name, seed, body and facial features;
+then choose a class and Theus attributes. **Accept your King / begin the opening**
+starts the story. Back to main menu pauses the draft; Continue resumes it. The
+existing save remains available until acceptance. **Classic three-founder start**
+retains the original three-person creator. Established
 saves keep their rosters and earned history.
 
 The opening has three playable encounters using ordinary autonomous Theus

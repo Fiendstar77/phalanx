@@ -88,7 +88,14 @@ impl Progress {
     pub(crate) fn validate(&self, c: &Campaign) -> Result<(), String> {
         let chapter = self.chapter as usize;
         if chapter > 3
-            || !c.founders_prepared
+            || (!c.founders_prepared
+                && (chapter != 0
+                    || !self.victories.is_empty()
+                    || c.origin.is_some()
+                    || c.teams[0]
+                        .fighters
+                        .iter()
+                        .any(|f| f.battles != 0 || f.experience != 0 || !f.history.is_empty())))
             || c.teams[0].fighters.len() < 1 + chapter.min(2)
             || (self.active() && c.teams[0].fighters.len() != 1 + chapter)
             || self.waiting.iter().any(|w| w.len() != 2 - chapter.min(2))
@@ -184,6 +191,44 @@ impl Campaign {
     }
     pub fn prologue_active(&self) -> bool {
         self.prologue.as_ref().is_some_and(Progress::active)
+    }
+    /// Accept the single opening character without replacing reserved companions or identities.
+    pub fn found_king(
+        &mut self,
+        name: &str,
+        mut king: crate::genesis::Founder,
+        origin: crate::genesis::Origin,
+    ) -> Result<(), String> {
+        if self.founders_prepared
+            || !self
+                .prologue
+                .as_ref()
+                .is_some_and(|p| p.chapter == 0 && p.victories.is_empty())
+            || self.teams[0].fighters.len() != 1
+            || self.teams[0].fighters[0].battles != 0
+            || self.teams[0].fighters[0].experience != 0
+            || !self.teams[0].fighters[0].history.is_empty()
+        {
+            return Err("This life has already begun; use the workshop to edit it.".into());
+        }
+        let name = name.trim();
+        if name.is_empty() || name.chars().count() > 40 || name.chars().any(char::is_control) {
+            return Err("Give your future phalanx a name of 1 to 40 characters.".into());
+        }
+        king.appearance.age_years = 16;
+        let mut next = self.clone();
+        next.teams[0].name = name.into();
+        let f = &mut next.teams[0].fighters[0];
+        f.name = king.name.trim().into();
+        f.class = king.class;
+        f.mind = king.mind;
+        f.theus = king.theus;
+        f.appearance = king.appearance;
+        next.origin = Some(origin);
+        next.founders_prepared = true;
+        next.validate()?;
+        *self = next;
+        Ok(())
     }
     pub fn prologue_arena(&self) -> Option<Arena> {
         self.prologue

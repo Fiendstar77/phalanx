@@ -9,6 +9,7 @@ mod player;
 mod presentation;
 mod rewards;
 mod rpg;
+mod single_instance;
 mod visuals;
 use bevy::{
     asset::RenderAssetUsages,
@@ -98,6 +99,7 @@ impl Session {
                 || matches!(
                     a.as_str(),
                     "--creator-review"
+                        | "--king-review"
                         | "--wirefu-demo"
                         | "--player-demo"
                         | "--memory-soak"
@@ -655,6 +657,17 @@ fn main() {
         }
         return;
     }
+    let lock_directory = std::env::var_os("XDG_RUNTIME_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir);
+    let _instance_lock = match single_instance::acquire(&lock_directory.join("phalanx-player.lock"))
+    {
+        Ok(lock) => lock,
+        Err(message) => {
+            eprintln!("{message}");
+            return;
+        }
+    };
     let mut battle = Battle::with_setup(
         seed,
         args.iter().any(|a| a == "--swap"),
@@ -667,6 +680,10 @@ fn main() {
         Controller::Utility
     };
     let mut session = Session::new(battle);
+    if args.iter().any(|a| a == "--king-review") {
+        session.save_path = "outputs/king-review-save.json".into();
+        session.autosave = true;
+    }
     let visual_witness = args.iter().any(|a| a == "--visual-witness");
     if visual_witness {
         session.founding.open = false;
@@ -1062,6 +1079,11 @@ fn main() {
         front::new_game(&mut session);
         session.autosave = false;
         session.save_path = "outputs/prologue-demo-save.json".into();
+        if visual_witness {
+            session.founding.reveal(0).expect("demo King");
+            apply(Control::FoundingStep, &mut session);
+            apply(Control::ConfirmFounders, &mut session);
+        }
         if visual_witness && !args.iter().any(|a| a == "--prologue-page-witness") {
             session.menu = false;
             session.camp_page = None;
@@ -1795,7 +1817,7 @@ fn apply(control: Control, session: &mut Session) {
         }
         Control::FocusFounderField(i) => {
             if session.founding.open {
-                session.founding.focus = i.min(4);
+                session.founding.focus = i.min(session.founding.count() + 1);
             }
         }
         Control::RevealFounder(i) => {
@@ -1843,7 +1865,7 @@ fn apply(control: Control, session: &mut Session) {
         }
         Control::BattleView => session.player.details = !session.player.details,
         Control::StarterClass(slot, class) => {
-            if session.founding.open && slot < 3 {
+            if session.founding.open && slot < session.founding.count() {
                 session.founding.classes[slot] = class;
                 session.founding.cards[slot].class = class;
             }
@@ -1852,8 +1874,32 @@ fn apply(control: Control, session: &mut Session) {
             if !session.founding.open {
                 return;
             }
-            if !session.founding.revealed.iter().all(|v| *v) {
-                session.save_notice = "Reveal each of your three founders first.".into();
+            if !session.founding.ready() {
+                session.save_notice =
+                    "Reveal your character and choose a class before accepting.".into();
+                return;
+            }
+            if session.founding.solo {
+                match session.campaign.found_king(
+                    &session.founding.name,
+                    session.founding.cards[0].clone(),
+                    session.founding.origin(),
+                ) {
+                    Ok(()) => {
+                        session.founding.open = false;
+                        session.restart_founders(
+                            session.battle.seed,
+                            session.battle.arena,
+                            controller,
+                        );
+                        session.menu = true;
+                        session.camp_page = Some(camp::Page::Prologue);
+                        if session.autosave {
+                            session.save_campaign();
+                        }
+                    }
+                    Err(e) => session.save_notice = e,
+                }
                 return;
             }
             match session.campaign.found_phalanx(
@@ -2410,24 +2456,28 @@ fn apply(control: Control, session: &mut Session) {
             match session.founding.stage {
                 0 => {
                     session.founding.stage = 1;
-                    for i in 0..3 {
+                    for i in 0..session.founding.count() {
                         if !session.founding.revealed[i] {
                             let _ = session.founding.reveal(i);
                         }
                     }
                 }
                 1 => {
-                    if session.founding.revealed.iter().all(|shown| *shown) {
+                    if session.founding.ready() {
                         session.founding.stage = 2;
                     } else {
                         session.save_notice = "Reveal each founder before choosing a class.".into();
                     }
                 }
+                2 => session.founding.stage = 1,
                 _ => {}
             }
         }
         Control::FounderAttribute(slot, attribute, delta) => {
-            if session.founding.open && slot < 3 && session.founding.revealed[slot] {
+            if session.founding.open
+                && slot < session.founding.count()
+                && session.founding.revealed[slot]
+            {
                 let founder = &mut session.founding.cards[slot];
                 let sheet = founder.theus.get_or_insert_with(Default::default);
                 if !sheet.adjust(attribute, delta) {
@@ -2436,17 +2486,20 @@ fn apply(control: Control, session: &mut Session) {
             }
         }
         Control::FounderView(slot) => {
-            if session.founding.open && slot < 3 {
+            if session.founding.open && slot < session.founding.count() {
                 session.founding.closeup[slot] = !session.founding.closeup[slot];
             }
         }
         Control::FounderTurn(slot) => {
-            if session.founding.open && slot < 3 {
+            if session.founding.open && slot < session.founding.count() {
                 session.founding.angle[slot] = (session.founding.angle[slot] + 1) % 5;
             }
         }
         Control::FounderLook(slot, choice) | Control::FounderLookBack(slot, choice) => {
-            if session.founding.open && slot < 3 && session.founding.revealed[slot] {
+            if session.founding.open
+                && slot < session.founding.count()
+                && session.founding.revealed[slot]
+            {
                 let look = &mut session.founding.cards[slot].appearance;
                 look.cycle(
                     choice,

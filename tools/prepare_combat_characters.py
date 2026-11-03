@@ -421,6 +421,9 @@ def export(sex,mesh,rig):
  payload=json.dumps(document,separators=(',',':')).encode();payload+=b' '*((-len(payload))%4)
  remainder=raw[20+length:];total=12+8+len(payload)+len(remainder)
  path.write_bytes(struct.pack('<III',0x46546c67,2,total)+struct.pack('<I',len(payload))+b'JSON'+payload+remainder)
+ # Keep sculpt shading and all expression normals consistent in runtime exports.
+ import runpy
+ runpy.run_path(str(ROOT/'tools/smooth_character_surfaces.py'))['smooth'](path)
 
 for sex in ['male', 'female']:
  clean()
