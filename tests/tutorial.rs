@@ -36,10 +36,7 @@ fn tutorial_attempts_and_real_victories_settle_once_and_survive_disk() {
         assert_eq!(c.tutorial.cleared, [won, false, false, false, false]);
         assert_eq!(c.teams[0].fighters.len(), 3);
         assert!(c.teams[0].fighters.iter().all(|f| f.experience > 0));
-        assert_eq!(
-            c.teams[0].gold,
-            100 + phalanx::progression::gold_reward(3, won)
-        );
+        assert_eq!(c.teams[0].gold, 100 + phalanx::progression::gold_reward(3));
         let saved = serde_json::to_string(&c).unwrap();
         assert!(c.settle(id, &b).is_err());
         assert_eq!(saved, serde_json::to_string(&c).unwrap());

@@ -1,0 +1,2882 @@
+{
+  "ninjutsu": {
+    "smoke": [
+      {
+        "owner": 1,
+        "position": [
+          -3.1983466,
+          0.0,
+          -1.318817
+        ],
+        "start": 239,
+        "end": 281
+      }
+    ],
+    "wheels": [],
+    "events": [
+      {
+        "sequence": 0,
+        "tick": 35,
+        "caster": 1,
+        "target": 0,
+        "art": "GraveBind",
+        "success": true,
+        "from": [
+          0.3400049,
+          0.85,
+          -1.5
+        ],
+        "to": [
+          -4.5000005,
+          0.85,
+          -1.5
+        ],
+        "attack": {
+          "dice": [
+            5,
+            2,
+            2
+          ],
+          "target": 13,
+          "margin": 4
+        },
+        "defence": {
+          "dice": [
+            4,
+            3,
+            5
+          ],
+          "target": 11,
+          "margin": -1
+        }
+      },
+      {
+        "sequence": 1,
+        "tick": 46,
+        "caster": 0,
+        "target": 1,
+        "art": "GraveBind",
+        "success": false,
+        "from": [
+          -3.8180017,
+          0.85,
+          -1.5
+        ],
+        "to": [
+          -2.4359999,
+          0.85,
+          -1.5
+        ],
+        "attack": {
+          "dice": [
+            3,
+            4,
+            5
+          ],
+          "target": 13,
+          "margin": 1
+        },
+        "defence": {
+          "dice": [
+            1,
+            3,
+            1
+          ],
+          "target": 11,
+          "margin": 6
+        }
+      },
+      {
+        "sequence": 2,
+        "tick": 113,
+        "caster": 0,
+        "target": null,
+        "art": "SmokeBomb",
+        "success": true,
+        "from": [
+          -4.0952177,
+          0.85,
+          -1.4590688
+        ],
+        "to": [
+          -4.0952177,
+          0.0,
+          -1.4590688
+        ],
+        "attack": null,
+        "defence": null
+      },
+      {
+        "sequence": 3,
+        "tick": 155,
+        "caster": 1,
+        "target": null,
+        "art": "SmokeBomb",
+        "success": true,
+        "from": [
+          -3.1983466,
+          0.85,
+          -1.318817
+        ],
+        "to": [
+          -3.1983466,
+          0.0,
+          -1.318817
+        ],
+        "attack": null,
+        "defence": null
+      },
+      {
+        "sequence": 4,
+        "tick": 197,
+        "caster": 0,
+        "target": null,
+        "art": "SmokeBomb",
+        "success": true,
+        "from": [
+          -4.0952177,
+          0.85,
+          -1.4590688
+        ],
+        "to": [
+          -4.0952177,
+          0.0,
+          -1.4590688
+        ],
+        "attack": null,
+        "defence": null
+      },
+      {
+        "sequence": 5,
+        "tick": 239,
+        "caster": 1,
+        "target": null,
+        "art": "SmokeBomb",
+        "success": true,
+        "from": [
+          -3.1983466,
+          0.85,
+          -1.318817
+        ],
+        "to": [
+          -3.1983466,
+          0.0,
+          -1.318817
+        ],
+        "attack": null,
+        "defence": null
+      }
+    ],
+    "hook_event": 43
+  },
+  "seed": 44,
+  "founders": true,
+  "tick": 263,
+  "units": [
+    {
+      "ninja": {
+        "leap": null,
+        "wall_ready": 0,
+        "smoke_charges": 0,
+        "smoke_ready": 262,
+        "seal_ready": 136,
+        "bound_until": 57,
+        "hook_ready": 0,
+        "pull": null,
+        "last_position": [
+          -4.0952177,
+          -1.4590688
+        ],
+        "stuck_ticks": 212
+      },
+      "theus": {
+        "sheet": {
+          "version": 1,
+          "attributes": [
+            11,
+            11,
+            11,
+            11
+          ],
+          "practice": [
+            73,
+            0,
+            3,
+            0,
+            3,
+            0
+          ]
+        },
+        "stamina": 35.9,
+        "clock": 262,
+        "stagger_until": 245,
+        "exposed_until": 270,
+        "airborne_since": 0,
+        "airborne_until": 0,
+        "opener": 1,
+        "launcher": null,
+        "combo_ready": 0,
+        "burst_until": 40,
+        "burst_ready": 72,
+        "technique": "None",
+        "technique_since": 260,
+        "technique_until": 268,
+        "windup_target": null,
+        "strike_at": 262
+      },
+      "skills": null,
+      "id": 0,
+      "team": 0,
+      "role": "Fighter",
+      "command_title": "Member",
+      "class": "Warrior",
+      "fighter_id": "18e46c14f0a65eaa-0-0",
+      "experience": 50,
+      "battle_count": 2,
+      "equipment": {
+        "owned": 0,
+        "slots": [
+          null,
+          null,
+          null
+        ],
+        "inventory_version": 0,
+        "items": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "equipped": [
+          null,
+          null,
+          null
+        ]
+      },
+      "mastery": {
+        "practice": [
+          50,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "weapons": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "carries_standard": false,
+      "heal_cooldown": 0.0,
+      "impact_cooldown": 0.0,
+      "ammunition": 0,
+      "windup": null,
+      "weapon_shots": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bow_melee": false,
+      "last_shot_target": null,
+      "bow_release": 0.0,
+      "arrow_blocks": 0,
+      "archery_retreat_until": 0,
+      "archery_retreat_after": 0,
+      "position": [
+        -4.0952177,
+        -1.4590688
+      ],
+      "health": 0.0,
+      "mind": {
+        "aggression": 0.65,
+        "caution": 0.8,
+        "courage": 0.6276,
+        "teamwork": 0.45,
+        "patience": 0.7508,
+        "self_preservation": 0.8,
+        "discipline": 0.65
+      },
+      "action": 1,
+      "scores": [
+        0.6587294,
+        1.7115016,
+        -1.0,
+        -1.0,
+        -1.0,
+        1.5404294,
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "target": [
+        -3.4673576,
+        2.0705242
+      ],
+      "enemy": 1,
+      "cooldown": 0.8,
+      "damage_dealt": 278.4008,
+      "healing_done": 0.0,
+      "distance_moved": 8.901169,
+      "decision_counts": [
+        8,
+        43,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0
+      ],
+      "route": {
+        "points": [],
+        "cost": {
+          "distance": 0.0,
+          "terrain": 0.0,
+          "exposure": 0.0,
+          "threat": 0.0,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 0,
+      "route_goal": [
+        -3.0937326,
+        -1.645511
+      ],
+      "route_mind": {
+        "aggression": 0.65,
+        "caution": 0.8,
+        "courage": 0.6276,
+        "teamwork": 0.45,
+        "patience": 0.7508,
+        "self_preservation": 0.8,
+        "discipline": 0.65
+      },
+      "cover_ticks": 0,
+      "rough_ticks": 0,
+      "alive_ticks": 263,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 0,
+      "rocks_hit": 0,
+      "contacts": [
+        {
+          "enemy": 1,
+          "position": [
+            -3.1983466,
+            -1.318817
+          ],
+          "health": 7.199731,
+          "role": "Fighter",
+          "range": 1.5,
+          "seen_tick": 262,
+          "source": "OwnSight",
+          "visible": false
+        }
+      ],
+      "visible_enemies": 0,
+      "shared_reports": 0,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 0,
+      "decision_reason": "Leave smoke by an obscured flank",
+      "comparison": {
+        "tick": 260,
+        "unit": 0,
+        "utility": 1,
+        "learned": 1,
+        "executed": 1,
+        "confidence": 0.96987814,
+        "controller": "Utility",
+        "disagreed": false
+      },
+      "psyche": {
+        "isolation": {
+          "reaction": "Fear",
+          "intensity": 1.0
+        },
+        "encirclement": {
+          "reaction": "None",
+          "intensity": 0.0
+        },
+        "ally_loss": {
+          "reaction": "None",
+          "intensity": 0.0
+        },
+        "failed_charge": {
+          "reaction": "None",
+          "intensity": 0.0
+        },
+        "confidence": 0.0
+      },
+      "exposure_isolation": 263,
+      "charge_health": 300.0
+    },
+    {
+      "ninja": {
+        "leap": null,
+        "wall_ready": 0,
+        "smoke_charges": 0,
+        "smoke_ready": 304,
+        "seal_ready": 125,
+        "bound_until": 0,
+        "hook_ready": 0,
+        "pull": null,
+        "last_position": [
+          -3.1983466,
+          -1.318817
+        ],
+        "stuck_ticks": 212
+      },
+      "theus": {
+        "sheet": {
+          "version": 1,
+          "attributes": [
+            11,
+            11,
+            11,
+            11
+          ],
+          "practice": [
+            71,
+            0,
+            3,
+            0,
+            3,
+            0
+          ]
+        },
+        "stamina": 35.9,
+        "clock": 262,
+        "stagger_until": 175,
+        "exposed_until": 260,
+        "airborne_since": 0,
+        "airborne_until": 0,
+        "opener": 0,
+        "launcher": null,
+        "combo_ready": 0,
+        "burst_until": 50,
+        "burst_ready": 82,
+        "technique": "None",
+        "technique_since": 260,
+        "technique_until": 268,
+        "windup_target": null,
+        "strike_at": 262
+      },
+      "skills": null,
+      "id": 1,
+      "team": 1,
+      "role": "Fighter",
+      "command_title": "Member",
+      "class": "Warrior",
+      "fighter_id": "18e46c14f0a65eaa-1-0",
+      "experience": 50,
+      "battle_count": 2,
+      "lost_limbs": 8,
+      "equipment": {
+        "owned": 0,
+        "slots": [
+          null,
+          null,
+          null
+        ],
+        "inventory_version": 0,
+        "items": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "equipped": [
+          null,
+          null,
+          null
+        ]
+      },
+      "mastery": {
+        "practice": [
+          50,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "weapons": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "carries_standard": false,
+      "heal_cooldown": 0.0,
+      "impact_cooldown": 0.0,
+      "ammunition": 0,
+      "windup": null,
+      "weapon_shots": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "bow_melee": false,
+      "last_shot_target": null,
+      "bow_release": 0.0,
+      "arrow_blocks": 0,
+      "archery_retreat_until": 0,
+      "archery_retreat_after": 0,
+      "position": [
+        -3.1983466,
+        -1.318817
+      ],
+      "health": 21.599192,
+      "mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "action": 1,
+      "scores": [
+        0.7260563,
+        1.652638,
+        -1.0,
+        -1.0,
+        -1.0,
+        -1.0,
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "target": [
+        -3.4562237,
+        2.0713897
+      ],
+      "enemy": 0,
+      "cooldown": 0.8,
+      "damage_dealt": 303.51038,
+      "healing_done": 0.0,
+      "distance_moved": 11.880856,
+      "decision_counts": [
+        10,
+        43,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "route": {
+        "points": [],
+        "cost": {
+          "distance": 0.0,
+          "terrain": 0.0,
+          "exposure": 0.0,
+          "threat": 0.0,
+          "uphill": 0.0
+        }
+      },
+      "path_cursor": 0,
+      "route_goal": [
+        -3.8620014,
+        -1.5
+      ],
+      "route_mind": {
+        "aggression": 0.5,
+        "caution": 0.8,
+        "courage": 0.65,
+        "teamwork": 0.9,
+        "patience": 0.8,
+        "self_preservation": 0.65,
+        "discipline": 0.9
+      },
+      "cover_ticks": 0,
+      "rough_ticks": 0,
+      "alive_ticks": 263,
+      "high_ground_ticks": 0,
+      "rocks_thrown": 0,
+      "rocks_hit": 0,
+      "contacts": [
+        {
+          "enemy": 0,
+          "position": [
+            -4.0952177,
+            -1.4590688
+          ],
+          "health": 3.3973858,
+          "role": "Fighter",
+          "range": 1.5,
+          "seen_tick": 262,
+          "source": "OwnSight",
+          "visible": true
+        }
+      ],
+      "visible_enemies": 1,
+      "shared_reports": 0,
+      "support_target": null,
+      "flank_anchor": null,
+      "flank_until": 0,
+      "decision_reason": "Leave smoke by an obscured flank",
+      "comparison": {
+        "tick": 260,
+        "unit": 1,
+        "utility": 1,
+        "learned": 1,
+        "executed": 1,
+        "confidence": 1.0,
+        "controller": "Utility",
+        "disagreed": false
+      },
+      "psyche": {
+        "isolation": {
+          "reaction": "Attachment",
+          "intensity": 1.0
+        },
+        "encirclement": {
+          "reaction": "None",
+          "intensity": 0.0
+        },
+        "ally_loss": {
+          "reaction": "None",
+          "intensity": 0.0
+        },
+        "failed_charge": {
+          "reaction": "None",
+          "intensity": 0.0
+        },
+        "confidence": 0.0
+      },
+      "exposure_isolation": 263,
+      "charge_health": 300.0
+    }
+  ],
+  "finished": true,
+  "result": "Blue wins",
+  "swapped": false,
+  "arena": "open_field",
+  "rocks": [],
+  "heals": [],
+  "damage_events": [
+    {
+      "sequence": 0,
+      "tick": 47,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 2.0899043,
+      "velocity": [
+        3.2767177,
+        -2.7603796
+      ],
+      "position": [
+        -3.3235486,
+        -1.5314096
+      ],
+      "severed": 0,
+      "blunt": true
+    },
+    {
+      "sequence": 1,
+      "tick": 52,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 17.059612,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 2,
+      "tick": 52,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 17.059612,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 3,
+      "tick": 72,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 14.661675,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 4,
+      "tick": 72,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 16.100435,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 5,
+      "tick": 82,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 13.702499,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 6,
+      "tick": 82,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 16.100435,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 7,
+      "tick": 92,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 13.702499,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 8,
+      "tick": 102,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 19.52606,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 9,
+      "tick": 112,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 15.141262,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 10,
+      "tick": 112,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 20.485237,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 11,
+      "tick": 122,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 14.661675,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 12,
+      "tick": 132,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 18.018787,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 13,
+      "tick": 142,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 20.00565,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 14,
+      "tick": 142,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 20.00565,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 15,
+      "tick": 152,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 14.661675,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 16,
+      "tick": 152,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 14.661675,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 17,
+      "tick": 162,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 20.00565,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 18,
+      "tick": 162,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 15.620849,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 19,
+      "tick": 172,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 20.00565,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 20,
+      "tick": 172,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 16.580025,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 21,
+      "tick": 182,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 17.059612,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 22,
+      "tick": 182,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 18.018787,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 23,
+      "tick": 192,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 14.182086,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 24,
+      "tick": 192,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 16.100435,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 25,
+      "tick": 202,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 15.620849,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 26,
+      "tick": 202,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 14.661675,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 27,
+      "tick": 222,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 15.620849,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 28,
+      "tick": 222,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 15.620849,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 29,
+      "tick": 232,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 14.182086,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 30,
+      "tick": 232,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 17.059612,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 31,
+      "tick": 242,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 15.620849,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 8,
+      "blunt": false
+    },
+    {
+      "sequence": 32,
+      "tick": 242,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 20.964823,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 33,
+      "tick": 252,
+      "attacker": 0,
+      "defender": 1,
+      "amount": 16.100435,
+      "velocity": [
+        3.457974,
+        0.5407544
+      ],
+      "position": [
+        -3.6429434,
+        -1.3883426
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 34,
+      "tick": 252,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 17.539198,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    },
+    {
+      "sequence": 35,
+      "tick": 262,
+      "attacker": 1,
+      "defender": 0,
+      "amount": 13.702499,
+      "velocity": [
+        -3.457974,
+        -0.5407544
+      ],
+      "position": [
+        -3.650621,
+        -1.3895432
+      ],
+      "severed": 0,
+      "blunt": false
+    }
+  ],
+  "theus_events": [
+    {
+      "sequence": 0,
+      "tick": 52,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            2,
+            3,
+            3
+          ],
+          "target": 15,
+          "margin": 7
+        },
+        "defence": {
+          "dice": [
+            5,
+            5,
+            2
+          ],
+          "target": 9,
+          "margin": -3
+        },
+        "outcome": "Hit",
+        "damage": 17.059612,
+        "critical_roll": 48,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 1,
+      "tick": 52,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            6,
+            1,
+            1
+          ],
+          "target": 15,
+          "margin": 7
+        },
+        "defence": {
+          "dice": [
+            6,
+            3,
+            5
+          ],
+          "target": 6,
+          "margin": -8
+        },
+        "outcome": "Hit",
+        "damage": 17.059612,
+        "critical_roll": 57,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 2,
+      "tick": 62,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            6,
+            6,
+            1
+          ],
+          "target": 15,
+          "margin": 2
+        },
+        "defence": {
+          "dice": [
+            4,
+            2,
+            3
+          ],
+          "target": 9,
+          "margin": 0
+        },
+        "outcome": "Parry",
+        "damage": 0.0,
+        "critical_roll": 0,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 3,
+      "tick": 62,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            6,
+            6,
+            6
+          ],
+          "target": 15,
+          "margin": -3
+        },
+        "defence": null,
+        "outcome": "Miss",
+        "damage": 0.0,
+        "critical_roll": 0,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 4,
+      "tick": 72,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            4,
+            5,
+            4
+          ],
+          "target": 15,
+          "margin": 2
+        },
+        "defence": {
+          "dice": [
+            1,
+            6,
+            4
+          ],
+          "target": 9,
+          "margin": -2
+        },
+        "outcome": "Hit",
+        "damage": 14.661675,
+        "critical_roll": 87,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 5,
+      "tick": 72,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            2,
+            2,
+            6
+          ],
+          "target": 15,
+          "margin": 5
+        },
+        "defence": {
+          "dice": [
+            2,
+            6,
+            2
+          ],
+          "target": 9,
+          "margin": -1
+        },
+        "outcome": "Hit",
+        "damage": 16.100435,
+        "critical_roll": 55,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 6,
+      "tick": 82,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            5,
+            4,
+            6
+          ],
+          "target": 15,
+          "margin": 0
+        },
+        "defence": {
+          "dice": [
+            4,
+            4,
+            4
+          ],
+          "target": 9,
+          "margin": -3
+        },
+        "outcome": "Hit",
+        "damage": 13.702499,
+        "critical_roll": 1,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 7,
+      "tick": 82,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            4,
+            4,
+            2
+          ],
+          "target": 15,
+          "margin": 5
+        },
+        "defence": {
+          "dice": [
+            5,
+            3,
+            1
+          ],
+          "target": 9,
+          "margin": 0
+        },
+        "outcome": "Hit",
+        "damage": 16.100435,
+        "critical_roll": 64,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 8,
+      "tick": 92,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            6,
+            3,
+            6
+          ],
+          "target": 15,
+          "margin": 0
+        },
+        "defence": {
+          "dice": [
+            1,
+            2,
+            4
+          ],
+          "target": 9,
+          "margin": 2
+        },
+        "outcome": "Parry",
+        "damage": 0.0,
+        "critical_roll": 0,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 9,
+      "tick": 92,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            5,
+            4,
+            6
+          ],
+          "target": 15,
+          "margin": 0
+        },
+        "defence": {
+          "dice": [
+            5,
+            1,
+            5
+          ],
+          "target": 9,
+          "margin": -2
+        },
+        "outcome": "Hit",
+        "damage": 13.702499,
+        "critical_roll": 12,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 10,
+      "tick": 102,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            5,
+            4,
+            5
+          ],
+          "target": 15,
+          "margin": 1
+        },
+        "defence": {
+          "dice": [
+            6,
+            1,
+            1
+          ],
+          "target": 9,
+          "margin": 1
+        },
+        "outcome": "Parry",
+        "damage": 0.0,
+        "critical_roll": 0,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 11,
+      "tick": 102,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            3,
+            5,
+            2
+          ],
+          "target": 15,
+          "margin": 5
+        },
+        "defence": {
+          "dice": [
+            1,
+            3,
+            4
+          ],
+          "target": 9,
+          "margin": 1
+        },
+        "outcome": "Critical",
+        "damage": 19.52606,
+        "critical_roll": 146,
+        "critical": "GuardSplit"
+      }
+    },
+    {
+      "sequence": 12,
+      "tick": 112,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            4,
+            5,
+            3
+          ],
+          "target": 15,
+          "margin": 3
+        },
+        "defence": {
+          "dice": [
+            2,
+            5,
+            6
+          ],
+          "target": 9,
+          "margin": -4
+        },
+        "outcome": "Hit",
+        "damage": 15.141262,
+        "critical_roll": 90,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 13,
+      "tick": 112,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            2,
+            5,
+            1
+          ],
+          "target": 15,
+          "margin": 7
+        },
+        "defence": {
+          "dice": [
+            5,
+            3,
+            5
+          ],
+          "target": 9,
+          "margin": -4
+        },
+        "outcome": "Critical",
+        "damage": 20.485237,
+        "critical_roll": 104,
+        "critical": "OffBalance"
+      }
+    },
+    {
+      "sequence": 14,
+      "tick": 122,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            1,
+            6,
+            6
+          ],
+          "target": 15,
+          "margin": 2
+        },
+        "defence": {
+          "dice": [
+            6,
+            2,
+            6
+          ],
+          "target": 9,
+          "margin": -5
+        },
+        "outcome": "Hit",
+        "damage": 14.661675,
+        "critical_roll": 18,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 15,
+      "tick": 122,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            1,
+            6,
+            6
+          ],
+          "target": 15,
+          "margin": 2
+        },
+        "defence": {
+          "dice": [
+            1,
+            2,
+            3
+          ],
+          "target": 9,
+          "margin": 3
+        },
+        "outcome": "Parry",
+        "damage": 0.0,
+        "critical_roll": 0,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 16,
+      "tick": 132,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            1,
+            4,
+            1
+          ],
+          "target": 15,
+          "margin": 9
+        },
+        "defence": {
+          "dice": [
+            3,
+            5,
+            1
+          ],
+          "target": 9,
+          "margin": 0
+        },
+        "outcome": "Hit",
+        "damage": 18.018787,
+        "critical_roll": 97,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 17,
+      "tick": 132,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            4,
+            6,
+            5
+          ],
+          "target": 15,
+          "margin": 0
+        },
+        "defence": {
+          "dice": [
+            1,
+            5,
+            2
+          ],
+          "target": 9,
+          "margin": 1
+        },
+        "outcome": "Parry",
+        "damage": 0.0,
+        "critical_roll": 0,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 18,
+      "tick": 142,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            4,
+            4,
+            1
+          ],
+          "target": 15,
+          "margin": 6
+        },
+        "defence": {
+          "dice": [
+            2,
+            2,
+            5
+          ],
+          "target": 9,
+          "margin": 0
+        },
+        "outcome": "Critical",
+        "damage": 20.00565,
+        "critical_roll": 126,
+        "critical": "GuardSplit"
+      }
+    },
+    {
+      "sequence": 19,
+      "tick": 142,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            4,
+            2,
+            3
+          ],
+          "target": 15,
+          "margin": 6
+        },
+        "defence": {
+          "dice": [
+            4,
+            5,
+            3
+          ],
+          "target": 9,
+          "margin": -3
+        },
+        "outcome": "Critical",
+        "damage": 20.00565,
+        "critical_roll": 118,
+        "critical": "OffBalance"
+      }
+    },
+    {
+      "sequence": 20,
+      "tick": 152,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            6,
+            6,
+            1
+          ],
+          "target": 15,
+          "margin": 2
+        },
+        "defence": {
+          "dice": [
+            4,
+            6,
+            1
+          ],
+          "target": 9,
+          "margin": -2
+        },
+        "outcome": "Hit",
+        "damage": 14.661675,
+        "critical_roll": 75,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 21,
+      "tick": 152,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            5,
+            5,
+            3
+          ],
+          "target": 15,
+          "margin": 2
+        },
+        "defence": {
+          "dice": [
+            5,
+            2,
+            3
+          ],
+          "target": 9,
+          "margin": -1
+        },
+        "outcome": "Hit",
+        "damage": 14.661675,
+        "critical_roll": 45,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 22,
+      "tick": 162,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            2,
+            5,
+            2
+          ],
+          "target": 15,
+          "margin": 6
+        },
+        "defence": {
+          "dice": [
+            3,
+            5,
+            6
+          ],
+          "target": 9,
+          "margin": -5
+        },
+        "outcome": "Critical",
+        "damage": 20.00565,
+        "critical_roll": 109,
+        "critical": "OffBalance"
+      }
+    },
+    {
+      "sequence": 23,
+      "tick": 162,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            2,
+            6,
+            3
+          ],
+          "target": 15,
+          "margin": 4
+        },
+        "defence": {
+          "dice": [
+            1,
+            5,
+            2
+          ],
+          "target": 9,
+          "margin": 1
+        },
+        "outcome": "Hit",
+        "damage": 15.620849,
+        "critical_roll": 73,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 24,
+      "tick": 172,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            2,
+            3,
+            4
+          ],
+          "target": 15,
+          "margin": 6
+        },
+        "defence": {
+          "dice": [
+            3,
+            6,
+            6
+          ],
+          "target": 9,
+          "margin": -6
+        },
+        "outcome": "Critical",
+        "damage": 20.00565,
+        "critical_roll": 138,
+        "critical": "GuardSplit"
+      }
+    },
+    {
+      "sequence": 25,
+      "tick": 172,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            2,
+            1,
+            6
+          ],
+          "target": 15,
+          "margin": 6
+        },
+        "defence": {
+          "dice": [
+            3,
+            1,
+            6
+          ],
+          "target": 9,
+          "margin": -1
+        },
+        "outcome": "Hit",
+        "damage": 16.580025,
+        "critical_roll": 57,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 26,
+      "tick": 182,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            3,
+            4,
+            1
+          ],
+          "target": 15,
+          "margin": 7
+        },
+        "defence": {
+          "dice": [
+            6,
+            5,
+            4
+          ],
+          "target": 9,
+          "margin": -6
+        },
+        "outcome": "Hit",
+        "damage": 17.059612,
+        "critical_roll": 57,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 27,
+      "tick": 182,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            3,
+            1,
+            2
+          ],
+          "target": 15,
+          "margin": 9
+        },
+        "defence": {
+          "dice": [
+            1,
+            1,
+            5
+          ],
+          "target": 9,
+          "margin": 2
+        },
+        "outcome": "Hit",
+        "damage": 18.018787,
+        "critical_roll": 81,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 28,
+      "tick": 192,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            5,
+            4,
+            5
+          ],
+          "target": 15,
+          "margin": 1
+        },
+        "defence": {
+          "dice": [
+            6,
+            2,
+            2
+          ],
+          "target": 9,
+          "margin": -1
+        },
+        "outcome": "Hit",
+        "damage": 14.182086,
+        "critical_roll": 58,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 29,
+      "tick": 192,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            1,
+            4,
+            5
+          ],
+          "target": 15,
+          "margin": 5
+        },
+        "defence": {
+          "dice": [
+            3,
+            1,
+            4
+          ],
+          "target": 9,
+          "margin": 1
+        },
+        "outcome": "Hit",
+        "damage": 16.100435,
+        "critical_roll": 60,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 30,
+      "tick": 202,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            6,
+            1,
+            4
+          ],
+          "target": 15,
+          "margin": 4
+        },
+        "defence": {
+          "dice": [
+            2,
+            6,
+            3
+          ],
+          "target": 9,
+          "margin": -2
+        },
+        "outcome": "Hit",
+        "damage": 15.620849,
+        "critical_roll": 41,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 31,
+      "tick": 202,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            1,
+            6,
+            6
+          ],
+          "target": 15,
+          "margin": 2
+        },
+        "defence": {
+          "dice": [
+            5,
+            6,
+            3
+          ],
+          "target": 9,
+          "margin": -5
+        },
+        "outcome": "Hit",
+        "damage": 14.661675,
+        "critical_roll": 96,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 32,
+      "tick": 212,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            6,
+            2,
+            5
+          ],
+          "target": 15,
+          "margin": 2
+        },
+        "defence": {
+          "dice": [
+            1,
+            2,
+            5
+          ],
+          "target": 9,
+          "margin": 1
+        },
+        "outcome": "Parry",
+        "damage": 0.0,
+        "critical_roll": 0,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 33,
+      "tick": 212,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            5,
+            5,
+            3
+          ],
+          "target": 15,
+          "margin": 2
+        },
+        "defence": {
+          "dice": [
+            3,
+            1,
+            4
+          ],
+          "target": 9,
+          "margin": 1
+        },
+        "outcome": "Parry",
+        "damage": 0.0,
+        "critical_roll": 0,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 34,
+      "tick": 222,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            3,
+            5,
+            3
+          ],
+          "target": 15,
+          "margin": 4
+        },
+        "defence": {
+          "dice": [
+            1,
+            4,
+            3
+          ],
+          "target": 9,
+          "margin": 1
+        },
+        "outcome": "Hit",
+        "damage": 15.620849,
+        "critical_roll": 64,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 35,
+      "tick": 222,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            4,
+            5,
+            2
+          ],
+          "target": 15,
+          "margin": 4
+        },
+        "defence": {
+          "dice": [
+            3,
+            5,
+            1
+          ],
+          "target": 9,
+          "margin": 0
+        },
+        "outcome": "Hit",
+        "damage": 15.620849,
+        "critical_roll": 40,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 36,
+      "tick": 232,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            3,
+            5,
+            6
+          ],
+          "target": 15,
+          "margin": 1
+        },
+        "defence": {
+          "dice": [
+            5,
+            1,
+            5
+          ],
+          "target": 9,
+          "margin": -2
+        },
+        "outcome": "Hit",
+        "damage": 14.182086,
+        "critical_roll": 84,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 37,
+      "tick": 232,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            2,
+            1,
+            5
+          ],
+          "target": 15,
+          "margin": 7
+        },
+        "defence": {
+          "dice": [
+            1,
+            5,
+            1
+          ],
+          "target": 9,
+          "margin": 2
+        },
+        "outcome": "Hit",
+        "damage": 17.059612,
+        "critical_roll": 36,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 38,
+      "tick": 242,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            4,
+            1,
+            6
+          ],
+          "target": 15,
+          "margin": 4
+        },
+        "defence": {
+          "dice": [
+            5,
+            1,
+            4
+          ],
+          "target": 9,
+          "margin": -1
+        },
+        "outcome": "Hit",
+        "damage": 15.620849,
+        "critical_roll": 68,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 39,
+      "tick": 242,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            4,
+            2,
+            1
+          ],
+          "target": 15,
+          "margin": 8
+        },
+        "defence": {
+          "dice": [
+            5,
+            5,
+            6
+          ],
+          "target": 9,
+          "margin": -7
+        },
+        "outcome": "Critical",
+        "damage": 20.964823,
+        "critical_roll": 117,
+        "critical": "OffBalance"
+      }
+    },
+    {
+      "sequence": 40,
+      "tick": 252,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            2,
+            4,
+            4
+          ],
+          "target": 15,
+          "margin": 5
+        },
+        "defence": {
+          "dice": [
+            2,
+            3,
+            3
+          ],
+          "target": 9,
+          "margin": 1
+        },
+        "outcome": "Hit",
+        "damage": 16.100435,
+        "critical_roll": 29,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 41,
+      "tick": 252,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            2,
+            3,
+            2
+          ],
+          "target": 15,
+          "margin": 8
+        },
+        "defence": {
+          "dice": [
+            1,
+            3,
+            4
+          ],
+          "target": 9,
+          "margin": 1
+        },
+        "outcome": "Hit",
+        "damage": 17.539198,
+        "critical_roll": 66,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 42,
+      "tick": 262,
+      "attacker": 0,
+      "defender": 1,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            6,
+            6,
+            5
+          ],
+          "target": 15,
+          "margin": -2
+        },
+        "defence": null,
+        "outcome": "Miss",
+        "damage": 0.0,
+        "critical_roll": 0,
+        "critical": "None"
+      }
+    },
+    {
+      "sequence": 43,
+      "tick": 262,
+      "attacker": 1,
+      "defender": 0,
+      "technique": "None",
+      "partner": null,
+      "resolution": {
+        "attack": {
+          "dice": [
+            5,
+            5,
+            5
+          ],
+          "target": 15,
+          "margin": 0
+        },
+        "defence": {
+          "dice": [
+            6,
+            3,
+            2
+          ],
+          "target": 9,
+          "margin": -2
+        },
+        "outcome": "Hit",
+        "damage": 13.702499,
+        "critical_roll": 44,
+        "critical": "None"
+      }
+    }
+  ],
+  "next_damage_event": 36,
+  "initial_arena": "open_field",
+  "barricade_health": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "schema_version": 2,
+  "controller": "Utility",
+  "learned_team": null,
+  "disagreements": [],
+  "comparison_summary": {
+    "compared": 106,
+    "agreements": 106,
+    "unavailable": 0,
+    "agreement_rate": 1.0,
+    "actions": [
+      "ADVANCE",
+      "ATTACK",
+      "HIGH GROUND",
+      "FLANK",
+      "REGROUP",
+      "RETREAT",
+      "HOLD",
+      "SEEK COVER",
+      "SUPPORT ALLY"
+    ],
+    "action_pairs": [
+      [
+        18,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        86,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "top_disagreements": []
+  },
+  "learned_fallbacks": 0,
+  "simulation_version": "0.5.0",
+  "pressure_note": "BEFORE THE CROWN | Chapter 1 / 3\nAge 16. An aspiring king has no crown, only a first road trial. Win this solo encounter to meet your future queen.\nSpace: fight / pause. Inspect your fighter or change temperament in the workshop. Outcomes use normal Theus rules.",
+  "ally_distance_sum": [
+    0.0,
+    0.0
+  ],
+  "ally_distance_samples": [
+    0,
+    0
+  ]
+}

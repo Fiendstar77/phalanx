@@ -129,7 +129,7 @@ fn saves_preserve_colors_and_ids_and_reject_invalid_data_without_mutating_reward
     std::fs::remove_dir_all(root).unwrap();
 }
 #[test]
-fn veteran_power_and_battle_conditioned_habits_are_bounded() {
+fn veteran_power_is_bounded_and_settlement_preserves_temperament() {
     let mut c = Campaign::new();
     c.teams[0].fighters[0].experience = 1_000_000;
     let (id, mut b) = c
@@ -143,10 +143,7 @@ fn veteran_power_and_battle_conditioned_habits_are_bounded() {
     }
     b.units[0].health = 0.0;
     c.settle(id, &b).unwrap();
-    assert_eq!(
-        c.teams[0].fighters[0].mind.self_preservation,
-        (old + 0.01).min(1.0)
-    );
+    assert_eq!(c.teams[0].fighters[0].mind.self_preservation, old);
     c.validate().unwrap();
 }
 
@@ -364,7 +361,6 @@ fn the_same_events_scar_different_personalities() {
         encirclement_ticks: 80,
         ally_losses: 1,
         failed_charges: 1,
-        survived_pressure: true,
         ..Exposure::default()
     };
     reckless.absorb(phalanx::Mind::aggressive(), surrounded);
@@ -375,8 +371,8 @@ fn the_same_events_scar_different_personalities() {
     assert_eq!(attached.ally_loss.reaction, Reaction::Attachment);
     assert_eq!(reckless.failed_charge.reaction, Reaction::OverAggression);
     assert_eq!(attached.failed_charge.reaction, Reaction::Hesitation);
-    assert!(reckless.confidence > attached.confidence);
-    assert!(attached.confidence > 0.0);
+    assert_eq!(reckless.confidence, 0.0);
+    assert_eq!(attached.confidence, 0.0);
 
     let mut replaced = Psyche::default();
     replaced.absorb(phalanx::Mind::aggressive(), isolation);

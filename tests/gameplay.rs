@@ -35,10 +35,7 @@ fn gold_rewards_only_settle_once_and_old_saves_receive_starting_purse() {
     }
     c.settle(id, &b).unwrap();
     for team in 0..2 {
-        assert_eq!(
-            c.teams[team].gold,
-            if b.winner() == Some(team) { 130 } else { 115 }
-        );
+        assert_eq!(c.teams[team].gold, 130);
     }
     let before = serde_json::to_string(&c).unwrap();
     assert!(c.settle(id, &b).is_err());
@@ -189,10 +186,9 @@ fn complete_cost_ladder_escalates_to_an_extreme_final_milestone() {
     assert_eq!(slot_cost(20), Some(650_000));
     assert!(SLOT_COSTS.windows(2).all(|w| w[1] > w[0]));
     for league in 3..20 {
-        assert!(gold_reward(league + 1, true) > gold_reward(league, true));
-        assert!(gold_reward(league, false) < gold_reward(league, true));
+        assert!(gold_reward(league + 1) > gold_reward(league));
     }
-    assert_eq!(gold_reward(3, true), 30);
-    assert_eq!(gold_reward(4, true), 44);
-    assert!(slot_cost(20).unwrap() / gold_reward(19, true) > 800);
+    assert_eq!(gold_reward(3), 30);
+    assert_eq!(gold_reward(4), 44);
+    assert!(slot_cost(20).unwrap() / gold_reward(19) > 800);
 }

@@ -313,7 +313,7 @@ impl Session {
                     if self.autosave {
                         if self.save_campaign() {
                             self.save_notice =
-                                "XP + habits saved. Next battle continues your squads.".into();
+                                "Practice + event memories saved. Equal completion credit for both sides.".into();
                         }
                     } else {
                         self.save_notice =

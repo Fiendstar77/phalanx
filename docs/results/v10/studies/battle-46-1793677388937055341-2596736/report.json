@@ -1,0 +1,193 @@
+{
+  "actions": [
+    {
+      "action": "ADVANCE",
+      "decisions": 17
+    },
+    {
+      "action": "ATTACK",
+      "decisions": 66
+    },
+    {
+      "action": "HIGH GROUND",
+      "decisions": 0
+    },
+    {
+      "action": "FLANK",
+      "decisions": 0
+    },
+    {
+      "action": "REGROUP",
+      "decisions": 0
+    },
+    {
+      "action": "RETREAT",
+      "decisions": 1
+    },
+    {
+      "action": "HOLD",
+      "decisions": 0
+    },
+    {
+      "action": "SEEK COVER",
+      "decisions": 0
+    },
+    {
+      "action": "SUPPORT ALLY",
+      "decisions": 0
+    }
+  ],
+  "arena": "open_field",
+  "bonsai_controls_game": false,
+  "comparison": {
+    "action_pairs": [
+      [
+        16,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        66,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "actions": [
+      "ADVANCE",
+      "ATTACK",
+      "HIGH GROUND",
+      "FLANK",
+      "REGROUP",
+      "RETREAT",
+      "HOLD",
+      "SEEK COVER",
+      "SUPPORT ALLY"
+    ],
+    "agreement_rate": 0.9880952380952381,
+    "agreements": 83,
+    "compared": 84,
+    "top_disagreements": [
+      {
+        "count": 1,
+        "learned": "RETREAT",
+        "utility": "ADVANCE"
+      }
+    ],
+    "unavailable": 0
+  },
+  "complete": true,
+  "decision_records": 84,
+  "duration_seconds": 20.80000114440918,
+  "final_tick": 208,
+  "founders": true,
+  "initial_tick": 0,
+  "learned_fallbacks": 0,
+  "limitations": [
+    "Single battle; no superiority claim or independent-sample inference from ticks.",
+    "PyTorch weights are frozen. Campaign habit and memory adaptation is rule-based.",
+    "Initial setup and per-decision controller are recorded; interactive edits can prevent exact replay."
+  ],
+  "max_recorded_step_wall_ms": 0.24311100000000002,
+  "mean_recorded_step_wall_ms": 0.13953679326923077,
+  "opportunity_attempts": 0,
+  "opportunity_completions": 0,
+  "recorded_steps": 208,
+  "result": "Blue wins",
+  "schema_version": 1,
+  "seed": 46,
+  "simulation_version": "0.5.0",
+  "step_timing_scope": "Simulation and observation capture; excludes trace disk writes, rendering and model-specific timing.",
+  "survivors": [
+    0,
+    1
+  ]
+}

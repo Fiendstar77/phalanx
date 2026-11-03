@@ -73,7 +73,7 @@ Read [campaign settlement](../../src/progression.rs),
 The important checks are more precise than “the squad learns”:
 
 - [Progression tests](../../tests/progression.rs) check once-only settlement,
-  bounded habits, persistent identity, contrasting personality-specific scars,
+  equal completion credit, stable temperament, persistent identity, contrasting personality-specific scars,
   and an actual decision difference caused by conditioned reactions.
 - [Study tests](../../tests/study.rs) check receipt serialization, legacy saves,
   invalid receipt rejection, save/load continuity and the next battle's state.

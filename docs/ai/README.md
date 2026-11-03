@@ -18,7 +18,7 @@ GitHub, without installing the game, PyTorch or Bonsai.
 | Perception and coordination | Occlusion/range checks, decaying contact memory, bounded ally reports, focus/support/flank rules | Live game; agents act on contacts rather than arbitrary hidden enemy transforms |
 | Utility controller | Nine guarded tactical objectives, personality and situational scores, seeded variation | Live default, action eligibility authority and deterministic fallback |
 | Learned controller | PyTorch-trained 29 → 64 → 64 → 9 ReLU policy; 6,665 parameters | Frozen exported weights run in Rust and can control live combat |
-| Campaign adaptation | Experience, class/weapon practice, conditioned reactions, habit updates and rival counters | Persists through save/load and influences later battles; uses authored rules |
+| Campaign adaptation | Equal completion credit, class/weapon practice, event memories and rival counters | Persists through save/load and influences later battles; uses authored rules |
 | Opportunity Composition | Bounded forward search over run, wall-vault and strike primitives | Live for qualified veteran acrobats; each primitive revalidates and uses existing physical rules |
 | Bonsai 1.7B | Local native `libllama` inference; structured action proposals and combat text | Separate experiments; tactical shadow decisions do not alter a battle |
 | Study tooling | JSONL observations/receipts, battle state, readable reports, manifests and checks | Inspects behavior and provenance; does not choose combat outcomes |
@@ -126,13 +126,23 @@ utility rollout. Masked softmax confidence is not calibrated certainty.
 
 ## What learning means to the player
 
-[Campaign settlement](../../src/progression.rs) preserves fighter identity and
-updates experience, practice, personality habits and psychological responses.
-For example, supporting an ally reinforces teamwork; finishing below half health
-increases self-preservation. Exposure to isolation or encirclement conditions
-reactions according to the fighter's personality. A later matching situation
-can bias the fighter's utility scores through [psyche rules](../../src/psyche.rs).
+[Campaign settlement](../../src/progression.rs) preserves fighter identity,
+temperament, real skill practice and witnessed event memories. Every fighter
+receives the same 25 XP/class-practice credit; both sides receive equal gold and
+salvage. Win/loss/survival/damage do not multiply those awards. There are no
+automatic temperament changes or result-based confidence bonuses.
 
+Exposure to isolation, encirclement, ally loss and failed charges records
+personality-specific event memories. A matching later situation can bias utility
+scores through [psyche rules](../../src/psyche.rs). This records experienced
+situations; it does not reward actions because they won a match.
+
+[The v10 witness](../results/v10/README.md) retains eight real rematches: one side
+won once and the other six times, yet both received the same completion credit.
+Its traces preserve the distinct skill practice and event memories.
+
+The [outcome-neutral settlement tests](../../tests/outcome_neutral.rs) check equal
+credits, fixed temperament, actual practice and event memories across results.
 The same event can produce fear or recklessness in different fighters.
 Adaptation is not guaranteed improvement, and the current rule changes are not
 online neural training. XP/stat growth, changed tactical preferences and
@@ -145,7 +155,7 @@ verify that these values survive save/load and appear in the next battle. The
 [psychology tests](../../tests/progression.rs) separately check that contrasting
 conditioned reactions change the same decision.
 
-![Scripted post-battle UI fixture showing actual persisted changes](../results/v06/learning-screen.png)
+![Historical UI fixture before equal-credit settlement; shown outcome-based adjustments are retired](../results/v06/learning-screen.png)
 
 The [playable opening](../young-king-opening.md) grows one adolescent protagonist
 into a duo and then a trio through witnessed chapter victories. It exports

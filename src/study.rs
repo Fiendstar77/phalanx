@@ -192,7 +192,7 @@ impl Recorder {
                     .sum::<u32>()
             ));
         }
-        text.push_str("\n## Evidence\n\n[Full battle state](battle.json) · [Machine-readable report](report.json) · [Decision trace](decisions.jsonl)\n\nDecision records contain perceived contacts, features, eligibility masks, baseline scores, controller proposals and the actual executed action. Damage and healing have simulation receipts. If campaign rewards settle, learning.json and learning.md record persisted before/after changes.\n\n## Interpretation\n\nThis is one battle. Repeated decisions are correlated, and agreement does not establish better tactics. The PyTorch policy is frozen; campaign habits and memories adapt through explicit rules. Timing measures simulation plus observation capture, excludes rendering and trace disk writes, and does not isolate inference. Interrupted/reset recordings retain complete=false in status.json.\n");
+        text.push_str("\n## Evidence\n\n[Full battle state](battle.json) · [Machine-readable report](report.json) · [Decision trace](decisions.jsonl)\n\nDecision records contain perceived contacts, features, eligibility masks, baseline scores, controller proposals and the actual executed action. Damage and healing have simulation receipts. If campaign rewards settle, learning.json and learning.md record persisted before/after changes.\n\n## Interpretation\n\nThis is one battle. Repeated decisions are correlated, and agreement does not establish better tactics. The PyTorch policy is frozen; actual practice and event memories persist. Match results grant no temperament or growth multiplier. Timing measures simulation plus observation capture, excludes rendering and trace disk writes, and does not isolate inference. Interrupted/reset recordings retain complete=false in status.json.\n");
         fs::write(self.directory.join("report.md"), text)?;
         write_json(
             &self.directory.join("status.json"),
@@ -224,7 +224,7 @@ impl Recorder {
         }
         fs::write(self.directory.join("legend-ledger.md"), ledger)?;
         let mut text = String::from(
-            "# How the phalanxes changed\n\nPersisted experience, practice, habits and conditioned memories. Frozen model weights are unchanged.\n\n",
+            "# How the phalanxes changed\n\nPersisted practice and witnessed event memories. Completion credit is equal for all results; temperament and model weights receive no automatic result reinforcement.\n\n",
         );
         for (team, fighters) in report.fighters.iter().enumerate() {
             text.push_str(&format!("## Team {}\n\n", team + 1));

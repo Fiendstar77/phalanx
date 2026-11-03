@@ -42,7 +42,7 @@ impl Response {
             && (0.0..=1.0).contains(&self.intensity)
             && ((self.reaction == Reaction::None) == (self.intensity == 0.0))
     }
-    fn reinforce(&mut self, reaction: Reaction, gain: f32) {
+    fn remember(&mut self, reaction: Reaction, gain: f32) {
         if gain <= 0.0 {
             return;
         }
@@ -64,6 +64,7 @@ pub struct Psyche {
     pub encirclement: Response,
     pub ally_loss: Response,
     pub failed_charge: Response,
+    /// Historical saves only. Result-based confidence is no longer updated or used by decisions.
     pub confidence: f32,
 }
 pub fn is_blank_field(psyche: &Psyche) -> bool {
@@ -105,34 +106,31 @@ impl Psyche {
             }
         }
         if self.confidence > 0.0 {
-            parts.push(format!("confidence {:.0}%", self.confidence * 100.0));
+            parts.push(format!(
+                "legacy confidence {:.0}% (inactive)",
+                self.confidence * 100.0
+            ));
         }
         format!("Mind: {}", parts.join(" · "))
     }
     /// One battle plants at most 0.55 intensity. A second deep exposure can change the call.
     pub fn absorb(&mut self, mind: Mind, exposure: Exposure) {
-        self.isolation.reinforce(
+        self.isolation.remember(
             reaction_to(mind, Trigger::Isolation),
             tick_gain(exposure.isolation_ticks, 40),
         );
-        self.encirclement.reinforce(
+        self.encirclement.remember(
             reaction_to(mind, Trigger::Encirclement),
             tick_gain(exposure.encirclement_ticks, 15),
         );
-        self.ally_loss.reinforce(
+        self.ally_loss.remember(
             reaction_to(mind, Trigger::AllyLoss),
             count_gain(exposure.ally_losses, 0.25, 0.1),
         );
-        self.failed_charge.reinforce(
+        self.failed_charge.remember(
             reaction_to(mind, Trigger::FailedCharge),
             count_gain(exposure.failed_charges, 0.2, 0.1),
         );
-        if exposure.survived_pressure {
-            let gain = 0.08 * (0.4 + 0.6 * mind.courage) * (1.2 - 0.5 * mind.self_preservation);
-            self.confidence = (self.confidence + gain).min(1.0);
-        } else if exposure.broke {
-            self.confidence = (self.confidence - 0.05).max(0.0);
-        }
     }
 }
 fn tick_gain(ticks: u32, ignore: u32) -> f32 {
@@ -155,8 +153,6 @@ pub struct Exposure {
     pub encirclement_ticks: u32,
     pub ally_losses: u32,
     pub failed_charges: u32,
-    pub survived_pressure: bool,
-    pub broke: bool,
 }
 #[derive(Clone, Copy, Debug)]
 enum Trigger {
@@ -378,22 +374,6 @@ pub fn bias_scores(psyche: Psyche, moment: Moment, scores: &mut [f32; 9]) -> Opt
             );
         }
         _ => {}
-    }
-    if psyche.confidence >= 0.25 {
-        let confidence = psyche.confidence;
-        bump(
-            1,
-            0.12 * confidence,
-            false,
-            "Confidence keeps them in the fight",
-        );
-        bump(
-            0,
-            0.08 * confidence,
-            false,
-            "Confidence keeps them advancing",
-        );
-        bump(5, -0.15 * confidence, false, "");
     }
     best.filter(|(_, amount, _)| *amount >= 0.2)
         .map(|(action, _, text)| ScarLine { action, text })

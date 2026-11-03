@@ -18,6 +18,11 @@ working foundations from future work.
 - Favor interacting systems, behavioral believability, attachment and readability.
   Report measured behavior and verification honestly, including staged fixtures
   and the limits of local tests, model experiments and hosted CI.
+- Match outcomes must not reinforce power or personality. Give both sides equal
+  completion XP/class practice, gold and salvage. Completion credit must not
+  depend on win/loss, survival or damage totals; no automatic temperament drift.
+  Preserve actual skill practice and witnessed event memories. Outcomes remain
+  history and story/progression gates.
 
 For Rust changes, run focused tests, `cargo fmt --check`, and strict headless
 Clippy. Run the affected graphics tests when UI or presentation changes.

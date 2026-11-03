@@ -32,16 +32,28 @@ Campaign fighters now carry a versioned Theus attribute and skill sheet. Actual 
 
 ## First progression rules
 
-A completed battle grants each fighter **25 participation XP**, plus **15 for victory**, **5 for survival**, and up to **10 for damage contribution**. Both local squads progress. Every 100 XP adds a level, capped at **level 10**. Each level above the first adds **2 maximum HP and 1% base damage**. The King/Queen's existing royal bonus remains separate. Surviving and eliminated fighters both return for the next battle; limb wounds now persist, and crafted Iron I prosthetics can replace missing parts. HP zero means battle incapacitation in this prototype; permanent character death is not implemented.
+A completed battle grants every rostered fighter **25 XP and 25 class-practice
+points**, independent of victory, defeat, survival or damage. Both squads receive
+the same league-based gold and **10 salvage**. League 3 pays 30 gold per completed
+battle; League 4 pays 44. Theus skill practice still follows actual skill use.
 
-Battle-conditioned habits are deterministic and small:
+Every 100 XP adds a level, capped at level 10. Each level adds 2 base HP (6 displayed
+HP) and 1% base damage. These are practice milestones; there is no winner growth
+multiplier. The King/Queen office bonus remains separate. HP zero means battle
+incapacitation; permanent character death is not implemented. Wounds persist.
 
-- Finishing below half health: +0.01 self-preservation.
-- Using support: +0.005 teamwork.
-- Winning: +0.005 courage.
-- Surviving after retreating: +0.005 discipline.
+Settlement preserves the authored or player-edited seven temperament traits.
+It grants no automatic courage, teamwork, caution or discipline adjustment.
+Victories still count in history and unlock story/tutorial gates. Actual
+witnessed exposures can create event memories, which are separate from
+personality and can affect choices when the same situation recurs.
 
-Traits remain within 0–1. These are authored adaptation rules, **not online PyTorch training**, and they do not establish that veterans make better decisions. The frozen imitation policy remains available for same-state comparison. Improvements in tactical quality need their own experiment.
+Existing saves retain their previously stored XP, mastery, resources, temperament
+and history; earlier credits are not retrospectively recalculated. Historical
+confidence is retained as data but is inactive in decisions and receives no new
+updates. Reports identify the old reward policy separately from equal-credit
+settlement. This policy does not freeze opponents: real practice, equipment
+choices, wounds and event memories can still change them.
 
 ## Psychological scars
 
@@ -53,9 +65,8 @@ A completed Founders battle can mark a fighter. There is no sanity meter. Each s
 | Encirclement | More than 15 ticks with enemies on opposite sides, or three within 4.5 | Fear, hesitation, or recklessness |
 | Ally loss | A teammate falls within 8 units | Attachment, fear, hesitation, or recklessness |
 | Failed charge | An advance loses at least 8 HP before the next choice | Hesitation, or recklessness if aggressive and undisciplined |
-| Confidence | Survive below half health, or survive after 80 isolated ticks or 30 encircled ticks | A separate steadiness score. Courage gains more; self-preservation gains less |
 
-The same exposure writes the same intensity on different minds, and a different reaction. One battle adds at most **0.55** intensity. A contradicting personality wears the old reaction down to zero before a new one is written. Dying trims confidence by 0.05 and leaves the scars.
+The same exposure writes the same intensity on different minds, and a different reaction. One battle adds at most **0.55** intensity. A contradicting personality wears the old reaction down to zero before a new one is written. Match results do not add or remove event-memory intensity. Only the witnessed exposures above do.
 
 During the next battle the scar changes utility scores only while its trigger is happening again. Fear of isolation can open a retreat and pull the fighter back to the squad. Recklessness from the same isolation raises the charge. Blank minds, and every Lab battle, keep the old scores. The inspector shows the saved scars. A matching bark can say them out loud.
 

@@ -60,21 +60,25 @@ impl Learning {
         let before = traits(self.mind_before);
         let after = traits(self.mind_after);
         for (index, label, reason) in [
-            (2, "Courage", "victory reinforces willingness to engage"),
+            (
+                2,
+                "Courage",
+                "historical temperament adjustment; automatic outcome drift is retired",
+            ),
             (
                 3,
                 "Teamwork",
-                "supporting an ally reinforces support and regrouping",
+                "historical temperament adjustment; event memories now remain separate",
             ),
             (
                 5,
                 "Self-preservation",
-                "finishing below half health strengthens caution in danger",
+                "historical temperament adjustment; event memories now remain separate",
             ),
             (
                 6,
                 "Discipline",
-                "surviving after retreat reinforces measured withdrawal",
+                "historical temperament adjustment; automatic outcome drift is retired",
             ),
         ] {
             if after[index] != before[index] {
@@ -118,7 +122,7 @@ impl Learning {
             }
         }
         if self.psyche_before.confidence != self.psyche_after.confidence {
-            lines.push(format!("Pressure confidence {:.1}% -> {:.1}%: changed by surviving pressure or being downed.", self.psyche_before.confidence * 100., self.psyche_after.confidence * 100.));
+            lines.push(format!("Legacy pressure confidence {:.1}% -> {:.1}%: historical value; inactive in current decisions.", self.psyche_before.confidence * 100., self.psyche_after.confidence * 100.));
         }
         let rank = |points| match points {
             600.. => 3,

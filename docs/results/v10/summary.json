@@ -1,0 +1,767 @@
+{
+  "battles": [
+    {
+      "profiles": [
+        {
+          "battles": 1,
+          "class_practice": 25,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 0.550000011920929,
+              "reaction": "Fear"
+            }
+          },
+          "gold": 130,
+          "mind": {
+            "aggression": 0.6499999761581421,
+            "caution": 0.800000011920929,
+            "courage": 0.6276000142097473,
+            "discipline": 0.6499999761581421,
+            "patience": 0.7508000135421753,
+            "self_preservation": 0.800000011920929,
+            "teamwork": 0.44999998807907104
+          },
+          "salvage": 10,
+          "theus_practice": [
+            20,
+            0,
+            1,
+            0,
+            1,
+            0
+          ],
+          "wins": 0,
+          "xp": 25
+        },
+        {
+          "battles": 1,
+          "class_practice": 25,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 0.550000011920929,
+              "reaction": "Attachment"
+            }
+          },
+          "gold": 130,
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.800000011920929,
+            "courage": 0.6499999761581421,
+            "discipline": 0.8999999761581421,
+            "patience": 0.800000011920929,
+            "self_preservation": 0.6499999761581421,
+            "teamwork": 0.8999999761581421
+          },
+          "salvage": 10,
+          "theus_practice": [
+            22,
+            0,
+            1,
+            0,
+            1,
+            0
+          ],
+          "wins": 1,
+          "xp": 25
+        }
+      ],
+      "seed": 42,
+      "tick": 223,
+      "winner": 1
+    },
+    {
+      "profiles": [
+        {
+          "battles": 2,
+          "class_practice": 50,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Fear"
+            }
+          },
+          "gold": 160,
+          "mind": {
+            "aggression": 0.6499999761581421,
+            "caution": 0.800000011920929,
+            "courage": 0.6276000142097473,
+            "discipline": 0.6499999761581421,
+            "patience": 0.7508000135421753,
+            "self_preservation": 0.800000011920929,
+            "teamwork": 0.44999998807907104
+          },
+          "salvage": 20,
+          "theus_practice": [
+            48,
+            0,
+            2,
+            0,
+            2,
+            0
+          ],
+          "wins": 1,
+          "xp": 50
+        },
+        {
+          "battles": 2,
+          "class_practice": 50,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Attachment"
+            }
+          },
+          "gold": 160,
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.800000011920929,
+            "courage": 0.6499999761581421,
+            "discipline": 0.8999999761581421,
+            "patience": 0.800000011920929,
+            "self_preservation": 0.6499999761581421,
+            "teamwork": 0.8999999761581421
+          },
+          "salvage": 20,
+          "theus_practice": [
+            45,
+            0,
+            2,
+            0,
+            2,
+            0
+          ],
+          "wins": 1,
+          "xp": 50
+        }
+      ],
+      "seed": 43,
+      "tick": 243,
+      "winner": 0
+    },
+    {
+      "profiles": [
+        {
+          "battles": 3,
+          "class_practice": 75,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Fear"
+            }
+          },
+          "gold": 190,
+          "mind": {
+            "aggression": 0.6499999761581421,
+            "caution": 0.800000011920929,
+            "courage": 0.6276000142097473,
+            "discipline": 0.6499999761581421,
+            "patience": 0.7508000135421753,
+            "self_preservation": 0.800000011920929,
+            "teamwork": 0.44999998807907104
+          },
+          "salvage": 30,
+          "theus_practice": [
+            73,
+            0,
+            3,
+            0,
+            3,
+            0
+          ],
+          "wins": 1,
+          "xp": 75
+        },
+        {
+          "battles": 3,
+          "class_practice": 75,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Attachment"
+            }
+          },
+          "gold": 190,
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.800000011920929,
+            "courage": 0.6499999761581421,
+            "discipline": 0.8999999761581421,
+            "patience": 0.800000011920929,
+            "self_preservation": 0.6499999761581421,
+            "teamwork": 0.8999999761581421
+          },
+          "salvage": 30,
+          "theus_practice": [
+            71,
+            0,
+            3,
+            0,
+            3,
+            0
+          ],
+          "wins": 2,
+          "xp": 75
+        }
+      ],
+      "seed": 44,
+      "tick": 263,
+      "winner": 1
+    },
+    {
+      "profiles": [
+        {
+          "battles": 4,
+          "class_practice": 100,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Fear"
+            }
+          },
+          "gold": 220,
+          "mind": {
+            "aggression": 0.6499999761581421,
+            "caution": 0.800000011920929,
+            "courage": 0.6276000142097473,
+            "discipline": 0.6499999761581421,
+            "patience": 0.7508000135421753,
+            "self_preservation": 0.800000011920929,
+            "teamwork": 0.44999998807907104
+          },
+          "salvage": 40,
+          "theus_practice": [
+            96,
+            0,
+            4,
+            0,
+            4,
+            0
+          ],
+          "wins": 1,
+          "xp": 100
+        },
+        {
+          "battles": 4,
+          "class_practice": 100,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Attachment"
+            }
+          },
+          "gold": 220,
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.800000011920929,
+            "courage": 0.6499999761581421,
+            "discipline": 0.8999999761581421,
+            "patience": 0.800000011920929,
+            "self_preservation": 0.6499999761581421,
+            "teamwork": 0.8999999761581421
+          },
+          "salvage": 40,
+          "theus_practice": [
+            98,
+            0,
+            3,
+            0,
+            3,
+            0
+          ],
+          "wins": 3,
+          "xp": 100
+        }
+      ],
+      "seed": 45,
+      "tick": 258,
+      "winner": 1
+    },
+    {
+      "profiles": [
+        {
+          "battles": 5,
+          "class_practice": 125,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Fear"
+            }
+          },
+          "gold": 250,
+          "mind": {
+            "aggression": 0.6499999761581421,
+            "caution": 0.800000011920929,
+            "courage": 0.6276000142097473,
+            "discipline": 0.6499999761581421,
+            "patience": 0.7508000135421753,
+            "self_preservation": 0.800000011920929,
+            "teamwork": 0.44999998807907104
+          },
+          "salvage": 50,
+          "theus_practice": [
+            113,
+            0,
+            5,
+            0,
+            4,
+            0
+          ],
+          "wins": 1,
+          "xp": 125
+        },
+        {
+          "battles": 5,
+          "class_practice": 125,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Attachment"
+            }
+          },
+          "gold": 250,
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.800000011920929,
+            "courage": 0.6499999761581421,
+            "discipline": 0.8999999761581421,
+            "patience": 0.800000011920929,
+            "self_preservation": 0.6499999761581421,
+            "teamwork": 0.8999999761581421
+          },
+          "salvage": 50,
+          "theus_practice": [
+            115,
+            0,
+            3,
+            0,
+            4,
+            0
+          ],
+          "wins": 4,
+          "xp": 125
+        }
+      ],
+      "seed": 46,
+      "tick": 208,
+      "winner": 1
+    },
+    {
+      "profiles": [
+        {
+          "battles": 6,
+          "class_practice": 150,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Fear"
+            }
+          },
+          "gold": 280,
+          "mind": {
+            "aggression": 0.6499999761581421,
+            "caution": 0.800000011920929,
+            "courage": 0.6276000142097473,
+            "discipline": 0.6499999761581421,
+            "patience": 0.7508000135421753,
+            "self_preservation": 0.800000011920929,
+            "teamwork": 0.44999998807907104
+          },
+          "salvage": 60,
+          "theus_practice": [
+            134,
+            0,
+            6,
+            0,
+            5,
+            0
+          ],
+          "wins": 1,
+          "xp": 150
+        },
+        {
+          "battles": 6,
+          "class_practice": 150,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Attachment"
+            }
+          },
+          "gold": 280,
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.800000011920929,
+            "courage": 0.6499999761581421,
+            "discipline": 0.8999999761581421,
+            "patience": 0.800000011920929,
+            "self_preservation": 0.6499999761581421,
+            "teamwork": 0.8999999761581421
+          },
+          "salvage": 60,
+          "theus_practice": [
+            137,
+            0,
+            3,
+            0,
+            4,
+            0
+          ],
+          "wins": 5,
+          "xp": 150
+        }
+      ],
+      "seed": 47,
+      "tick": 238,
+      "winner": 1
+    },
+    {
+      "profiles": [
+        {
+          "battles": 7,
+          "class_practice": 175,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Fear"
+            }
+          },
+          "gold": 310,
+          "mind": {
+            "aggression": 0.6499999761581421,
+            "caution": 0.800000011920929,
+            "courage": 0.6276000142097473,
+            "discipline": 0.6499999761581421,
+            "patience": 0.7508000135421753,
+            "self_preservation": 0.800000011920929,
+            "teamwork": 0.44999998807907104
+          },
+          "salvage": 70,
+          "theus_practice": [
+            159,
+            0,
+            7,
+            0,
+            6,
+            0
+          ],
+          "wins": 1,
+          "xp": 175
+        },
+        {
+          "battles": 7,
+          "class_practice": 175,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Attachment"
+            }
+          },
+          "gold": 310,
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.800000011920929,
+            "courage": 0.6499999761581421,
+            "discipline": 0.8999999761581421,
+            "patience": 0.800000011920929,
+            "self_preservation": 0.6499999761581421,
+            "teamwork": 0.8999999761581421
+          },
+          "salvage": 70,
+          "theus_practice": [
+            160,
+            0,
+            3,
+            0,
+            5,
+            0
+          ],
+          "wins": 5,
+          "xp": 175
+        }
+      ],
+      "seed": 48,
+      "tick": 278,
+      "winner": null
+    },
+    {
+      "profiles": [
+        {
+          "battles": 8,
+          "class_practice": 200,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Fear"
+            }
+          },
+          "gold": 340,
+          "mind": {
+            "aggression": 0.6499999761581421,
+            "caution": 0.800000011920929,
+            "courage": 0.6276000142097473,
+            "discipline": 0.6499999761581421,
+            "patience": 0.7508000135421753,
+            "self_preservation": 0.800000011920929,
+            "teamwork": 0.44999998807907104
+          },
+          "salvage": 80,
+          "theus_practice": [
+            179,
+            0,
+            11,
+            0,
+            6,
+            0
+          ],
+          "wins": 1,
+          "xp": 200
+        },
+        {
+          "battles": 8,
+          "class_practice": 200,
+          "event_memories": {
+            "ally_loss": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "confidence": 0.0,
+            "encirclement": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "failed_charge": {
+              "intensity": 0.0,
+              "reaction": "None"
+            },
+            "isolation": {
+              "intensity": 1.0,
+              "reaction": "Attachment"
+            }
+          },
+          "gold": 340,
+          "mind": {
+            "aggression": 0.5,
+            "caution": 0.800000011920929,
+            "courage": 0.6499999761581421,
+            "discipline": 0.8999999761581421,
+            "patience": 0.800000011920929,
+            "self_preservation": 0.6499999761581421,
+            "teamwork": 0.8999999761581421
+          },
+          "salvage": 80,
+          "theus_practice": [
+            183,
+            0,
+            3,
+            0,
+            6,
+            0
+          ],
+          "wins": 6,
+          "xp": 200
+        }
+      ],
+      "seed": 49,
+      "tick": 238,
+      "winner": 1
+    }
+  ],
+  "policy": 1,
+  "scope": "Eight real solo sparring rematches; authored starting people, Utility controller, seeds 42-49. Chapter advance deliberately deferred. No forced hit or winner.",
+  "source_build": "0.5.0:0042df133eaa1ee4"
+}

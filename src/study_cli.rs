@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut campaign = Campaign::new();
     campaign.save(&output.join("campaign-before.json"))?;
     let mut text = String::from(
-        "# Phalanx evolution study\n\nIsolated new 3v3 campaign, using real simulation and settlement rules. No player save is loaded or changed.\n\nExperience, practice, traits, memories and rival adaptation persist between these battles. PyTorch and Bonsai weights are unchanged.\n\n",
+        "# Phalanx evolution study\n\nIsolated new 3v3 campaign, using real simulation and settlement rules. No player save is loaded or changed.\n\nEqual completion credit, actual skill practice, event memories and rival preparation persist between these battles. Results do not grant growth multipliers or temperament drift. PyTorch and Bonsai weights are unchanged.\n\n",
     );
     for index in 0..battles {
         let trial_seed = seed + index;

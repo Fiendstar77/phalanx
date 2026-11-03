@@ -72,11 +72,11 @@ fn setup_menu(mut commands: Commands) {
                     });
                     super::audio::menu(p);
                     button(p,"Quit",Control::Quit);
-                    p.spawn((Text::new("Select a fighter to change class, appearance and mind.\nRetrain: 10 gold | Iron limb: 15 gold + 5 salvage\nLeague 3: 30 gold win / 15 otherwise | rewards rise by league\nBattles scar minds. The same event marks two personalities differently.\nFounders fields are generated for both squads. Arena returns to the Lab maps.\n\nRMB orbit | MMB pan | Wheel zoom | F follow | V cinema\nSpace pause / run | Tab next fighter | Esc menu\n\nLocal prototype | no account or connection required"),font(14.0)));
+                    p.spawn((Text::new("Select a fighter to change class, appearance and mind.\nRetrain: 10 gold | Iron limb: 15 gold + 5 salvage\nLeague 3: 30 gold per completed battle | rewards rise by league\nBattles scar minds. The same event marks two personalities differently.\nFounders fields are generated for both squads. Arena returns to the Lab maps.\n\nRMB orbit | MMB pan | Wheel zoom | F follow | V cinema\nSpace pause / run | Tab next fighter | Esc menu\n\nLocal prototype | no account or connection required"),font(14.0)));
                 });
         });
     let mut ladder = String::from(
-        "LEAGUE    SLOT COST    TOTAL INVESTED    WIN GOLD\n3         Starter      0                 30\n",
+        "LEAGUE    SLOT COST    TOTAL INVESTED    BATTLE GOLD\n3         Starter      0                 30\n",
     );
     let mut total = 0;
     for league in 4..=20 {
@@ -84,7 +84,7 @@ fn setup_menu(mut commands: Commands) {
         total += price;
         ladder.push_str(&format!(
             "{league:<10}{price:<13}{total:<18}{}\n",
-            phalanx::progression::gold_reward(league, true)
+            phalanx::progression::gold_reward(league)
         ));
     }
     commands.spawn((MainMenu(true),GlobalZIndex(101),Interaction::default(),
@@ -94,7 +94,7 @@ fn setup_menu(mut commands: Commands) {
         .with_children(|p| {
             p.spawn((Text::new("THE ROAD TO TWENTY"),font(32.),TextColor(Color::srgb(1.,0.72,0.08))));
             p.spawn((Text::new(ladder),font(16.)));
-            p.spawn((Text::new("Earned gold only | losses / draws pay half | no passive income\nStarter purse: 100 gold | crafting and retraining compete with savings\nPlayable now: leagues 3-4 | leagues 5-20 are planned content\nPrices are first-pass tuning; a long grind still needs worthwhile battles."),font(14.)));
+            p.spawn((Text::new("Earned gold only | equal battle credit for every result | no passive income\nStarter purse: 100 gold | crafting and retraining compete with savings\nPlayable now: leagues 3-4 | leagues 5-20 are planned content\nPrices are first-pass tuning; a long grind still needs worthwhile battles."),font(14.)));
             button(p,"Back",Control::Ladder);
         });
 }

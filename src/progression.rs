@@ -16,10 +16,13 @@ pub fn slot_cost(destination: usize) -> Option<u32> {
         .checked_sub(4)
         .and_then(|i| SLOT_COSTS.get(i).copied())
 }
-pub fn gold_reward(league: usize, won: bool) -> u32 {
+pub const BATTLE_PRACTICE: u32 = 25;
+pub const BATTLE_SALVAGE: u32 = 10;
+pub const PROGRESSION_POLICY: u32 = 1;
+/// Equal completion credit for both sides; the result is history, not a multiplier.
+pub fn gold_reward(league: usize) -> u32 {
     let n = league.clamp(3, 20) as u32 - 3;
-    let victory = 30 + 12 * n + 2 * n * n;
-    if won { victory } else { victory / 2 }
+    30 + 12 * n + 2 * n * n
 }
 pub const PALETTE: [[f32; 3]; 8] = [
     [1.0, 0.72, 0.08],
@@ -348,6 +351,9 @@ pub struct FighterResult {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BattleReport {
+    /// Zero denotes historical result-based awards; one is equal completion credit.
+    #[serde(default)]
+    pub progression_policy: u32,
     #[serde(default)]
     pub team_names: Option<[String; 2]>,
     pub arena: Arena,
@@ -360,7 +366,8 @@ pub struct BattleReport {
 }
 impl BattleReport {
     fn valid(&self) -> bool {
-        self.fighters[0].len() == self.fighters[1].len()
+        self.progression_policy <= PROGRESSION_POLICY
+            && self.fighters[0].len() == self.fighters[1].len()
             && self.winner.is_none_or(|w| w < 2)
             && self.gold.iter().all(|g| *g <= 1000)
             && self.salvage.iter().all(|s| *s <= 10)
@@ -921,15 +928,12 @@ impl Campaign {
         updated
             .tutorial
             .record(self.teams[1].rival_style, winner == Some(0));
-        for (team, squad) in updated.teams.iter_mut().enumerate() {
+        for squad in &mut updated.teams {
             squad.gold = squad
                 .gold
-                .saturating_add(gold_reward(b.team_size(), winner == Some(team)))
+                .saturating_add(gold_reward(b.team_size()))
                 .min(1_000_000);
-            squad.salvage = squad
-                .salvage
-                .saturating_add(if winner == Some(team) { 10 } else { 6 })
-                .min(1_000_000);
+            squad.salvage = squad.salvage.saturating_add(BATTLE_SALVAGE).min(1_000_000);
         }
         for u in &b.units {
             let f = &mut updated.teams[u.team].fighters[u.id % b.team_size()];
@@ -956,10 +960,6 @@ impl Campaign {
             }
             f.lost_limbs = u.lost_limbs;
             f.prosthetics = u.prosthetics;
-            let survived_pressure = survived
-                && (u.health_fraction() < 0.5
-                    || u.exposure_encirclement >= 30
-                    || u.exposure_isolation >= 80);
             f.psyche.absorb(
                 u.mind,
                 crate::psyche::Exposure {
@@ -967,14 +967,9 @@ impl Campaign {
                     encirclement_ticks: u.exposure_encirclement,
                     ally_losses: u.exposure_ally_loss,
                     failed_charges: u.exposure_failed_charge,
-                    survived_pressure,
-                    broke: !survived,
                 },
             );
-            let xp = 25
-                + u32::from(won) * 15
-                + u32::from(survived) * 5
-                + (u.damage_dealt / 20.0).clamp(0.0, 10.0) as u32;
+            let xp = BATTLE_PRACTICE;
             f.experience = f.experience.saturating_add(xp).min(1_000_000);
             f.mastery.train(u.class.unwrap_or(f.class), xp);
             for weapon in crate::weapons::ProjectileWeapon::ALL {
@@ -984,19 +979,8 @@ impl Campaign {
             }
             f.battles += 1;
             f.wins += u32::from(won);
-            // Deterministic habits, not online PyTorch training or a promise of better tactics.
-            if u.health_fraction() < 0.5 {
-                f.mind.self_preservation = (f.mind.self_preservation + 0.01).min(1.0);
-            }
-            if u.decision_counts[8] > 0 {
-                f.mind.teamwork = (f.mind.teamwork + 0.005).min(1.0);
-            }
-            if won {
-                f.mind.courage = (f.mind.courage + 0.005).min(1.0);
-            }
-            if survived && u.decision_counts[5] > 0 {
-                f.mind.discipline = (f.mind.discipline + 0.005).min(1.0);
-            }
+            // Keep the authored/player-edited temperament. Actual practice and
+            // witnessed event memories persist without rewarding a winning choice.
             f.history.push(History {
                 battle_id: id,
                 seed: b.seed,
@@ -1013,6 +997,7 @@ impl Campaign {
             }
         }
         updated.last_report = Some(BattleReport {
+            progression_policy: PROGRESSION_POLICY,
             team_names: Some(std::array::from_fn(|team| self.teams[team].name.clone())),
             arena: b.initial_arena,
             battle_id: id,

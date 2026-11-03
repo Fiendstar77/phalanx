@@ -81,7 +81,7 @@ fn growth_receipts_survive_save_load_and_are_used_in_the_next_battle() {
     while !battle.finished {
         battle.step();
     }
-    // Controlled exposure fixture ensures this test exercises habits and memories.
+    // Controlled exposure fixture ensures this test exercises actual practice and event memories.
     battle.units[0].health = 0.;
     battle.units[0].exposure_isolation = 120;
     battle.units[0].decision_counts[8] += 1;
@@ -92,8 +92,7 @@ fn growth_receipts_survive_save_load_and_are_used_in_the_next_battle() {
         .unwrap()
         .clone();
     assert!(learning.valid());
-    assert!(learning.mind_after.self_preservation > learning.mind_before.self_preservation);
-    assert!(learning.mind_after.teamwork > learning.mind_before.teamwork);
+    assert_eq!(learning.mind_after, learning.mind_before);
     assert_ne!(learning.psyche_before, learning.psyche_after);
     assert!(learning.class_practice[1] > learning.class_practice[0]);
     campaign.save(&root.join("save.json")).unwrap();

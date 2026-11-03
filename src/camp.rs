@@ -242,6 +242,11 @@ fn report(session: &Session) -> String {
         r.arena.name(),
         r.seed
     );
+    text.push_str(if r.progression_policy == 0 {
+        "HISTORICAL REPORT | earlier result-based awards. Current battles use equal completion credit.\n\n"
+    } else {
+        "EQUAL COMPLETION CREDIT | 25 XP + class practice, equal gold and salvage for both sides.\nActual skill practice and event memories persist; temperament has no automatic result bonus.\n\n"
+    });
     if let Some(p) = session.campaign.prologue.as_ref().filter(|p| p.active()) {
         text.insert_str(
             0,
