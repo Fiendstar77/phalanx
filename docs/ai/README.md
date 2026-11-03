@@ -27,6 +27,13 @@ The distinction between campaign adaptation, supervised training and generative
 inference is deliberate. The campaign changes its persisted state during play.
 The bundled neural policy and Bonsai weights do not train during play.
 
+The new [decision-sequence study](../../analysis/cognition.py) trains a separate
+PyTorch research model from completed, ordered studies. It uses strictly earlier
+actor observations/actions and evaluates held-out seeds against simple baselines.
+It does not replace the live policy. The [persistent-world and learning design](../persistent-world-and-learning.md)
+defines shared geography, autonomous ambitions, opponent-visible learning and
+model admission. Those larger systems remain future work.
+
 ## Architecture
 
 ```mermaid

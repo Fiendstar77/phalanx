@@ -242,6 +242,12 @@ fn report(session: &Session) -> String {
         r.arena.name(),
         r.seed
     );
+    if session.active_battle_id == Some(r.battle_id)
+        && let Some((run, study)) = &session.study
+        && *run == session.run_id
+    {
+        text.push_str(&format!("DEEP TELEMETRY\n{}/report.md\nOrdered decisions, movement/effort frames and opposed Theus rolls.\n\n",study.directory.display()));
+    }
     text.push_str(if r.progression_policy == 0 {
         "HISTORICAL REPORT | earlier result-based awards. Current battles use equal completion credit.\n\n"
     } else {

@@ -50,6 +50,12 @@ campaign adaptation and separate native Bonsai studies. No model may invent a
 successful event or waive a failed legality check. Combat barks retain their
 20-word limit.
 
+The [persistent-world and learning design](persistent-world-and-learning.md)
+records the tabletop-to-close-up world direction and autonomous ambitions. The
+new foundation adds ordered motion/effort frames and opposed-roll receipts to
+studies, plus a separate causal PyTorch decision-sequence experiment. A persistent
+world, live opponent modelling and online neural training are not yet implemented.
+
 The next dependencies for the larger fantasy are persistent relationship
 identities and consequences, richer surface/anchor/support geometry, and
 step-level telemetry for new primitives. Each needs a real world effect and an

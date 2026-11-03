@@ -1,5 +1,31 @@
 # Measurement and PyTorch baseline
 
+The [persistent-world and learning direction](../docs/persistent-world-and-learning.md)
+records the next architecture and separates it from implemented systems.
+
+## Decision-sequence study
+
+Generate a separate, authored self-play corpus and train a causal PyTorch forecast:
+
+```bash
+mkdir -p outputs
+cargo run --locked --no-default-features --example cognition_corpus -- outputs/cognition-corpus 12
+.venv/bin/python -m analysis.cognition --data outputs/cognition-corpus --output outputs/cognition-model --train-end 8 --val-end 10
+```
+
+Both directories must be fresh. The collector leaves the player's campaign alone.
+This model studies an actor's preceding observations/actions to predict its next
+decision. Whole seeds and persistent fighter identities are separated; normalization
+uses training data only. Validation selects a checkpoint before held-out evaluation.
+Reports compare a Markov baseline and repetition of the previous action, including
+the rarer decisions where an action actually changes. The reader rejects incomplete,
+mixed-build, noncausal and discontinuous studies and imposes byte/sample budgets.
+
+This is a research self/player model, not an opponent-visible model or a live game
+controller. Ground-truth frames, rewards, utility scores and future observations
+or eligibility masks are excluded from inputs. The [v12 result](../docs/results/v12/README.md)
+includes the trained checkpoint and the limits of this first corpus.
+
 This pipeline collects real Rust simulation output and trains an imitation policy. Utility is the default; the frozen learned policy can also control the live game. Separate native Bonsai tests evaluate text and tactical shadow proposals. [Automatic battle reports, persistent adaptation and study commands](../docs/ai-studies.md) explain what each system does and how to inspect its evidence.
 
 ## Setup

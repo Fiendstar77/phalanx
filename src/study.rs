@@ -21,6 +21,11 @@ pub struct Recorder {
     max_step_ms: f64,
     complete: bool,
     next_opportunity: u64,
+    stream_sequence: u64,
+    frames: u32,
+    theus_receipts: u32,
+    previous_frame: Vec<[f32; 2]>,
+    frame_tick: u32,
 }
 
 fn write_json(path: &Path, value: &impl Serialize) -> io::Result<()> {
@@ -32,6 +37,14 @@ fn write_json(path: &Path, value: &impl Serialize) -> io::Result<()> {
 
 impl Recorder {
     pub fn start(root: &Path, battle: &Battle) -> io::Result<Self> {
+        Self::start_with_context(root, battle, None)
+    }
+
+    pub fn start_with_context(
+        root: &Path,
+        battle: &Battle,
+        campaign_battle_id: Option<u64>,
+    ) -> io::Result<Self> {
         let stamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_err(io::Error::other)?
@@ -49,6 +62,12 @@ impl Recorder {
             "{}",
             serde_json::json!({
                 "event": "start", "schema_version": 1,
+                "telemetry_schema_version": 2, "stream_sequence": 0,
+                "simulation_build": crate::challenges::BUILD,
+                "campaign_battle_id": campaign_battle_id,
+                "coordinate_system": "arena_local_xz", "world_context": null,
+                "frame_authority": "research_truth_not_an_agent_observation",
+                "decision_authority": "actor_perception_before_movement",
                 "simulation_version": battle.simulation_version,
                 "seed": battle.seed, "arena": battle.initial_arena, "swapped": battle.swapped,
                 "founders": battle.founders, "initial_tick": battle.tick,
@@ -73,7 +92,50 @@ impl Recorder {
             max_step_ms: 0.,
             complete: false,
             next_opportunity: 0,
+            stream_sequence: 1,
+            frames: 0,
+            theus_receipts: 0,
+            previous_frame: battle.units.iter().map(|u| u.position).collect(),
+            frame_tick: battle.tick,
         })
+    }
+
+    fn emit(&mut self, mut value: serde_json::Value) -> io::Result<()> {
+        value["stream_sequence"] = self.stream_sequence.into();
+        writeln!(self.trace, "{value}")?;
+        self.stream_sequence += 1;
+        Ok(())
+    }
+
+    fn frame(&mut self, battle: &Battle) -> io::Result<()> {
+        let elapsed = (battle.tick - self.frame_tick).max(1) as f32 * DT;
+        let actors: Vec<_> = battle
+            .units
+            .iter()
+            .enumerate()
+            .map(|(i, u)| {
+                let old = self.previous_frame.get(i).copied().unwrap_or(u.position);
+                serde_json::json!({"unit":u.id,"fighter_id":u.fighter_id,"team":u.team,
+                "position":u.position,"ground_height":battle.arena.elevation(u.position),
+                "mean_velocity":[(u.position[0]-old[0])/elapsed,(u.position[1]-old[1])/elapsed],
+                "health":u.health,"max_health":u.max_health(),"lost_limbs":u.lost_limbs,
+                "prosthetics":u.prosthetics,"action":ACTIONS[u.action],
+                "effort":u.theus.as_ref().map(|a|a.stamina),
+                "theus_practice":u.theus.as_ref().map(|a|a.sheet.practice),
+                "technique":u.theus.as_ref().map(|a|a.technique),
+                "airborne_until":u.theus.as_ref().map(|a|a.airborne_until),
+                "windup_target":u.theus.as_ref().and_then(|a|a.windup_target)})
+            })
+            .collect();
+        self.emit(
+            serde_json::json!({"event":"combat_frame","schema_version":1,
+            "tick":battle.tick,"phase":"post_step_research_truth","truth_only":true,
+            "interval_seconds":elapsed,"actors":actors}),
+        )?;
+        self.previous_frame = battle.units.iter().map(|u| u.position).collect();
+        self.frame_tick = battle.tick;
+        self.frames += 1;
+        self.trace.flush()
     }
 
     pub fn step(&mut self, battle: &mut Battle) -> io::Result<()> {
@@ -91,33 +153,29 @@ impl Recorder {
             self.record(&record)?;
         }
         for event in battle.damage_events.iter().filter(|e| e.tick == tick) {
-            writeln!(
-                self.trace,
-                "{}",
-                serde_json::json!({"event": "damage", "receipt": event})
-            )?;
+            self.emit(serde_json::json!({"event": "damage", "receipt": event}))?;
         }
         for event in battle.heals.iter().filter(|e| e.tick == tick) {
-            writeln!(
-                self.trace,
-                "{}",
-                serde_json::json!({"event": "healing", "receipt": event})
-            )?;
+            self.emit(serde_json::json!({"event": "healing", "receipt": event}))?;
         }
+        for event in battle.theus_events.iter().filter(|e| e.tick == tick) {
+            self.emit(serde_json::json!({"event":"theus","receipt":event}))?;
+            self.theus_receipts += 1;
+        }
+        let next_opportunity = self.next_opportunity;
         for event in battle
             .opportunities
             .events
             .iter()
-            .filter(|e| e.sequence >= self.next_opportunity)
+            .filter(|e| e.sequence >= next_opportunity)
         {
-            writeln!(
-                self.trace,
-                "{}",
-                serde_json::json!({"event": "opportunity", "receipt": event})
-            )?;
+            self.emit(serde_json::json!({"event": "opportunity", "receipt": event}))?;
         }
         if let Some(event) = battle.opportunities.events.last() {
             self.next_opportunity = event.sequence + 1;
+        }
+        if self.steps.is_multiple_of(5) || battle.finished {
+            self.frame(battle)?;
         }
         if battle.finished {
             self.finish(battle)?;
@@ -126,16 +184,14 @@ impl Recorder {
     }
 
     fn record(&mut self, record: &DecisionRecord) -> io::Result<()> {
-        writeln!(self.trace, "{}", serde_json::to_string(record)?)?;
+        self.emit(serde_json::to_value(record)?)?;
         self.decisions += 1;
         Ok(())
     }
 
     fn finish(&mut self, battle: &Battle) -> io::Result<()> {
-        writeln!(
-            self.trace,
-            "{}",
-            serde_json::json!({"event": "end", "tick": battle.tick, "result": battle.result})
+        self.emit(
+            serde_json::json!({"event": "end", "tick": battle.tick, "result": battle.result}),
         )?;
         self.trace.flush()?;
         write_json(&self.directory.join("battle.json"), battle)?;
@@ -148,6 +204,9 @@ impl Recorder {
             "seed": battle.seed, "arena": battle.initial_arena, "founders": battle.founders,
             "initial_tick": self.initial_tick, "final_tick": battle.tick,
             "recorded_steps": self.steps, "decision_records": self.decisions,
+            "telemetry_schema_version": 2, "simulation_build":crate::challenges::BUILD,
+            "combat_frames":self.frames,"theus_receipts":self.theus_receipts,
+            "stream_events":self.stream_sequence,"trace_bytes":self.trace.get_ref().metadata()?.len(),
             "result": battle.result, "duration_seconds": battle.tick as f32 * DT,
             "survivors": [battle.survivors(0), battle.survivors(1)],
             "actions": actions, "comparison": battle.comparison_summary,
@@ -192,7 +251,8 @@ impl Recorder {
                     .sum::<u32>()
             ));
         }
-        text.push_str("\n## Evidence\n\n[Full battle state](battle.json) · [Machine-readable report](report.json) · [Decision trace](decisions.jsonl)\n\nDecision records contain perceived contacts, features, eligibility masks, baseline scores, controller proposals and the actual executed action. Damage and healing have simulation receipts. If campaign rewards settle, learning.json and learning.md record persisted before/after changes.\n\n## Interpretation\n\nThis is one battle. Repeated decisions are correlated, and agreement does not establish better tactics. The PyTorch policy is frozen; actual practice and event memories persist. Match results grant no temperament or growth multiplier. Timing measures simulation plus observation capture, excludes rendering and trace disk writes, and does not isolate inference. Interrupted/reset recordings retain complete=false in status.json.\n");
+        text.push_str(&format!("\n## Deep telemetry\n\nBuild `{}`. {} ordered events, {} post-step frames and {} opposed Theus receipts. Trace size: {} bytes. Frames include resolved positions, mean motion, health, effort, wounds, practice and technique state. Theus receipts retain dice, defence, critical and actual damage.\n\nFrames are research truth, separate from decision-time perceived observations. Coordinates remain local to this arena; world context is unknown. A stream sequence detects gaps and ordering errors.\n",crate::challenges::BUILD,self.stream_sequence,self.frames,self.theus_receipts,self.trace.get_ref().metadata()?.len()));
+        text.push_str("\n## Evidence\n\n[Full battle state](battle.json) · [Machine-readable report](report.json) · [Decision trace](decisions.jsonl)\n\nDecision records contain perceived contacts, features, eligibility masks, baseline scores, controller proposals and the actual executed action. Damage and healing have simulation receipts. If campaign rewards settle, learning.json and learning.md record persisted before/after changes.\n\n## Interpretation\n\nThis is one battle. Repeated decisions are correlated, and agreement does not establish better tactics. The live PyTorch policy is frozen; separate research models may be trained from eligible studies. Actual practice and event memories persist. Match results grant no temperament or growth multiplier. Timing measures simulation plus observation capture, excludes rendering and trace disk writes, and does not isolate inference. Interrupted/reset recordings retain complete=false in status.json.\n");
         fs::write(self.directory.join("report.md"), text)?;
         write_json(
             &self.directory.join("status.json"),

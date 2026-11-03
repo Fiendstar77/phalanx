@@ -33,6 +33,35 @@ fn study_preserves_combat_and_records_complete_actual_decisions() {
         .collect();
     assert_eq!(rows.first().unwrap()["event"], "start");
     assert_eq!(rows.last().unwrap()["event"], "end");
+    for (sequence, row) in rows.iter().enumerate() {
+        assert_eq!(row["stream_sequence"], sequence as u64);
+    }
+    assert_eq!(rows[0]["telemetry_schema_version"], 2);
+    assert_eq!(rows[0]["simulation_build"], phalanx::challenges::BUILD);
+    assert!(rows[0]["world_context"].is_null());
+    let frames: Vec<_> = rows
+        .iter()
+        .filter(|r| r["event"] == "combat_frame")
+        .collect();
+    assert!(!frames.is_empty());
+    assert!(
+        frames
+            .iter()
+            .all(|r| r["truth_only"] == true && r["tick"].as_u64().unwrap() > 0)
+    );
+    let final_frame = frames.last().unwrap();
+    for (row, actual) in final_frame["actors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(&recorded.units)
+    {
+        assert_eq!(
+            row["position"],
+            serde_json::to_value(actual.position).unwrap()
+        );
+        assert_eq!(row["health"], serde_json::to_value(actual.health).unwrap());
+    }
     let decisions: Vec<_> = rows.iter().filter(|r| r["event"] == "decision").collect();
     assert!(!decisions.is_empty());
     for row in &decisions {
@@ -67,6 +96,52 @@ fn interrupted_study_is_never_labelled_complete() {
         serde_json::from_slice(&std::fs::read(directory.join("status.json")).unwrap()).unwrap();
     assert_eq!(status["complete"], false);
     assert!(!directory.join("report.md").exists());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn deep_feed_records_actual_opposed_rolls_and_campaign_context() {
+    let root = scratch("theus-feed");
+    let mut campaign = Campaign::new();
+    let (id, mut battle) = campaign
+        .begin_battle(8, phalanx::terrain::Arena::OpenField, Controller::Utility)
+        .unwrap();
+    let mut recorder = Recorder::start_with_context(&root, &battle, Some(id)).unwrap();
+    while !battle.finished {
+        recorder.step(&mut battle).unwrap();
+    }
+    let rows: Vec<serde_json::Value> =
+        std::fs::read_to_string(recorder.directory.join("decisions.jsonl"))
+            .unwrap()
+            .lines()
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect();
+    assert_eq!(rows[0]["campaign_battle_id"], id);
+    let actual: Vec<_> = rows
+        .iter()
+        .filter(|r| r["event"] == "theus")
+        .map(|r| r["receipt"].clone())
+        .collect();
+    assert!(!actual.is_empty());
+    assert_eq!(
+        actual,
+        serde_json::to_value(&battle.theus_events)
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .clone()
+    );
+    let report: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(recorder.directory.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["theus_receipts"], actual.len());
+    assert_eq!(
+        report["trace_bytes"],
+        std::fs::metadata(recorder.directory.join("decisions.jsonl"))
+            .unwrap()
+            .len()
+    );
+    drop(recorder);
     std::fs::remove_dir_all(root).unwrap();
 }
 

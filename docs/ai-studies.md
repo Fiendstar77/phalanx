@@ -1,13 +1,14 @@
 # Study the AI, then watch the squad change
 
 Phalanx is an AI systems testbed with a playable campaign. Its evidence has
-three distinct layers:
+four distinct layers:
 
 | System | What changes | Evidence |
 | --- | --- | --- |
 | Campaign adaptation | Persistent experience, class/weapon practice, habits, conditioned memories and rival counters | Before/after learning receipts, save/load and the next battle's fighter state |
 | PyTorch policy | Frozen trained policy proposes an eligible action | Same-state Utility/PyTorch comparison, raw decision records and controlled duel results |
 | Bonsai experiment | Native language model proposes text or an action on a recorded observation | Raw prompt/completion, validity, fallback reason, deadline, model/runtime hashes |
+| Sequence research model | A separately trained PyTorch model forecasts the actor's next decision from earlier observations/actions | Held-out seed/identity splits, causal-input checks, actual checkpoint and baseline comparisons; no live authority |
 
 Campaign adaptation is implemented with explicit rules. It is not online
 gradient training. Neither the bundled PyTorch weights nor Bonsai weights
@@ -18,9 +19,11 @@ does not establish better tactics.
 
 Finish a Founders battle. The post-battle screen opens automatically and now
 shows **YOUR PHALANX IS CHANGING**. Each fighter's receipt explains actual
-before/after changes: supporting a teammate reinforces teamwork, a costly
-battle increases self-preservation, and remembered isolation or ally loss can
-condition later reactions. Class practice shows progress toward the next rank.
+before/after changes: actual combat trains relevant Theus skills, and witnessed
+isolation or ally loss can condition later reactions. Both sides receive equal
+completion XP/class credit, gold and salvage. Wins, losses, damage and survival
+do not change those awards or automatically alter temperament. Class practice
+shows progress toward the next rank.
 
 These are the same persisted values used by subsequent battles. The screen
 does not invent a lesson from generated prose. Older saves without receipts
@@ -36,11 +39,23 @@ Starting combat, including single-stepping, creates a unique directory under
 | --- | --- |
 | `report.md` | Readable outcome, action counts and Utility/PyTorch agreement |
 | `report.json` | Machine-readable counts, missing predictions, fallbacks and simulation-step timing |
-| `decisions.jsonl` | Initial setup; exact decision-time perceived contacts, features, eligibility, scores, controller proposals and executed actions; damage/healing receipts; final result |
+| `decisions.jsonl` | Initial setup and build/campaign context; ordered decision observations, damage/healing and opposed Theus receipts; post-step motion/effort/practice frames; final result |
 | `battle.json` | Full final simulation state |
 | `learning.md`, `learning.json` | Campaign settlement and each fighter's actual before/after adaptation, when campaign rewards settle |
 | `legend-ledger.md`, `legends.json` | Qualifying actually completed compositions recorded at settlement; an empty ledger is explicit |
 | `status.json` | `complete=true` only after the battle and report files finish successfully |
+
+The v2 telemetry extension retains the existing decision fields. Every event has
+a stream sequence; frame records are explicitly research truth rather than agent
+observations. They include resolved planar positions, mean velocity, terrain
+height, health, effort, wounds, practice and technique state. World context is
+explicitly unknown while combat uses local arena coordinates. Frames flush during
+recording. The report counts frames, opposed rolls, ordered events and trace bytes.
+The post-battle screen shows the current study's report path when available.
+
+The [decision-sequence PyTorch study](../analysis/cognition.py) consumes only
+strictly earlier actor observations/actions from complete studies. See the
+[v12 experiment](results/v12/README.md) and the [world/learning design](persistent-world-and-learning.md).
 
 The in-game battle report shows the directory. Reports are independent of the
 player save. Exiting or resetting an unfinished battle leaves an incomplete

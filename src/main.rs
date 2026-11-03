@@ -341,9 +341,10 @@ impl Session {
             self.study = None;
         }
         if self.study.is_none() && self.study_failed_run != Some(self.run_id) {
-            match phalanx::study::Recorder::start(
+            match phalanx::study::Recorder::start_with_context(
                 std::path::Path::new("outputs/studies"),
                 &self.battle,
+                self.active_battle_id,
             ) {
                 Ok(study) => {
                     info!("Battle study: {}", study.directory.display());

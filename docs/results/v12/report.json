@@ -1,0 +1,1384 @@
+{
+  "schema_version": 1,
+  "task": "next_self_decision_forecast",
+  "fixture_data": true,
+  "runtime": {
+    "torch": "2.14.1+cpu",
+    "python": "3.14.9"
+  },
+  "training": {
+    "seed": 23,
+    "epochs": 20,
+    "history": 2,
+    "batch_size": 1024,
+    "hidden": 48,
+    "optimizer": "AdamW",
+    "lr": 0.001,
+    "weight_decay": 0.01
+  },
+  "provenance": {
+    "simulation_build": "0.5.0:d4c99ed1e64b9e21",
+    "files": [
+      {
+        "path": "studies/battle-0-1793687735631199682-155699/decisions.jsonl",
+        "sha256": "0ed2a975d6da7de5f70a1e98fa45e672ac5b52596b0b9992a415b121a61ba9a0",
+        "bytes": 1327542
+      },
+      {
+        "path": "studies/battle-0-1793687735845990090-155699/decisions.jsonl",
+        "sha256": "ec4f6aac71865b2163488636fdecaeb78cd7b8b81f16298a60a36692fa5ef6aa",
+        "bytes": 1108088
+      },
+      {
+        "path": "studies/battle-0-1793687735999262245-155699/decisions.jsonl",
+        "sha256": "b8b1ced66ec21e8afa02378c91f2cbdb68291a15e95da847b46af17c99d9657f",
+        "bytes": 1125045
+      },
+      {
+        "path": "studies/battle-1-1793687736251578747-155699/decisions.jsonl",
+        "sha256": "6349c5183854f2d4417b4be5cd8d500ecfe65b27d1e69fef99937d7731f8bc8c",
+        "bytes": 1348623
+      },
+      {
+        "path": "studies/battle-1-1793687736459947191-155699/decisions.jsonl",
+        "sha256": "65285c17dc9dd74093f6ac90e0892eb47ae30a0116d4b22888fb02b9904e5295",
+        "bytes": 1598924
+      },
+      {
+        "path": "studies/battle-1-1793687736773258462-155699/decisions.jsonl",
+        "sha256": "621e5bc47c8e4dbdade0ed1d348f9709b309f36cc0f28da080969d83b8342863",
+        "bytes": 1264516
+      },
+      {
+        "path": "studies/battle-10-1793687742377781370-155699/decisions.jsonl",
+        "sha256": "e38df2628e32bcaf868879ac85332aa13fd3e94bf257c430a5b89df2614b9b30",
+        "bytes": 1263626
+      },
+      {
+        "path": "studies/battle-10-1793687742580368015-155699/decisions.jsonl",
+        "sha256": "ec3cdb93b76fdcc8c3888439f02bd06f3d94b8822a5726d6e6a5b6f396b3956d",
+        "bytes": 1101622
+      },
+      {
+        "path": "studies/battle-10-1793687742799684256-155699/decisions.jsonl",
+        "sha256": "52524ba0665585066363b9373c2abd194e5fe760dcdb5a6527122eb3eda0855f",
+        "bytes": 841916
+      },
+      {
+        "path": "studies/battle-11-1793687742935436402-155699/decisions.jsonl",
+        "sha256": "22543283934d443380f5d6ec045f308086e4df82f7680e5ef7c035a68057ac75",
+        "bytes": 3855602
+      },
+      {
+        "path": "studies/battle-11-1793687743402412473-155699/decisions.jsonl",
+        "sha256": "552c284797dae68cc26cc040c364819805c51fea08a77b267a22dc9465dcb264",
+        "bytes": 961309
+      },
+      {
+        "path": "studies/battle-11-1793687743545176857-155699/decisions.jsonl",
+        "sha256": "15b198ec1caf58766a63f558e2f228f94fc97dfdf33000ada66f8184d507459b",
+        "bytes": 1187145
+      },
+      {
+        "path": "studies/battle-2-1793687736968039036-155699/decisions.jsonl",
+        "sha256": "8f98f33c546f1a007e42c35f9d9a25e63753af11acaa873d46de4873bf894ded",
+        "bytes": 1600415
+      },
+      {
+        "path": "studies/battle-2-1793687737254771725-155699/decisions.jsonl",
+        "sha256": "d196d049cccd6c881e58e9a8f4bb09bbc6eb5a383285467231b9bf46ff59eed7",
+        "bytes": 943307
+      },
+      {
+        "path": "studies/battle-2-1793687737393162899-155699/decisions.jsonl",
+        "sha256": "6e00b907ed380ade3cf61f091463ef11b2590af2772ca046fb8310766a6ef9a5",
+        "bytes": 1639636
+      },
+      {
+        "path": "studies/battle-3-1793687737638761427-155699/decisions.jsonl",
+        "sha256": "92b1dcf8821ca99a51691eb370e0cc362545ad5e1cc8a5f69bd71aef3640097f",
+        "bytes": 1152809
+      },
+      {
+        "path": "studies/battle-3-1793687737824266209-155699/decisions.jsonl",
+        "sha256": "e43bbb5a536a66f9b6895db0acd0efa385153888b1f5ad7818a85f032d8117cf",
+        "bytes": 887136
+      },
+      {
+        "path": "studies/battle-3-1793687737949289686-155699/decisions.jsonl",
+        "sha256": "facb2390893e560792a07ab9e44c2c387af8cfd9df8c1e4b5d0f45c020714c33",
+        "bytes": 1206338
+      },
+      {
+        "path": "studies/battle-4-1793687738206533306-155699/decisions.jsonl",
+        "sha256": "f7b3199172b1aadeefcce3e0f1523e4d89d46427f3d25a795583e165cf4c0f34",
+        "bytes": 1191778
+      },
+      {
+        "path": "studies/battle-4-1793687738401351378-155699/decisions.jsonl",
+        "sha256": "330aecc35ec4e07c2ba64a3c7143af070931379c7831b0c43949ef0749720235",
+        "bytes": 997223
+      },
+      {
+        "path": "studies/battle-4-1793687738581187605-155699/decisions.jsonl",
+        "sha256": "893fe02ef3e1051ad293ef3f7e46b5a53278ce8a60fdfa01d18989bd98735c31",
+        "bytes": 861095
+      },
+      {
+        "path": "studies/battle-5-1793687738720102623-155699/decisions.jsonl",
+        "sha256": "412cea0cf46c8ee57d40c85f5baa036b14d795b3092489dc8a5811aca9877fde",
+        "bytes": 4165406
+      },
+      {
+        "path": "studies/battle-5-1793687739272899118-155699/decisions.jsonl",
+        "sha256": "8c93319ac3decaec73f4fe050cbc9cbf4bdeb67e9f47df023cca7dbd29eca9b2",
+        "bytes": 964843
+      },
+      {
+        "path": "studies/battle-5-1793687739407356457-155699/decisions.jsonl",
+        "sha256": "a25283a829543c36f7bc9f83ae07467a4fb34ed60993e28396df8512da57588e",
+        "bytes": 1356039
+      },
+      {
+        "path": "studies/battle-6-1793687739630288291-155699/decisions.jsonl",
+        "sha256": "985973310e2b366c177105431e9de512881f189d94704135d52556282157a64b",
+        "bytes": 1149768
+      },
+      {
+        "path": "studies/battle-6-1793687739817531947-155699/decisions.jsonl",
+        "sha256": "27fd4c56507a8bb414fc3f9e7e630b1481a493cdfc2bf7bfe4a6e2f9ff115e87",
+        "bytes": 1126269
+      },
+      {
+        "path": "studies/battle-6-1793687739971410879-155699/decisions.jsonl",
+        "sha256": "ea7dcf848b6d00ddbcc1b2f02411dd985bd16b9424359fffdb8cc54b2f974fa4",
+        "bytes": 1030827
+      },
+      {
+        "path": "studies/battle-7-1793687740202520924-155699/decisions.jsonl",
+        "sha256": "b47c7ba0508027fc534364dec7aa0367f5f7f46fbab7c0985e99b76d4a8a3107",
+        "bytes": 1323970
+      },
+      {
+        "path": "studies/battle-7-1793687740416060910-155699/decisions.jsonl",
+        "sha256": "2c28bcbe08896ae0868703c96bdcb27007962634d4df571e0745a9abc800144a",
+        "bytes": 1152060
+      },
+      {
+        "path": "studies/battle-7-1793687740635226131-155699/decisions.jsonl",
+        "sha256": "bd5148b8ad5b78309e78f81005cc91cd078caa4b27591c72f977c29ae7d020c4",
+        "bytes": 942271
+      },
+      {
+        "path": "studies/battle-8-1793687740787456872-155699/decisions.jsonl",
+        "sha256": "db42dd1046d53a3e8a7000cb843aa01a751425cb6e08b13ce0c7ace792c2a467",
+        "bytes": 3824234
+      },
+      {
+        "path": "studies/battle-8-1793687741340875064-155699/decisions.jsonl",
+        "sha256": "82ab5efc7589b941e45ec74c01c2b6f425dff32905c5d4c1a93118923cac435c",
+        "bytes": 1162454
+      },
+      {
+        "path": "studies/battle-8-1793687741509133325-155699/decisions.jsonl",
+        "sha256": "2a350c268a6616833fcc3bf15fd489f5feeaf55c36cc4a2c1c6036a58b15a853",
+        "bytes": 1484801
+      },
+      {
+        "path": "studies/battle-9-1793687741765064730-155699/decisions.jsonl",
+        "sha256": "d8f679897ac09f506d5f0f1aba67cef82d569ccc8830086c979bf96564ed8add",
+        "bytes": 1144369
+      },
+      {
+        "path": "studies/battle-9-1793687741952373756-155699/decisions.jsonl",
+        "sha256": "2e144b864863b3331d23ae7502b2339d1646131187f4a53e2caaa8dfc2a8587b",
+        "bytes": 1180887
+      },
+      {
+        "path": "studies/battle-9-1793687742114532707-155699/decisions.jsonl",
+        "sha256": "fee2fa5d1969221c5f2d2285ec391f0d620a28356bf84206df7e1a12c2daa973",
+        "bytes": 1181622
+      }
+    ],
+    "fixture_data": true,
+    "seeds": {
+      "train": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "validation": [
+        8,
+        9
+      ],
+      "test": [
+        10,
+        11
+      ]
+    },
+    "history": 2
+  },
+  "selection": "validation NLL; test used only after selection",
+  "selected_epoch": 20,
+  "parameters": 4137,
+  "device": "cpu",
+  "threads": 2,
+  "training_and_evaluation_seconds": 0.15362717999960296,
+  "metrics": {
+    "train": {
+      "samples": 14509,
+      "neural": {
+        "accuracy": 0.9375560283660889,
+        "macro_f1_supported": 0.610101791969696,
+        "classes": [
+          {
+            "action": "ADVANCE",
+            "support": 6073,
+            "precision": 0.9284112748238309,
+            "recall": 0.9545529392392558,
+            "f1": 0.9413006413899488
+          },
+          {
+            "action": "ATTACK",
+            "support": 7098,
+            "precision": 0.9557987492893689,
+            "recall": 0.9474499859115244,
+            "f1": 0.9516060563180982
+          },
+          {
+            "action": "HIGH GROUND",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "FLANK",
+            "support": 59,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          {
+            "action": "REGROUP",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "RETREAT",
+            "support": 142,
+            "precision": 0.5333333333333333,
+            "recall": 0.3380281690140845,
+            "f1": 0.41379310344827586
+          },
+          {
+            "action": "HOLD",
+            "support": 43,
+            "precision": 0.7647058823529411,
+            "recall": 0.3023255813953488,
+            "f1": 0.43333333333333335
+          },
+          {
+            "action": "SEEK COVER",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "SUPPORT ALLY",
+            "support": 1094,
+            "precision": 0.9090909090909091,
+            "recall": 0.9323583180987203,
+            "f1": 0.9205776173285198
+          }
+        ],
+        "confusion_matrix": [
+          [
+            5797,
+            214,
+            0,
+            0,
+            0,
+            23,
+            0,
+            0,
+            39
+          ],
+          [
+            344,
+            6725,
+            0,
+            0,
+            0,
+            17,
+            0,
+            0,
+            12
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            33,
+            24,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            35,
+            38,
+            0,
+            0,
+            0,
+            48,
+            0,
+            0,
+            21
+          ],
+          [
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            13,
+            0,
+            28
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            33,
+            35,
+            0,
+            0,
+            0,
+            2,
+            4,
+            0,
+            1020
+          ]
+        ],
+        "negative_log_likelihood": 0.22327645123004913,
+        "brier": 0.10194296389818192,
+        "transition_count": 915,
+        "transition_accuracy": 0.12240437418222427
+      },
+      "markov": {
+        "accuracy": 0.9391412138938904,
+        "macro_f1_supported": 0.5504430962868331,
+        "classes": [
+          {
+            "action": "ADVANCE",
+            "support": 6073,
+            "precision": 0.929312270623903,
+            "recall": 0.9589988473571546,
+            "f1": 0.9439222042139385
+          },
+          {
+            "action": "ATTACK",
+            "support": 7098,
+            "precision": 0.9619799139167863,
+            "recall": 0.944632290786137,
+            "f1": 0.9532271822576059
+          },
+          {
+            "action": "HIGH GROUND",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "FLANK",
+            "support": 59,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          {
+            "action": "REGROUP",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "RETREAT",
+            "support": 142,
+            "precision": 0.48226950354609927,
+            "recall": 0.4788732394366197,
+            "f1": 0.48056537102473496
+          },
+          {
+            "action": "HOLD",
+            "support": 43,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          {
+            "action": "SEEK COVER",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "SUPPORT ALLY",
+            "support": 1094,
+            "precision": 0.9098143236074271,
+            "recall": 0.9405850091407678,
+            "f1": 0.9249438202247191
+          }
+        ],
+        "confusion_matrix": [
+          [
+            5824,
+            183,
+            0,
+            0,
+            0,
+            33,
+            0,
+            0,
+            33
+          ],
+          [
+            354,
+            6705,
+            0,
+            0,
+            0,
+            28,
+            0,
+            0,
+            11
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            33,
+            24,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            28,
+            32,
+            0,
+            0,
+            0,
+            68,
+            0,
+            0,
+            14
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            42
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            28,
+            26,
+            0,
+            0,
+            0,
+            11,
+            0,
+            0,
+            1029
+          ]
+        ],
+        "negative_log_likelihood": 0.2689758837223053,
+        "brier": 0.11127323657274246,
+        "transition_count": 915,
+        "transition_accuracy": 0.06666667014360428
+      },
+      "persistence_accuracy": 0.9369357228279114
+    },
+    "validation": {
+      "samples": 4565,
+      "neural": {
+        "accuracy": 0.9309967160224915,
+        "macro_f1_supported": 0.6335962064714313,
+        "classes": [
+          {
+            "action": "ADVANCE",
+            "support": 2064,
+            "precision": 0.9261523988711194,
+            "recall": 0.9539728682170543,
+            "f1": 0.9398568019093079
+          },
+          {
+            "action": "ATTACK",
+            "support": 1901,
+            "precision": 0.9426919032597266,
+            "recall": 0.9431877958968964,
+            "f1": 0.942939784380752
+          },
+          {
+            "action": "HIGH GROUND",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "FLANK",
+            "support": 21,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          {
+            "action": "REGROUP",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "RETREAT",
+            "support": 56,
+            "precision": 0.6451612903225806,
+            "recall": 0.35714285714285715,
+            "f1": 0.45977011494252873
+          },
+          {
+            "action": "HOLD",
+            "support": 8,
+            "precision": 1.0,
+            "recall": 0.375,
+            "f1": 0.5454545454545454
+          },
+          {
+            "action": "SEEK COVER",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "SUPPORT ALLY",
+            "support": 515,
+            "precision": 0.9244532803180915,
+            "recall": 0.9029126213592233,
+            "f1": 0.9135559921414538
+          }
+        ],
+        "confusion_matrix": [
+          [
+            1969,
+            72,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            17
+          ],
+          [
+            96,
+            1793,
+            0,
+            0,
+            0,
+            4,
+            0,
+            0,
+            8
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            8,
+            13,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            15,
+            13,
+            0,
+            0,
+            0,
+            20,
+            0,
+            0,
+            8
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            5
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            38,
+            11,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            465
+          ]
+        ],
+        "negative_log_likelihood": 0.2581014633178711,
+        "brier": 0.11492246389389038,
+        "transition_count": 306,
+        "transition_accuracy": 0.13725490868091583
+      },
+      "markov": {
+        "accuracy": 0.9347206950187683,
+        "macro_f1_supported": 0.5653803382701602,
+        "classes": [
+          {
+            "action": "ADVANCE",
+            "support": 2064,
+            "precision": 0.9307257304429783,
+            "recall": 0.9568798449612403,
+            "f1": 0.9436215957955089
+          },
+          {
+            "action": "ATTACK",
+            "support": 1901,
+            "precision": 0.9528907922912205,
+            "recall": 0.9363492898474487,
+            "f1": 0.9445476253648183
+          },
+          {
+            "action": "HIGH GROUND",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "FLANK",
+            "support": 21,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          {
+            "action": "REGROUP",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "RETREAT",
+            "support": 56,
+            "precision": 0.5818181818181818,
+            "recall": 0.5714285714285714,
+            "f1": 0.5765765765765766
+          },
+          {
+            "action": "HOLD",
+            "support": 8,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          {
+            "action": "SEEK COVER",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "SUPPORT ALLY",
+            "support": 515,
+            "precision": 0.9230769230769231,
+            "recall": 0.9320388349514563,
+            "f1": 0.927536231884058
+          }
+        ],
+        "confusion_matrix": [
+          [
+            1975,
+            60,
+            0,
+            0,
+            0,
+            11,
+            0,
+            0,
+            18
+          ],
+          [
+            107,
+            1780,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            8
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            10,
+            10,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            10,
+            9,
+            0,
+            0,
+            0,
+            32,
+            0,
+            0,
+            5
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            20,
+            9,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            480
+          ]
+        ],
+        "negative_log_likelihood": 0.2957811951637268,
+        "brier": 0.1206725612282753,
+        "transition_count": 306,
+        "transition_accuracy": 0.04575163498520851
+      },
+      "persistence_accuracy": 0.932968258857727
+    },
+    "test": {
+      "samples": 4079,
+      "neural": {
+        "accuracy": 0.9406717419624329,
+        "macro_f1_supported": 0.5318570254255395,
+        "classes": [
+          {
+            "action": "ADVANCE",
+            "support": 2071,
+            "precision": 0.9437086092715232,
+            "recall": 0.963302752293578,
+            "f1": 0.953405017921147
+          },
+          {
+            "action": "ATTACK",
+            "support": 1766,
+            "precision": 0.9505681818181818,
+            "recall": 0.9473386183465459,
+            "f1": 0.9489506522972206
+          },
+          {
+            "action": "HIGH GROUND",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "FLANK",
+            "support": 29,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          {
+            "action": "REGROUP",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "RETREAT",
+            "support": 27,
+            "precision": 0.6,
+            "recall": 0.3333333333333333,
+            "f1": 0.42857142857142855
+          },
+          {
+            "action": "HOLD",
+            "support": 4,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          {
+            "action": "SEEK COVER",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "SUPPORT ALLY",
+            "support": 182,
+            "precision": 0.8421052631578947,
+            "recall": 0.8791208791208791,
+            "f1": 0.8602150537634409
+          }
+        ],
+        "confusion_matrix": [
+          [
+            1995,
+            59,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            15
+          ],
+          [
+            85,
+            1673,
+            0,
+            0,
+            0,
+            4,
+            0,
+            0,
+            4
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            15,
+            11,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            6,
+            8,
+            0,
+            0,
+            0,
+            9,
+            0,
+            0,
+            4
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            13,
+            9,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            160
+          ]
+        ],
+        "negative_log_likelihood": 0.20986433327198029,
+        "brier": 0.09619162976741791,
+        "transition_count": 232,
+        "transition_accuracy": 0.125
+      },
+      "markov": {
+        "accuracy": 0.9426329731941223,
+        "macro_f1_supported": 0.5441039098952111,
+        "classes": [
+          {
+            "action": "ADVANCE",
+            "support": 2071,
+            "precision": 0.9404594467885607,
+            "recall": 0.9686141960405601,
+            "f1": 0.9543292102759277
+          },
+          {
+            "action": "ATTACK",
+            "support": 1766,
+            "precision": 0.9602076124567474,
+            "recall": 0.9428086070215176,
+            "f1": 0.9514285714285714
+          },
+          {
+            "action": "HIGH GROUND",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "FLANK",
+            "support": 29,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          {
+            "action": "REGROUP",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "RETREAT",
+            "support": 27,
+            "precision": 0.48148148148148145,
+            "recall": 0.48148148148148145,
+            "f1": 0.48148148148148145
+          },
+          {
+            "action": "HOLD",
+            "support": 4,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          {
+            "action": "SEEK COVER",
+            "support": 0,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null
+          },
+          {
+            "action": "SUPPORT ALLY",
+            "support": 182,
+            "precision": 0.8702702702702703,
+            "recall": 0.8846153846153846,
+            "f1": 0.8773841961852861
+          }
+        ],
+        "confusion_matrix": [
+          [
+            2006,
+            46,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            13
+          ],
+          [
+            92,
+            1665,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            3
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            17,
+            10,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            5,
+            7,
+            0,
+            0,
+            0,
+            13,
+            0,
+            0,
+            2
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            13,
+            6,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            161
+          ]
+        ],
+        "negative_log_likelihood": 0.2564714252948761,
+        "brier": 0.1043185144662857,
+        "transition_count": 232,
+        "transition_accuracy": 0.047413792461156845
+      },
+      "persistence_accuracy": 0.9431233406066895
+    }
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "validation_nll": 1.5298439264297485
+    },
+    {
+      "epoch": 2,
+      "validation_nll": 1.0382777452468872
+    },
+    {
+      "epoch": 3,
+      "validation_nll": 0.7199609875679016
+    },
+    {
+      "epoch": 4,
+      "validation_nll": 0.5432127714157104
+    },
+    {
+      "epoch": 5,
+      "validation_nll": 0.4451695382595062
+    },
+    {
+      "epoch": 6,
+      "validation_nll": 0.3823325037956238
+    },
+    {
+      "epoch": 7,
+      "validation_nll": 0.3466179072856903
+    },
+    {
+      "epoch": 8,
+      "validation_nll": 0.32227760553359985
+    },
+    {
+      "epoch": 9,
+      "validation_nll": 0.30577564239501953
+    },
+    {
+      "epoch": 10,
+      "validation_nll": 0.29466885328292847
+    },
+    {
+      "epoch": 11,
+      "validation_nll": 0.2877070903778076
+    },
+    {
+      "epoch": 12,
+      "validation_nll": 0.28149011731147766
+    },
+    {
+      "epoch": 13,
+      "validation_nll": 0.27682358026504517
+    },
+    {
+      "epoch": 14,
+      "validation_nll": 0.2721392810344696
+    },
+    {
+      "epoch": 15,
+      "validation_nll": 0.2688358724117279
+    },
+    {
+      "epoch": 16,
+      "validation_nll": 0.2655628025531769
+    },
+    {
+      "epoch": 17,
+      "validation_nll": 0.26349925994873047
+    },
+    {
+      "epoch": 18,
+      "validation_nll": 0.2612190842628479
+    },
+    {
+      "epoch": 19,
+      "validation_nll": 0.2592669427394867
+    },
+    {
+      "epoch": 20,
+      "validation_nll": 0.2581014931201935
+    }
+  ],
+  "checkpoint_sha256": "5e6fa541a8f893de82ee6173e3bf74914f668d6ea243f7bae1ef01917be71876",
+  "admission": {
+    "controls_live_game": false,
+    "opponent_visible_predictor": false,
+    "reason": "Uses the decision maker own prior observations; requires a separate opponent-visible dataset and tactical evaluation before opponent deployment."
+  },
+  "limitations": [
+    "Dataset authorship is recorded in provenance; this model is not an opponent-visible observation model.",
+    "Ticks are correlated; held-out seeds are the evaluation groups.",
+    "Forecast accuracy does not establish stronger combat or calibrated certainty.",
+    "No online training, Spark cluster or world simulation is implemented here."
+  ]
+}

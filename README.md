@@ -10,6 +10,8 @@ Players shape battlefields and agent personalities, then observe autonomous team
 
 **Inspect the AI engineering:** [Architecture, learning and measured results](docs/ai/README.md) · [Code and test walkthrough](docs/ai/code-review.md) · [Browsable experiment evidence](docs/results/v06/README.md) · [GitHub Actions](https://github.com/Fiendstar77/phalanx/actions/workflows/ci.yml)
 
+**Next direction:** [One persistent world, autonomous ambitions and evaluated PyTorch learning](docs/persistent-world-and-learning.md). The implemented [decision-sequence study](docs/results/v12/README.md) builds on deeper telemetry; shared-world travel and adaptive neural opponents remain future work.
+
 The AI work spans partial observations and shared contact memory, personality-weighted tactical planning, a trained PyTorch policy deployed through verified Rust inference, persistent campaign adaptation, and native Bonsai experiments with explicit validation and fallback. Reports expose the inputs, proposals, executed actions and limitations. **PyTorch can control live combat; Bonsai currently runs separate text and tactical shadow studies.**
 
 > **Status: early playable prototype.** New Game begins with a solo adolescent; chapter victories bring the future queen and general into the same persistent group. The classic three-founder creator remains available. The Lab keeps its original 5-versus-5 standard battles and 10-versus-10 Citadel arena, personality-weighted routes, cover, rough ground, ten arena presets, limited perception, shared sightings, ally support, and decision inspection. Python experiments and a trained PyTorch policy are available, with live Utility/Learned control and same-state decision comparison. Arena editing and generative cognition remain planned.
