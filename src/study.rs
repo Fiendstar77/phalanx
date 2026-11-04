@@ -119,6 +119,7 @@ impl Recorder {
                 "position":u.position,"ground_height":battle.arena.elevation(u.position),
                 "mean_velocity":[(u.position[0]-old[0])/elapsed,(u.position[1]-old[1])/elapsed],
                 "health":u.health,"max_health":u.max_health(),"lost_limbs":u.lost_limbs,
+                "flesh":u.flesh,"bleeding_loss":u.bleeding_loss,
                 "prosthetics":u.prosthetics,"action":ACTIONS[u.action],
                 "effort":u.theus.as_ref().map(|a|a.stamina),
                 "theus_practice":u.theus.as_ref().map(|a|a.sheet.practice),
@@ -157,6 +158,9 @@ impl Recorder {
         }
         for event in battle.heals.iter().filter(|e| e.tick == tick) {
             self.emit(serde_json::json!({"event": "healing", "receipt": event}))?;
+        }
+        for event in battle.bleed_events.iter().filter(|e| e.tick == tick) {
+            self.emit(serde_json::json!({"event":"bleeding","receipt":event}))?;
         }
         for event in battle.theus_events.iter().filter(|e| e.tick == tick) {
             self.emit(serde_json::json!({"event":"theus","receipt":event}))?;

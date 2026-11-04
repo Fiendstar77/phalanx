@@ -4,6 +4,8 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 EXPECTED=['Idle', 'Walk', 'Run', 'Attack', 'Throw', 'Hit', 'Death', 'AttackQuick', 'AttackHeavy', 'AttackDesperate', 'ThrowUnderhand', 'HitHeavy', 'LimbRecoil', 'DeathBackward', 'DeathDelayed', 'NearDeathPanic', 'WoundedStagger', 'WireLunge', 'WhirlwindCut', 'VaultStrike', 'WireRecoil', 'WireDeath', 'BreatheLook', 'BreatheShift', 'ReadyBounce', 'SneakStep', 'SprintLow', 'SprintBlade', 'GuardStrafe', 'Sidestep', 'Backstep', 'ParryHigh', 'ParryLow', 'DodgeCartwheel', 'ButterflyKick', 'CorkscrewStrike', 'ScissorVault', 'WallKickStrike', 'ShadowStep', 'RisingLauncher', 'MeteorChase', 'MeteorSlam', 'CrossfireRelease', 'GroundSweep', 'CounterCut', 'LandingRoll', 'RecoverKipUp', 'DeathSpiral', 'VictorySalute', 'DefeatKneel', 'HurtTwist', 'HurtShoulder']
 report={}
+EXPECTED += ['WallVault_'+name for name in ['TightTuck','Scissor','Sidewinder','BackArch','HeelLead','Corkscrew','CrossGuard','LongSplit','KneeDrive','ShoulderTurn','DoubleTuck','Crane','ReverseTwist','Scramble']]
+EXPECTED += ['ScoutScan','LowSurvey','GuardListen','ShoulderCheck','SignalAdvance','SignalHold','ReadyWeapon','WatchShift','GuardLeftArm','GuardRightArm','LimpLeft','LimpRight','TorsoHunch','WoundFlinch','ExhaustedBrace','ReliefBreath']
 for sex in ['female','male']:
  p=ROOT/'assets/characters'/(sex+'.glb');raw=p.read_bytes();size=struct.unpack_from('<I',raw,12)[0];j=json.loads(raw[20:20+size]);binary=raw[28+size:]
  def read(index):

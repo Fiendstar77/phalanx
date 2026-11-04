@@ -478,6 +478,10 @@ mod tests {
         click(&mut app, Control::RevealFounder(0));
         click(&mut app, Control::FoundingStep);
         click(&mut app, Control::ConfirmFounders);
+        click(
+            &mut app,
+            Control::BattleStyle(phalanx::styles::BattleStyle::Protector),
+        );
         let identity = app.world().resource::<Session>().campaign.teams[0].fighters[0]
             .fighter_id
             .clone();
@@ -490,6 +494,21 @@ mod tests {
                 session.settle_finished();
                 assert_eq!(session.camp_page, Some(camp::Page::Report));
                 assert!(session.rewarded);
+            }
+            // This UI-flow witness repairs lasting limb loss using actual
+            // earned resources. Repeating combat with four missing limbs is
+            // not a test of chapter-button wiring or opening balance.
+            for _ in 0..4 {
+                let repair = {
+                    let s = app.world().resource::<Session>();
+                    let team = &s.campaign.teams[0];
+                    let f = &team.fighters[0];
+                    f.lost_limbs & !f.prosthetics != 0 && team.gold >= 15 && team.salvage >= 5
+                };
+                if !repair {
+                    break;
+                }
+                click(&mut app, Control::Prosthetic);
             }
             click(&mut app, Control::PrologueNext);
             let session = app.world().resource::<Session>();

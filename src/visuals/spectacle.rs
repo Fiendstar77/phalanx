@@ -106,6 +106,7 @@ mod tests {
         session.menu = false;
         session.running = false;
         session.battle.damage_events.push(phalanx::DamageEvent {
+            flesh_region: None,
             sequence: 0,
             tick: 1,
             attacker: 0,
@@ -231,6 +232,7 @@ fn demo(
     stains: Res<super::stains::Stains>,
     blood: Res<super::blood::Fx>,
     physics: Res<super::ragdoll::Audit>,
+    ink: Res<super::kinetic::Audit>,
     mut state: Local<Demo>,
     mut commands: Commands,
     mut exit: MessageWriter<AppExit>,
@@ -270,6 +272,8 @@ fn demo(
             "ragdoll_pose_updates":physics.pose_updates,"ragdoll_invalid_poses":physics.invalid_poses,
             "ragdoll_max_pose_offset":physics.max_pose_offset,
             "blood_ground_resolution":super::blood::SIZE,"pool_resolution":super::pooling::SIDE,
+            "ink_shockwaves":ink.impacts,"pose_echoes":ink.echoes,
+            "peak_pose_echoes":ink.peak_echoes,"max_graphic_radius":ink.max_radius,
         });
         std::fs::write(
             "outputs/wirefu-demo/audit.json",
@@ -370,7 +374,9 @@ fn update(
         if let Some(a) = session.visual_unit(actor.id).and_then(|u| u.theus.as_ref()) {
             audit.max_height = audit.max_height.max(a.height(session.battle.tick));
         }
-        if matches!(actor.clip, 17..=19 | 33..=37 | 40..=41 | 45..=46) {
+        if matches!(actor.clip, 17..=19 | 33..=37 | 40..=41 | 45..=46)
+            || super::wall_clip(actor.clip)
+        {
             if matches!(actor.clip, 17..=19) {
                 audit.air_clips[actor.clip - 17] = true;
             }

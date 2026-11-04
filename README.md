@@ -45,7 +45,13 @@ foot cycles, timed strikes, higher-resolution blood and jointed physical death
 reactions. [Before the crown](docs/young-king-opening.md) records the proposed
 solo young-king opening and its queen/general recruitment stages.
 
-The supplied male/female bases now have derived game-ready rigs with fifty-two animation clips, including near-death panic and wounded staggering. Appearance uses real 3D hair, painted skin textures and an actual on-field camera portrait. Founders can survive limb loss, carry wounds across battles, earn salvage and craft Iron I prosthetics. The first iron arm grants **3× damage with a 15% movement penalty**. Blood sprays, spreading puddles, stylized organ debris and flying body pieces follow actual combat events.
+The supplied male/female bases now have derived game-ready rigs with eighty-two animation clips, including fifteen wall-vault performances, scouting, signals, asymmetric limping and wound reactions. Appearance uses real 3D hair, painted skin textures and an actual on-field camera portrait. Founders can survive limb loss, carry wounds across battles, earn salvage and craft Iron I prosthetics. The first iron arm grants **3× damage with a 15% movement penalty**. Blood sprays, spreading puddles, stylized organ debris and flying body pieces follow actual combat events.
+
+The first [neo-cyber Kabuki art pass](docs/art-direction/kabuki-yard.md) adds sculpted lips and tongues, expressive stage paint, temperament-dependent delivery, watching effigies and moving scenic wings. The skill page now shows temporary access, permanent learning, remaining training battles and equipped abilities.
+
+The wire-action presentation adds captured skeletal pose echoes, graphic shockwaves from actual heavy melee hits, cinema impact framing, colossal articulated hands and a fifty-metre celestial stage machine. These effects read combat; their visual scale does not grant damage or movement.
+
+[Patient tactics and flesh wounds](docs/patient-tactics-and-wounds.md) add a campaign scouting/assembly opening, actual bleeding and effort loss, treatment, recovering injuries and lasting scars. Smoke uses its owner's team colour. Default skill kits follow current and mastered disciplines; universal ninja arts remain explicit catalogue choices.
 
 ![Characters, blood and wounded veterans](docs/images/veteran-combat.png)
 

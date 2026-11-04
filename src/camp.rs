@@ -183,6 +183,7 @@ pub(crate) fn prepared(session: &Session, id: usize) -> phalanx::Unit {
     unit.experience = fighter.experience;
     unit.lost_limbs = fighter.lost_limbs;
     unit.prosthetics = fighter.prosthetics;
+    unit.flesh = fighter.flesh.clone();
     unit.equipment = fighter.equipment;
     unit.equipment.migrate();
     unit.role = unit.trained_role();
@@ -304,6 +305,12 @@ fn report(session: &Session) -> String {
             r.salvage[team]
         ));
         for f in &r.fighters[team] {
+            if f.flesh_wounds > 0 || f.bleeding_loss > 0. {
+                text.push_str(&format!(
+                    "  FLESH: {} new severe wounds | {:.1} HP lost to bleeding\n",
+                    f.flesh_wounds, f.bleeding_loss
+                ));
+            }
             text.push_str(&format!("{} [{}] / {} | {} ({:.0}/{:.0} HP)\n  Damage {:.0} | Healing {:.0} | +{} XP | New wounds: {}\n", f.name, f.title.map(CommandTitle::name).unwrap_or("title not recorded"), f.class.name(), if f.health > 0. { "Survived" } else { "Downed" }, f.health, f.max_health, f.damage, f.healing, f.xp, limb_names(f.new_wounds)));
             for weapon in phalanx::weapons::ProjectileWeapon::ALL {
                 let gained = f.weapon_training[weapon.index()];

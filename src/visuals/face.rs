@@ -74,6 +74,16 @@ struct SkinMaterial {
     material: Handle<StandardMaterial>,
 }
 #[derive(Component)]
+struct LipMaterial {
+    root: Entity,
+    material: Handle<StandardMaterial>,
+}
+#[derive(Component)]
+struct PaintMaterial {
+    root: Entity,
+    material: Handle<StandardMaterial>,
+}
+#[derive(Component)]
 struct MouthPart(Entity);
 
 #[derive(Resource, Default)]
@@ -146,10 +156,7 @@ pub(super) fn ready(
                 lid: name.as_str().starts_with("Lid_"),
             });
         }
-        if name.as_str() == "Face_Sculpt"
-            || name.as_str() == "Lip_Rim"
-            || name.as_str().starts_with("Lid_")
-        {
+        if name.as_str() == "Face_Sculpt" || name.as_str().starts_with("Lid_") {
             for primitive in children.iter_descendants(entity) {
                 if let Ok(old) = primitives.get(primitive)
                     && let Some(source) = materials.get(&old.0).cloned()
@@ -158,6 +165,38 @@ pub(super) fn ready(
                     commands.entity(primitive).insert((
                         MeshMaterial3d(material.clone()),
                         SkinMaterial {
+                            root: event.entity,
+                            material,
+                        },
+                    ));
+                }
+            }
+        }
+        if name.as_str() == "Lip_Rim" {
+            for primitive in children.iter_descendants(entity) {
+                if let Ok(old) = primitives.get(primitive)
+                    && let Some(source) = materials.get(&old.0).cloned()
+                {
+                    let material = materials.add(source);
+                    commands.entity(primitive).insert((
+                        MeshMaterial3d(material.clone()),
+                        LipMaterial {
+                            root: event.entity,
+                            material,
+                        },
+                    ));
+                }
+            }
+        }
+        if name.as_str() == "Kabuki_Crimson" {
+            for primitive in children.iter_descendants(entity) {
+                if let Ok(old) = primitives.get(primitive)
+                    && let Some(source) = materials.get(&old.0).cloned()
+                {
+                    let material = materials.add(source);
+                    commands.entity(primitive).insert((
+                        MeshMaterial3d(material.clone()),
+                        PaintMaterial {
                             root: event.entity,
                             material,
                         },
@@ -267,7 +306,7 @@ fn drive(
         let phase = (state.clock + state.id as f32 * 0.79) % 4.1;
         let blink = (1.0 - (phase - 3.88).abs() / 0.095).clamp(0.0, 1.0);
         let speaking = barks::speaking(&voices, state.id, session.battle.tick);
-        let target = caricature_pose(Mood {
+        let mut target = caricature_pose(Mood {
             alive: unit.health > 0.0,
             finished: session.battle.finished,
             attacking: unit.action == 1 || state.attack > 0.12,
@@ -281,6 +320,11 @@ fn drive(
             speaking,
             blink,
         });
+        if speaking && unit.health > 0. {
+            // Articulated barks, not audio phoneme sync. This clock freezes with
+            // the actor so pause/step never keeps a mouth chattering.
+            target[SHOUT] *= 0.45 + 0.55 * (state.clock * 17. + state.id as f32).sin().abs();
+        }
         let alpha = 1.0 - (-dt * 22.0).exp();
         for (weight, target) in state.weights.iter_mut().zip(target) {
             *weight += (target - *weight) * alpha;
@@ -397,8 +441,16 @@ fn caricature_pose(mood: Mood) -> [f32; 6] {
         target[FEAR] = 0.12;
     } else {
         // Resting sheet: round cheeks, lopsided confidence, a mean little brow.
-        target[GRIN] = 0.40 + mood.courage * 0.16;
-        target[RAGE] = mood.aggression * 0.24;
+        if mood.courage < 0.35 {
+            target[FEAR] = 0.38;
+            target[GRIN] = 0.10;
+        } else if mood.aggression > 0.75 {
+            target[GRIN] = 0.82;
+            target[RAGE] = 0.25;
+        } else {
+            target[GRIN] = 0.40 + mood.courage * 0.16;
+            target[RAGE] = mood.aggression * 0.24;
+        }
     }
     if mood.speaking && target[SHOUT] < 0.55 {
         target[SHOUT] = 0.55;
@@ -496,6 +548,8 @@ fn apply(
     mut heads: Query<(&Caricature, &mut Transform), Without<Feature>>,
     irises: Query<&IrisMaterial>,
     skins: Query<&SkinMaterial>,
+    lips: Query<&LipMaterial>,
+    paints: Query<&PaintMaterial>,
     session: Res<Session>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut audit: ResMut<Audit>,
@@ -615,6 +669,37 @@ fn apply(
                 base.green * iris.shade,
                 base.blue * iris.shade,
             );
+            if material.base_color != color {
+                material.base_color = color;
+            }
+        }
+    }
+    for lip in &lips {
+        if let Ok(state) = states.get(lip.root)
+            && let Some(mut material) = materials.get_mut(&lip.material)
+        {
+            let skin = skin_color(&session, state.id).to_srgba();
+            let color = Color::srgb(
+                skin.red * 0.62 + 0.24,
+                skin.green * 0.34 + 0.025,
+                skin.blue * 0.36 + 0.035,
+            );
+            if material.base_color != color {
+                material.base_color = color;
+            }
+        }
+    }
+    for paint in &paints {
+        if let Ok(state) = states.get(paint.root)
+            && let Some(mut material) = materials.get_mut(&paint.material)
+        {
+            let palette = [
+                Color::srgb(0.70, 0.025, 0.055),
+                Color::srgb(0.10, 0.17, 0.48),
+                Color::srgb(0.62, 0.12, 0.04),
+                Color::srgb(0.37, 0.045, 0.31),
+            ];
+            let color = palette[look(&session, state.id).face as usize % palette.len()];
             if material.base_color != color {
                 material.base_color = color;
             }

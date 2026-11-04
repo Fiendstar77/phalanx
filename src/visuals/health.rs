@@ -178,7 +178,11 @@ fn update(
         let Some(unit) = battle.units.get(bar.0) else {
             continue;
         };
-        if session.menu || unit.health <= 0.0 || session.cinematic_playing() {
+        if session.menu
+            || unit.health <= 0.0
+            || session.cinematic_playing()
+            || (std::env::args().any(|a| a == "--flesh-witness") && bar.0 != session.selected)
+        {
             continue;
         }
         let Ok(screen) = camera.0.world_to_viewport(

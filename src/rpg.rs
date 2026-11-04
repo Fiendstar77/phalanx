@@ -95,6 +95,7 @@ enum Label {
     Notice,
     Forge,
     Description,
+    Training,
 }
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
 enum Tile {
@@ -424,8 +425,9 @@ fn ui_setup(mut commands: Commands, photo: Res<Photo>) {
                         });
                         body.spawn(Node{flex_grow:1.,flex_direction:FlexDirection::Column,row_gap:px(8),..default()}).with_children(|p|{
                             heading(p,"LEARNED DISCIPLINES",20.);
-                            heading(p,"Current discipline is available now. At 100 practice, its skills stay unlocked across retraining. Empty slots leave room for future skills.",13.);
-                            p.spawn((Scroller,ScrollPosition::default(),Node{flex_grow:1.,min_height:px(0),overflow:Overflow::scroll_y(),flex_direction:FlexDirection::Column,row_gap:px(6),..default()})).with_children(|p|{for s in Skill::ALL{tile(p,Tile::Catalog(s),65.);}});
+                            label(p,Label::Training,14.);
+                            heading(p,"Learned and equipped are separate. Keep a skill in an active slot to use it. Mend wounds needs a living injured ally within 5m and clear sight.",13.);
+                            p.spawn((Scroller,ScrollPosition::default(),Node{flex_grow:1.,min_height:px(0),overflow:Overflow::scroll_y(),flex_direction:FlexDirection::Column,row_gap:px(6),..default()})).with_children(|p|{for s in Skill::ALL{tile(p,Tile::Catalog(s),92.);}});
                         });
                     } else {
                         bag(body,false);
@@ -548,7 +550,8 @@ fn refresh(
         let value=match kind{
         Label::Header=>format!("{} / {} [{}] | age {}     |     {} gold    {} salvage",squad.name,f.name,f.title.name(),f.appearance.age_years,squad.gold,squad.salvage),
         Label::Identity=>format!("{} / {}   Level {}\n{:.0} HP   Damage x{:.2}   Protection x{:.2}\n{}",f.title.name(),f.class.name(),unit.level(),unit.max_health(),unit.damage_multiplier(),unit.incoming_multiplier(),phalanx::theus_combat::description(&unit)),
-        Label::Limbs=>format!("Missing: {}\nProsthetics: {}",limb_names(f.lost_limbs),limb_names(f.prosthetics)),
+        Label::Limbs=>format!("Missing: {}\nProsthetics: {}\n{}",limb_names(f.lost_limbs),limb_names(f.prosthetics),f.flesh.summary()),
+        Label::Training=>format!("{}\nMEND WOUNDS: {}\n{}",f.mastery.summary(f.class),if skill_slots(&session).has(Skill::Heal){"equipped"}else if Skill::Heal.unlocked(f.class,f.mastery){"learned, not equipped - drag it into an active slot"}else{"unavailable outside Healer until 100 practice"},Skill::Heal.training_status(f.class,f.mastery)),
         Label::Notice=>format!("{}{}",if session.battle.tick>0&&!session.battle.finished{"Battle in progress: loadout changes are locked. "}else{"Drag items between the chest, personal inventory and matching equipment slots. "},session.save_notice),
         Label::Forge=>state.focus.and_then(|l|object(&session,l)).map(|i|match i.forged(){Some(next)=>{let(g,s)=i.forge_cost().unwrap();format!("{}\n-> {}\nCost: {g} gold + {s} salvage\nPower x{:.2} -> x{:.2}",i.label(),next.label(),i.power(),next.power())},None=>"Maximum level and alloy reached".into()}).unwrap_or_else(||"No item selected".into()),
         Label::Description=>state.focus.and_then(|l|object(&session,l)).map(|i|format!("{}\nWeapon upgrades increase damage; armor upgrades improve mitigation; vitality upgrades increase HP; banner upgrades strengthen learned rally auras. Alloy fittings preserve the original item type. Reforging consumes the old item and retains its inventory/equipment slot.",i.gear.effect())).unwrap_or_default(),
@@ -588,16 +591,18 @@ fn refresh(
                     .unwrap_or_else(|| "Starter / no crafted item".into())
             ),
             Tile::Catalog(s) => format!(
-                "{}{} | {} {}\n{}",
-                if s.unlocked(f.class, f.mastery) {
-                    ""
-                } else {
-                    "LOCKED / "
-                },
+                "{} | {} {}\n{}\n{}",
                 s.name(),
-                s.class().name(),
+                if skill_slots(&session).has(s) {
+                    "EQUIPPED"
+                } else if s.unlocked(f.class, f.mastery) {
+                    "AVAILABLE"
+                } else {
+                    "LOCKED"
+                },
                 if s.passive() { "PASSIVE" } else { "ACTIVE" },
-                s.description()
+                s.description(),
+                s.training_status(f.class, f.mastery)
             ),
             Tile::Active(i) => format!(
                 "{:02}  {}",

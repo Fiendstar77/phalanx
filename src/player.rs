@@ -682,6 +682,14 @@ fn why_now(session: &Session, id: usize) -> String {
         unit.decision_reason.clone()
     };
     if unit.health <= 0.0 {
+        if battle
+            .bleed_events
+            .iter()
+            .rev()
+            .any(|e| e.unit == id && e.tick + 1 >= battle.tick)
+        {
+            return format!("{name} bled out from a recorded flesh wound. Last choice: {choice}.");
+        }
         let killer = battle
             .damage_events
             .iter()
@@ -738,6 +746,8 @@ fn card_flag(session: &Session, id: usize) -> Option<&'static str> {
     let unit = &session.battle.units[id];
     if unit.health <= 0.0 {
         Some("DOWN")
+    } else if unit.flesh.bleeding() {
+        Some("BLEEDING")
     } else if away_from_company(&session.battle, id) {
         Some("ALONE")
     } else if help_refused(unit) {
@@ -902,6 +912,7 @@ mod tests {
         let killer = s.battle.team_size();
         s.battle.units[general].health = 0.0;
         s.battle.damage_events.push(phalanx::DamageEvent {
+            flesh_region: None,
             sequence: 1,
             tick: 40,
             attacker: killer,

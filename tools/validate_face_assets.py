@@ -65,6 +65,17 @@ for sex in ('male','female'):
     print(sex,'facial morph meshes',morphs,'maximum displacement per control',dict(zip(KEYS,map(lambda x:round(x,4),changes))))
     # Check exported receiver-space winding, not only recalculated normals.
     nodes=doc['nodes'];ids={n.get('name'):i for i,n in enumerate(nodes)}
+    for name in ('Kabuki_Crimson','Kabuki_Indigo','Kabuki_Ivory'):
+        paint=doc['meshes'][nodes[ids[name]]['mesh']]
+        assert paint['extras']['targetNames']==KEYS,(sex,name,'paint must follow every expression and identity control')
+        assert sum(len(read(p['attributes']['POSITION'])) for p in paint['primitives'])>20,(sex,name,'missing stage paint geometry')
+    lip=doc['meshes'][nodes[ids['Lip_Rim']]['mesh']]
+    for primitive in lip['primitives']:
+        material=doc['materials'][primitive['material']]
+        assert material['name']=='Lip vermilion',(sex,'lips must have their own material')
+        assert material['pbrMetallicRoughness']['roughnessFactor']<.5
+    tongue=doc['meshes'][nodes[ids['Tongue']]['mesh']]
+    assert any(max(p[0] for p in read(primitive['attributes']['POSITION']))-min(p[0] for p in read(primitive['attributes']['POSITION']))>.09 for primitive in tongue['primitives']),(sex,'tongue must have a readable sculpted width')
     def subtract(a,b):return tuple(x-y for x,y in zip(a,b))
     def cross(a,b):return (a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0])
     def add(a,b):return tuple(x+y for x,y in zip(a,b))

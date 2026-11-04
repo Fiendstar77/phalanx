@@ -60,20 +60,36 @@ def inspect(path):
         return cache[index]
 
     result = {}
+    wall_names=['WallKickStrike']+[c['name'] for c in gltf['animations'] if c['name'].startswith('WallVault_')]
+    assert len(wall_names)==15,(path,'expected fifteen wall performances',wall_names)
+    wall_poses={}
     for name in ['Walk', 'Run', 'SneakStep', 'SprintLow', 'SprintBlade', 'GuardStrafe',
-                 'Attack', 'AttackQuick', 'AttackHeavy', 'CounterCut', 'WallKickStrike']:
+                 'Attack', 'AttackQuick', 'AttackHeavy', 'CounterCut',
+                 'ScoutScan','LowSurvey','GuardListen','ShoulderCheck','SignalAdvance','SignalHold','ReadyWeapon','WatchShift',
+                 'GuardLeftArm','GuardRightArm','LimpLeft','LimpRight','TorsoHunch','WoundFlinch','ExhaustedBrace','ReliefBreath']+wall_names:
         clip = next(c for c in gltf['animations'] if c['name'] == name)
         channels = {(c['target']['node'], c['target']['path']):
                     read(clip['samplers'][c['sampler']]['output']) for c in clip['channels']}
-        times = [v[0] for v in read(clip['samplers'][0]['input'])]
-        assert max(b-a for a, b in zip(times, times[1:])) < 1/59, (path, name, 'sampling')
-        if name == 'WallKickStrike':
+        channel_times={(c['target']['node'],c['target']['path']):
+                       [v[0] for v in read(clip['samplers'][c['sampler']]['input'])] for c in clip['channels']}
+        times=max(channel_times.values(),key=len)
+        # glTF may compress constant/linear channels to two keys. Check the
+        # dense baked stream, then sample each joint on its own time axis.
+        assert max(b-a for a,b in zip(times,times[1:]))<1/59,(path,name,'sampling')
+        if name in wall_names:
             hip = channels[(ids['mixamorigHips'], 'translation')]
             span = max(math.dist(p, hip[0]) for p in hip)
             assert span < 0.1, (path, name, 'visual jump duplicates physical height', span)
+            assert math.dist(hip[0],hip[-1])<.001,(path,name,'must return to its physical anchor')
+            def sample_rotation(bone,fraction):
+                key=(ids['mixamorig'+bone],'rotation');samples=channel_times[key]
+                index=min(range(len(samples)),key=lambda i:abs(samples[i]-fraction*times[-1]))
+                return channels[key][index]
+            wall_poses[name]=[sample_rotation(bone,fraction) for fraction in [.2,.4,.65,.85]
+                for bone in ['Hips','Spine','LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftArm','RightArm']]
             result[name] = {'maximum_local_hip_offset_m': span}
             continue
-        gait = name in ['Walk', 'Run', 'SneakStep', 'SprintLow', 'SprintBlade', 'GuardStrafe']
+        gait = name in ['Walk', 'Run', 'SneakStep', 'SprintLow', 'SprintBlade', 'GuardStrafe','LimpLeft','LimpRight']
         duty = .48 if name in ['Run', 'SprintLow', 'SprintBlade'] else .62
         errors = []
         for side, phase_offset in [('Left', 0), ('Right', .5)]:
@@ -83,11 +99,19 @@ def inspect(path):
                 point = world(foot, channels, frame, {})[0]
                 assert all(math.isfinite(v) for v in point)
                 phase = (t/times[-1] + phase_offset) % 1
-                if not gait or phase < duty:
+                support_duty=.72 if name=='Limp'+side else duty
+                if not gait or phase < support_duty:
                     errors.append(abs(point[1]-rest[1]))
         worst = max(errors)
         assert worst < .03, (path, name, 'planted ankle height error', worst)
         result[name] = {'maximum_planted_ankle_height_error_m': worst, 'samples': len(times)}
+    separations=[]
+    for i,a in enumerate(wall_names):
+        for b in wall_names[i+1:]:
+            distance=max(2*math.acos(min(1.,abs(sum(x*y for x,y in zip(q,r))))) for q,r in zip(wall_poses[a],wall_poses[b]))
+            assert distance>.20,(path,a,b,'renamed or insufficiently distinct wall performance',distance)
+            separations.append(distance)
+    result['wall_performance_family']={'count':len(wall_names),'minimum_pairwise_joint_separation_radians':min(separations)}
     return result
 
 

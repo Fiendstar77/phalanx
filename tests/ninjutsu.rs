@@ -38,6 +38,15 @@ fn duel(arena: Arena, gear: Option<Gear>) -> Battle {
 }
 fn equip(b: &mut Battle, id: usize, skill: Skill) {
     b.units[id].skills.as_mut().unwrap().active[0] = Some(skill);
+    if skill == Skill::WallDance {
+        // Physical traversal fixture: trained, willing, preparation completed.
+        b.units[id].mind = phalanx::styles::BattleStyle::Vanguard.mind();
+        b.units[id].tactics = phalanx::tactics::State {
+            scout: Some(id),
+            first_report: Some(0),
+            phase: phalanx::tactics::Phase::Engage,
+        };
+    }
 }
 #[test]
 fn wall_dance_traverses_a_solid_wall_above_its_top_and_lands() {
@@ -267,6 +276,13 @@ fn ninja_loadouts_and_odd_weapons_survive_save_reload_without_spending_veteran_p
     let mut c = Campaign::new();
     c.workshop(0, 0, Gear::Kusarigama).unwrap();
     c.workshop(0, 1, Gear::RazorWheel).unwrap();
+    // These arts are available in the catalogue; choosing them is explicit.
+    for (slot, skill) in [Skill::WallDance, Skill::SmokeBomb, Skill::ShadowSeal]
+        .into_iter()
+        .enumerate()
+    {
+        c.set_skill(0, 0, false, slot, Some(skill)).unwrap();
+    }
     let loaded: Campaign = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
     loaded.validate().unwrap();
     assert_eq!(loaded.teams[0].gold, 90);

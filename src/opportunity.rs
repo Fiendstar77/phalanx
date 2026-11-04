@@ -50,7 +50,7 @@ pub fn qualified(unit: &Unit) -> bool {
             .is_some_and(|a| a.sheet.attributes[1] >= 12 && a.sheet.rank(2) >= 1)
 }
 fn vault_allowed(unit: &Unit, tick: u32) -> bool {
-    unit.lost_limbs & !unit.prosthetics & 12 == 0
+    ninjutsu::vault_body_allowed(unit)
         && unit
             .ninja
             .as_ref()
@@ -176,7 +176,7 @@ pub fn compose(unit: &Unit, contact: &Contact, arena: Arena, tick: u32) -> Optio
             });
         }
         if vault_allowed(unit, tick)
-            && node.effort + 8.5 <= stamina
+            && node.effort + ninjutsu::vault_effort(unit) + 1.5 <= stamina
             && !node
                 .steps
                 .iter()
@@ -191,11 +191,11 @@ pub fn compose(unit: &Unit, contact: &Contact, arena: Arena, tick: u32) -> Optio
                     primitive: Primitive::WallVault,
                     from: node.position,
                     to,
-                    effort: 7.,
+                    effort: ninjutsu::vault_effort(unit),
                 });
                 open.push(Node {
                     position: to,
-                    effort: node.effort + 7.,
+                    effort: node.effort + ninjutsu::vault_effort(unit),
                     cost: node.cost
                         + distance(node.position, to)
                         + 1.
@@ -512,6 +512,8 @@ pub fn observe(battle: &mut Battle, record_movement: bool) {
                     .map(|s| {
                         if s.primitive == Primitive::WallVault && active.vault.is_some() {
                             0.
+                        } else if s.primitive == Primitive::WallVault {
+                            ninjutsu::vault_effort(unit)
                         } else {
                             s.effort
                         }

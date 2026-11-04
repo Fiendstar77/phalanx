@@ -128,11 +128,41 @@ for sex in ['male','female']:
    if key=='Pain' and side<0:p.z-=.025*math.tanh(dz/.035)*lid
   return p
  shapes(head,facial);bone_parent(head,rig)
+ # Original kumadori-inspired stage paint, carried by the actual sculpt and
+ # every identity/expression shape. Separate meshes keep paint independent
+ # of the saved skin tint; source bodies remain untouched.
+ strokes=[[(.13,ez+.095),(.24,ez+.13),(.32,ez+.20)],
+          [(.31,ez-.045),(.26,ez-.11),(.18,mz+.035)],
+          [(.07,mz+.035),(.11,mz+.075),(.13,mz+.13)]]
+ for name,color,width,depth in [('Crimson',(.64,.015,.035),.011,.0020),('Indigo',(.025,.035,.10),.017,.0012),('Ivory',(.91,.88,.75),.006,.0016)]:
+  verts=[];faces=[];steps=64;columns=3
+  paths=strokes if name!='Ivory' else [[(.16,mz+.022),(.22,mz+.035),(.28,mz+.028)]]
+  for side in [-1,1]:
+   for path in paths:
+    start=len(verts);a,b,c=[Vector((cx+side*x,z)) for x,z in path]
+    for i in range(steps+1):
+     t=i/steps;at=(1-t)**2*a+2*(1-t)*t*b+t*t*c
+     tangent=(2*(1-t)*(b-a)+2*t*(c-b)).normalized()
+     across=Vector((-tangent.y,tangent.x))
+     taper=max(.04,math.sin(math.pi*t)**.55)
+     for j in range(columns):
+      x,z=at+across*((j-1)*width*taper)
+      ok,hit,_,_=head.ray_cast(Vector((x,-2,z)),Vector((0,1,0)))
+      verts.append((x,hit.y-depth if ok else my-depth,z))
+    for i in range(steps):
+     for j in range(columns-1):
+      k=start+i*columns+j;faces.append((k,k+columns,k+columns+1,k+1))
+  mesh=bpy.data.meshes.new('Stage paint '+name)
+  mesh.from_pydata(verts,[],faces);mesh.update()
+  paint=bpy.data.objects.new('Kabuki_'+name,mesh);bpy.context.collection.objects.link(paint)
+  mesh.materials.append(mat('Stage paint '+name,color,.72))
+  shapes(paint,facial);bone_parent(paint,rig)
  black=mat('Ink brows',(0.009,.005,.003),.85)
- ivory=mat('Teeth ivory',(.94,.85,.64),.35)
+ ivory=mat('Teeth ivory',(.94,.89,.74),.27)
  oral=mat('Mouth interior',(.055,.003,.008),.95)
- tongue=mat('Tongue coral',(.50,.055,.085),.42)
- lip=mat('Lip rim',(.56,.23,.16),.7)
+ tongue=mat('Tongue coral',(.58,.095,.14),.32)
+ lip=mat('Lip vermilion',(.52,.16,.13),.38)
+ lip.node_tree.nodes.get('Principled BSDF').inputs['Coat Weight'].default_value=.18
  def sphere(name,at,scale,material):
   bpy.ops.mesh.primitive_uv_sphere_add(segments=32,ring_count=16,location=at)
   obj=bpy.context.object;obj.name=name
@@ -145,7 +175,9 @@ for sex in ['male','female']:
   objs=[]
   for i in range(8):
    x=(i-3.5)*.019+cx
-   obj=sphere('Tooth',(x,my+.008+abs(x-cx)*.10,mz+(.009 if upper else -.007)),(.009,.010,.009),ivory);objs.append(obj)
+   # Rounded incisors, with a real curved dental arch instead of a bead chain.
+   depth=.012+abs(x-cx)*.19
+   obj=sphere('Tooth',(x,my+depth,mz+(.009 if upper else -.010)),(.009,.009,.012 if upper else .009),ivory);objs.append(obj)
   bpy.ops.object.select_all(action='DESELECT')
   for o in objs:o.select_set(True)
   bpy.context.view_layer.objects.active=objs[0];bpy.ops.object.join();obj=objs[0];obj.name='Teeth_Upper' if upper else 'Teeth_Lower'
@@ -153,23 +185,45 @@ for sex in ['male','female']:
    at=Vector((cx,my+.008,mz+(.009 if upper else -.007)))
    return p+mouth(at.copy(),key)-at
   shapes(obj,teeth_pose);bone_parent(obj,rig)
- obj=sphere('Tongue',(cx,my+.020,mz-.009),(.035,.026,.007),tongue)
+ obj=sphere('Tongue',(cx,my+.030,mz-.015),(.049,.035,.012),tongue)
+ for v in obj.data.vertices:
+  # A broad tongue with a shallow central groove and a rounded lifted tip.
+  top=max(0,(v.co.z-(mz-.015))/.012)
+  v.co.z-=.0028*math.exp(-((v.co.x-cx)/.006)**2)*top
  def tongue_pose(p,key):
-  at=Vector((cx,my+.020,mz-.009));return p+mouth(at.copy(),key)-at
+  at=Vector((cx,my+.030,mz-.015));p+=mouth(at.copy(),key)-at
+  tip=smooth((my+.050-p.y)/.050)
+  if key=='Grin':p.z+=.010*tip;p.y-=.006*tip
+  if key=='Shout':p.z+=.016*tip;p.y-=.010*tip
+  if key=='Pain':p.x+=.005*tip
+  return p
  shapes(obj,tongue_pose);bone_parent(obj,rig)
  # A continuous small lip rim covers the cut edge and follows the same poses.
- verts=[];faces=[];segments=64;sides=8
+ verts=[];faces=[];anchors=[];segments=96;sides=12
  for i in range(segments):
   t=i*math.tau/segments
   for j in range(sides):
-   a=j*math.tau/sides;r=.0045
-   verts.append((cx+(rx+r*math.cos(a))*math.cos(t),my-.005+abs(rx*math.cos(t))*.10+r*math.sin(a),mz+(rz+r*math.cos(a))*math.sin(t)))
+   a=j*math.tau/sides
+   # Full lower lip, two upper lobes and thin corners. The seam remains seated
+   # on the original ellipse; lip volume grows out of it rather than floating.
+   fullness=abs(math.sin(t))**.65
+   upper=math.sin(t)>0
+   r=.0025+fullness*(.0030 if upper else .0043)
+   cupid=-.0025*math.exp(-(math.cos(t)/.20)**2) if upper else 0
+   verts.append((cx+(rx+r*math.cos(a))*math.cos(t),my-.006+abs(rx*math.cos(t))*.10+r*1.35*math.sin(a),mz+(rz+r*math.cos(a))*math.sin(t)+cupid))
+   anchors.append(Vector((cx+rx*math.cos(t),my-.006+abs(rx*math.cos(t))*.10,mz+rz*math.sin(t))))
  for i in range(segments):
   for j in range(sides):
    a=i*sides+j;b=i*sides+(j+1)%sides;c=((i+1)%segments)*sides+(j+1)%sides;d=((i+1)%segments)*sides+j;faces.append((a,b,c,d))
  mesh=bpy.data.meshes.new('Lip rim');mesh.from_pydata(verts,[],faces);mesh.update()
- obj=bpy.data.objects.new('Lip_Rim',mesh);bpy.context.collection.objects.link(obj);mesh.materials.append(skin)
- shapes(obj,mouth);bone_parent(obj,rig)
+ obj=bpy.data.objects.new('Lip_Rim',mesh);bpy.context.collection.objects.link(obj);mesh.materials.append(lip)
+ shapes(obj,lambda p,key:p)
+ # Move each tube section by its seam anchor. Evaluating the opening warp on
+ # each side of the tube stretched the lip into a red curtain in a full shout.
+ for keyname in KEYS:
+  for src,dest,anchor in zip(obj.data.vertices,obj.data.shape_keys.key_blocks[keyname].data,anchors):
+   dest.co=identity(src.co+mouth(anchor.copy(),keyname)-anchor,keyname)
+ bone_parent(obj,rig)
  # Ink-like expressive eyebrows, bent with each pose; follow the sculpt surface.
  for side in [-1,1]:
   verts=[];faces=[];steps=24;sides=8

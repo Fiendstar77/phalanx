@@ -217,6 +217,39 @@ pub fn clear_line(arena: Arena, from: [f32; 3], to: [f32; 3], margin: f32) -> bo
     (0..=steps).all(|i| !solid(arena, lerp(from, to, i as f32 / steps as f32), margin))
 }
 /// A staged climb/cross/descent has explicit solid clearance, not wall phasing.
+/// Preference belongs to the autonomous fighter, separate from traversal legality.
+pub fn wants_wall(unit: &Unit, leap: &Leap, arena: Arena) -> bool {
+    if unit.tactics.scout.is_some()
+        && unit.tactics.phase != crate::tactics::Phase::Engage
+        && unit.tactics.scout != Some(unit.id)
+        && unit.action != 8
+    {
+        return false;
+    }
+    let sheltered = arena.cover([leap.to[0], leap.to[2]]) > 0.;
+    let motivation = unit.mind.courage * 0.65
+        + unit.mind.aggression * 0.30
+        + unit.mind.discipline * 0.10
+        + if sheltered { 0.10 } else { 0. };
+    let risk = 0.22
+        + leap.top.max(0.) * 0.06
+        + (unit.mind.caution + unit.mind.self_preservation) * 0.25
+        + (1. - unit.health_fraction()).max(0.) * 0.55
+        + unit.flesh.soreness() * 0.035;
+    motivation >= risk
+}
+pub fn vault_effort(unit: &Unit) -> f32 {
+    7. + unit.flesh.soreness() * 0.75
+}
+pub fn vault_body_allowed(unit: &Unit) -> bool {
+    unit.lost_limbs & !unit.prosthetics & 12 == 0
+        && !unit.flesh.marks.iter().any(|w| {
+            w.region.limb() & 12 != 0
+                && w.region.limb() & unit.prosthetics == 0
+                && w.severity >= 3
+                && w.recovery_bouts > 0
+        })
+}
 pub fn wall_plan(unit: &Unit, arena: Arena, goal: [f32; 2], tick: u32) -> Option<Leap> {
     let p = unit.position;
     arena
@@ -332,13 +365,17 @@ pub fn prepare(battle: &mut Battle) {
         let contact = u.contacts.iter().min_by(|a, b| {
             distance(u.position, a.position).total_cmp(&distance(u.position, b.position))
         });
-        let goal = battle
-            .opportunities
-            .wall_goal(u.id)
-            .unwrap_or_else(|| contact.map_or(u.target, |c| c.position));
+        let goal = battle.opportunities.wall_goal(u.id).unwrap_or_else(|| {
+            if u.tactics.scout.is_some() && u.tactics.phase != crate::tactics::Phase::Engage {
+                u.target
+            } else {
+                contact.map_or(u.target, |c| c.position)
+            }
+        });
         let known_target = contact.map(|c| c.enemy);
         let hands = u.lost_limbs & !u.prosthetics & 3 != 3;
-        let legs = u.lost_limbs & !u.prosthetics & 12 == 0;
+        let legs = vault_body_allowed(u);
+        let vault_effort = vault_effort(u);
         if u.equipped_skill(Skill::WallDance)
             && (!battle.opportunities.owns_mobility(u.id)
                 || battle.opportunities.wall_goal(u.id).is_some())
@@ -347,6 +384,7 @@ pub fn prepare(battle: &mut Battle) {
             && u.ninja.as_ref().unwrap().bound_until <= tick
             && u.theus.as_ref().unwrap().sheet.rating(2, 0) >= 12
             && let Some(leap) = wall_plan(u, arena, goal, tick)
+            && (battle.opportunities.wall_goal(u.id).is_some() || wants_wall(u, &leap, arena))
             && reserved.iter().all(|other| {
                 (0..=28).all(|i| {
                     len(sub(
@@ -355,7 +393,7 @@ pub fn prepare(battle: &mut Battle) {
                     )) > 1.05
                 })
             })
-            && u.theus.as_mut().unwrap().spend(7.)
+            && u.theus.as_mut().unwrap().spend(vault_effort)
         {
             let n = u.ninja.as_mut().unwrap();
             n.wall_ready = tick + 55;

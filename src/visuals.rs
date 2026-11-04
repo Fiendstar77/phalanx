@@ -14,12 +14,15 @@ mod body;
 mod cuts;
 mod equipment;
 mod face;
+mod flesh;
 mod garments;
 mod health;
+mod kinetic;
 mod occult;
 mod spectacle;
 mod standards;
 pub(super) mod team_actions;
+mod yard;
 use super::{Pawn, Session, setup};
 use bevy::{
     camera::{RenderTarget, visibility::RenderLayers},
@@ -27,7 +30,9 @@ use bevy::{
     render::render_resource::TextureFormat,
     world_serialization::WorldInstanceReady,
 };
+pub(crate) use kinetic::{camera_bank, impact_focus};
 use phalanx::{CommandTitle, Role, terrain::Arena};
+pub(super) use yard::StageKey;
 
 pub struct BattleVisuals;
 impl Plugin for BattleVisuals {
@@ -39,13 +44,16 @@ impl Plugin for BattleVisuals {
         stains::install(app);
         organs::install(app);
         face::install(app);
+        flesh::install(app);
         occult::install(app);
         health::install(app);
         standards::install(app);
         equipment::install(app);
         spectacle::install(app);
+        kinetic::install(app);
         team_actions::install(app);
         ragdoll::install(app);
+        yard::install(app);
         app.add_systems(Update, portrait_camera.after(super::camera_motion))
             .add_systems(
                 PostUpdate,
@@ -86,7 +94,7 @@ pub(super) struct PanicAudit {
     run: Option<u32>,
     pub(super) clips_seen: [bool; 2],
 }
-const CLIP_NAMES: [&str; 52] = [
+const CLIP_NAMES: [&str; 82] = [
     "Idle",
     "Walk",
     "Run",
@@ -139,33 +147,200 @@ const CLIP_NAMES: [&str; 52] = [
     "DefeatKneel",
     "HurtTwist",
     "HurtShoulder",
+    "WallVault_TightTuck",
+    "WallVault_Scissor",
+    "WallVault_Sidewinder",
+    "WallVault_BackArch",
+    "WallVault_HeelLead",
+    "WallVault_Corkscrew",
+    "WallVault_CrossGuard",
+    "WallVault_LongSplit",
+    "WallVault_KneeDrive",
+    "WallVault_ShoulderTurn",
+    "WallVault_DoubleTuck",
+    "WallVault_Crane",
+    "WallVault_ReverseTwist",
+    "WallVault_Scramble",
+    "ScoutScan",
+    "LowSurvey",
+    "GuardListen",
+    "ShoulderCheck",
+    "SignalAdvance",
+    "SignalHold",
+    "ReadyWeapon",
+    "WatchShift",
+    "GuardLeftArm",
+    "GuardRightArm",
+    "LimpLeft",
+    "LimpRight",
+    "TorsoHunch",
+    "WoundFlinch",
+    "ExhaustedBrace",
+    "ReliefBreath",
 ];
-const CLIP_DURATIONS: [f32; 52] = [
+const CLIP_DURATIONS: [f32; 82] = [
     1.6, 0.9, 0.6, 0.65, 1.1, 0.38, 1.1, 0.42, 0.95, 0.6, 0.85, 0.7, 0.85, 1.35, 1.9, 1.4, 1.1,
     0.82, 1.05, 1.1, 0.85, 1.45, 1.9, 2.1, 1.4, 0.9, 0.52, 0.58, 0.8, 0.45, 0.4, 0.35, 0.4, 0.75,
     0.8, 1.0, 0.9, 1.0, 0.55, 0.65, 1.2, 1.1, 0.65, 0.7, 0.55, 0.55, 0.7, 1.4, 1.6, 1.7, 0.42, 0.4,
+    1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 2.4, 2.2, 2.1, 1.8, 1.2, 1.7, 1.8, 2.3,
+    1.8, 1.8, 1.1, 1.1, 2.0, 0.65, 2.5, 1.4,
 ];
+fn wall_clip(clip: usize) -> bool {
+    matches!(clip, 37 | 52..=65)
+}
+fn wall_performance(unit: &phalanx::Unit) -> usize {
+    let start = unit
+        .ninja
+        .as_ref()
+        .and_then(|n| n.leap.as_ref())
+        .map_or(0, |l| l.start);
+    let identity = unit.fighter_id.as_ref().map_or(unit.id as u64, |id| {
+        id.bytes().fold(0xcbf29ce484222325_u64, |h, b| {
+            (h ^ u64::from(b)).wrapping_mul(0x100000001b3)
+        })
+    });
+    let bank: &[usize] = if unit
+        .flesh
+        .marks
+        .iter()
+        .any(|w| w.recovery_bouts > 0 && (w.region.limb() & 12 != 0 || w.severity >= 2))
+    {
+        &[52, 60, 62, 65]
+    } else if unit.lost_limbs & !unit.prosthetics & 3 != 0 {
+        &[52, 56, 60]
+    } else if unit.health_fraction() <= 0.30 {
+        &[52, 62, 65]
+    } else if unit.equipment.projectile_weapon().is_some() {
+        &[52, 56, 58, 60]
+    } else {
+        match performance(unit) {
+            Performance::Composed => &[56, 58, 60, 61, 63],
+            Performance::Fierce => &[37, 53, 54, 55, 57, 59, 64],
+            Performance::Watchful => &[52, 56, 58, 60, 62],
+            Performance::Anxious => &[52, 60, 62, 65],
+        }
+    };
+    let key = phalanx::procedural::hash(u64::from(start) ^ identity);
+    bank[(key % bank.len() as u64) as usize]
+}
+#[derive(Clone, Copy)]
+enum Performance {
+    Composed,
+    Fierce,
+    Watchful,
+    Anxious,
+}
+fn performance(unit: &phalanx::Unit) -> Performance {
+    if unit.mind.courage < 0.40 {
+        Performance::Anxious
+    } else if unit.mind.aggression > 0.72 && unit.mind.caution < 0.5 {
+        Performance::Fierce
+    } else if unit.mind.self_preservation > 0.65 {
+        Performance::Watchful
+    } else {
+        Performance::Composed
+    }
+}
 fn loop_clip(clip: usize) -> bool {
-    matches!(clip, 0..=2 | 15 | 16 | 22..=28)
+    matches!(clip, 0..=2 | 15 | 16 | 22..=28 | 66..=69 | 72..=78 | 80)
 }
 fn locomotion_clip(unit: &phalanx::Unit, moved: f32, finished: bool) -> usize {
     if !finished && unit.health > 0. && unit.health_fraction() <= 0.30 {
         if moved > 0.005 { 16 } else { 15 }
+    } else if !finished && !unit.flesh.blank() {
+        let hurt = |region| {
+            unit.flesh
+                .marks
+                .iter()
+                .any(|w| w.region == region && w.recovery_bouts > 0)
+        };
+        use phalanx::injuries::Region as R;
+        if moved > 0.005 && hurt(R::LeftLeg) {
+            76
+        } else if moved > 0.005 && hurt(R::RightLeg) {
+            77
+        } else if moved <= 0.005 && hurt(R::Torso) {
+            78
+        } else if moved <= 0.005 && hurt(R::LeftArm) {
+            74
+        } else if moved <= 0.005 && hurt(R::RightArm) {
+            75
+        } else if moved > 0.005 {
+            if moved > 0.13 { 2 } else { 1 }
+        } else {
+            23
+        }
     } else if moved > 0.13 {
         if unit.theus.is_some() {
-            26 + unit.id % 2
+            match performance(unit) {
+                Performance::Composed => 27,
+                Performance::Fierce => 2,
+                Performance::Watchful => 26,
+                Performance::Anxious => 2,
+            }
         } else {
             2
         }
     } else if moved > 0.005 {
         if unit.theus.is_some() {
-            if unit.action == 3 { 28 } else { 25 }
+            if unit.action == 3 {
+                28
+            } else {
+                match performance(unit) {
+                    Performance::Composed => 28,
+                    Performance::Fierce => 1,
+                    Performance::Watchful | Performance::Anxious => 25,
+                }
+            }
         } else {
             1
         }
     } else {
         if unit.theus.is_some() {
-            22 + unit.id % 3
+            if unit
+                .theus
+                .as_ref()
+                .is_some_and(|a| a.stamina < a.sheet.endurance() * 0.20)
+            {
+                return 80;
+            }
+            if unit.tactics.scout.is_some() && unit.tactics.phase != phalanx::tactics::Phase::Engage
+            {
+                if unit.tactics.scout == Some(unit.id) {
+                    if unit
+                        .tactics
+                        .first_report
+                        .is_some_and(|first| unit.theus.as_ref().unwrap().clock < first + 12)
+                    {
+                        return 70;
+                    }
+                    return if matches!(
+                        performance(unit),
+                        Performance::Watchful | Performance::Anxious
+                    ) {
+                        67
+                    } else {
+                        66
+                    };
+                }
+                if unit.tactics.phase == phalanx::tactics::Phase::Assemble
+                    && unit.command_title == Some(CommandTitle::General)
+                {
+                    return 71;
+                }
+                return match performance(unit) {
+                    Performance::Composed => 68,
+                    Performance::Fierce => 72,
+                    Performance::Watchful => 69,
+                    Performance::Anxious => 73,
+                };
+            }
+            match performance(unit) {
+                Performance::Composed => 23,
+                Performance::Fierce => 24,
+                Performance::Watchful => 22,
+                Performance::Anxious => 0,
+            }
         } else {
             0
         }
@@ -197,7 +372,15 @@ fn attack_clip(unit: &phalanx::Unit, ordinal: u32) -> usize {
                 T::WallKick => 37,
                 T::BurstStep => 38,
                 T::Counter => 44,
-                _ => [3, 7, 44, 8][(ordinal as usize + unit.id) % 4],
+                _ => {
+                    let bank = match performance(unit) {
+                        Performance::Composed => [44, 7, 44, 3],
+                        Performance::Fierce => [8, 3, 8, 7],
+                        Performance::Watchful => [7, 44, 7, 3],
+                        Performance::Anxious => [3, 7, 3, 7],
+                    };
+                    bank[ordinal as usize % bank.len()]
+                }
             }
         };
     }
@@ -356,10 +539,12 @@ pub(crate) fn load_visuals(
                 .observe(ready)
                 .observe(body::ready)
                 .observe(face::ready)
+                .observe(flesh::ready)
                 .observe(equipment::ready)
                 .observe(standards::ready)
                 .observe(archery::ready)
                 .observe(stains::ready)
+                .observe(kinetic::ready)
                 .observe(ragdoll::ready);
             });
         }
@@ -641,11 +826,11 @@ fn animate(
                 clip = [21, 13, 14, 47][unit.id.wrapping_add(session.battle.seed as usize) % 4];
             }
         } else if phalanx::ninjutsu::in_transit(unit) {
-            clip = 37;
+            clip = wall_performance(unit);
             actor.lock = 0.2;
         } else if let Some(e) = ninja_event {
             clip = match e.art {
-                phalanx::ninjutsu::Art::WallVault => 37,
+                phalanx::ninjutsu::Art::WallVault => wall_performance(unit),
                 phalanx::ninjutsu::Art::SmokeBomb => 10,
                 phalanx::ninjutsu::Art::GraveBind => 44,
                 phalanx::ninjutsu::Art::ChainSnare => 39,
@@ -654,17 +839,22 @@ fn animate(
             actor.lock = CLIP_DURATIONS[clip];
             retrigger = true;
         } else if limb_loss || (damage > 0.0 && (!attack || damage / unit.max_health() >= 0.16)) {
-            clip = if limb_loss {
-                12
-            } else if damage / unit.max_health() >= 0.16 {
-                20
-            } else {
-                if unit.theus.is_some() {
-                    50 + unit.id % 2
+            clip =
+                if limb_loss {
+                    12
+                } else if session.battle.damage_events.iter().any(|e| {
+                    e.defender == unit.id && e.flesh_region.is_some() && e.tick >= actor.tick
+                }) {
+                    79
+                } else if damage / unit.max_health() >= 0.16 {
+                    20
                 } else {
-                    5
-                }
-            };
+                    if unit.theus.is_some() {
+                        50 + unit.id % 2
+                    } else {
+                        5
+                    }
+                };
             actor.lock = CLIP_DURATIONS[clip];
             retrigger = true;
         } else if matches!(
@@ -713,6 +903,17 @@ fn animate(
                 38
             };
             actor.lock = 0.35;
+        } else if actor.lock == 0.
+            && session
+                .battle
+                .heals
+                .iter()
+                .any(|e| e.target == unit.id && e.tick >= actor.tick)
+            && unit.health > actor.health + 0.25
+        {
+            clip = 81;
+            actor.lock = CLIP_DURATIONS[clip];
+            retrigger = true;
         } else if actor.lock == 0.0 {
             let moved = p.distance(actor.position);
             // A simulation tick advances positions every 0.1 s; retain gait between ticks.
@@ -766,18 +967,21 @@ fn animate(
         } else {
             dt
         };
-        let cadence = if matches!(clip, 1 | 2 | 25..=28) && actor.id != super::rpg::PREVIEW_ID {
-            // Cycle distance is authored in model metres, including model scale.
-            (actor.gait_speed * CLIP_DURATIONS[clip]
-                / if matches!(clip, 2 | 26 | 27) {
-                    0.70
-                } else {
-                    0.50
-                })
-            .clamp(0.35, 2.2)
-        } else {
-            1.
-        };
+        let cadence =
+            if matches!(clip, 1 | 2 | 25..=28 | 76 | 77) && actor.id != super::rpg::PREVIEW_ID {
+                // Cycle distance is authored in model metres, including model scale.
+                (actor.gait_speed * CLIP_DURATIONS[clip]
+                    / if matches!(clip, 2 | 26 | 27) {
+                        0.70
+                    } else if matches!(clip, 76 | 77) {
+                        0.38
+                    } else {
+                        0.50
+                    })
+                .clamp(0.35, 2.2)
+            } else {
+                1.
+            };
         advance_clip(
             &mut actor,
             &mut player,
@@ -791,11 +995,15 @@ fn animate(
         } else {
             session.battle.tick as f32
         };
-        let synchronized = if clip == 37 {
+        let synchronized = if wall_clip(clip) {
             unit.ninja
                 .as_ref()
                 .and_then(|n| n.leap.as_ref())
-                .map(|leap| ((tick - leap.start as f32) / 14.).clamp(0., 1.) * CLIP_DURATIONS[clip])
+                .map(|leap| {
+                    ((tick - leap.start as f32) / leap.end.saturating_sub(leap.start).max(1) as f32)
+                        .clamp(0., 1.)
+                        * CLIP_DURATIONS[clip]
+                })
         } else if matches!(clip, 3 | 7 | 8 | 44) {
             unit.theus
                 .as_ref()
@@ -1390,7 +1598,7 @@ struct JointWitness {
 }
 #[derive(Resource)]
 struct Witness {
-    seen: [bool; 52],
+    seen: [bool; 82],
     joints: std::collections::BTreeMap<Entity, Quat>,
     skeleton_motion: bool,
     model_motion: [bool; 2],
@@ -1410,7 +1618,7 @@ struct Witness {
 impl Default for Witness {
     fn default() -> Self {
         Self {
-            seen: [false; 52],
+            seen: [false; 82],
             joints: default(),
             skeleton_motion: false,
             model_motion: [false; 2],
@@ -1457,7 +1665,12 @@ fn witness(
             witness.model_motion[usize::from(joint.female)] |= moved;
         }
     }
-    let face_review = std::env::args().any(|a| a == "--face-witness");
+    let face_review = std::env::args().any(|a| {
+        matches!(
+            a.as_str(),
+            "--face-witness" | "--flesh-witness" | "--yard-witness"
+        )
+    });
     // Dense morph meshes and skin pipelines need a rendered warm-up before
     // an isolated static review can be captured and the process exits.
     if witness.seconds > if face_review { 4.5 } else { 1.6 }
@@ -1469,6 +1682,8 @@ fn witness(
             || std::env::args().any(|a| {
                 a == "--battlefield-witness"
                     || a == "--face-witness"
+                    || a == "--flesh-witness"
+                    || a == "--yard-witness"
                     || a == "--standard-witness"
                     || a == "--weapon-loadout-witness"
                     || a == "--bow-draw-witness"
@@ -1478,7 +1693,11 @@ fn witness(
             commands
                 .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
                 .observe(bevy::render::view::screenshot::save_to_disk(
-                    if std::env::args().any(|a| a == "--battlefield-witness") {
+                    if std::env::args().any(|a| a == "--flesh-witness") {
+                        "outputs/flesh-witness.png"
+                    } else if std::env::args().any(|a| a == "--yard-witness") {
+                        "outputs/yard-witness.png"
+                    } else if std::env::args().any(|a| a == "--battlefield-witness") {
                         "outputs/battlefield-witness.png"
                     } else if std::env::args().any(|a| a == "--bow-draw-witness") {
                         if std::env::args().any(|a| a == "--male-bow-witness") {
@@ -1646,6 +1865,8 @@ fn witness(
             || std::env::args().any(|a| {
                 a == "--battlefield-witness"
                     || a == "--face-witness"
+                    || a == "--flesh-witness"
+                    || a == "--yard-witness"
                     || a == "--standard-witness"
                     || a == "--weapon-loadout-witness"
                     || a == "--bow-draw-witness"
@@ -1789,6 +2010,87 @@ mod animation_regressions {
         let unit = &battle.units[0];
         for ordinal in 0..32 {
             assert!(matches!(attack_clip(unit, ordinal), 3 | 7 | 8 | 44));
+        }
+    }
+    #[test]
+    fn wall_performances_cover_fifteen_stable_choices_without_changing_the_leap() {
+        let mut campaign = phalanx::progression::Campaign::new();
+        let (_, battle) = campaign
+            .begin_battle(42, Arena::OpenField, phalanx::learned::Controller::Utility)
+            .unwrap();
+        let mut unit = battle.units[0].clone();
+        let mut seen = std::collections::BTreeSet::new();
+        for start in 0..2048 {
+            unit.mind = phalanx::styles::BattleStyle::ALL[start as usize % 3].mind();
+            if start % 4 == 0 {
+                unit.mind.courage = 0.2;
+            }
+            unit.ninja.as_mut().unwrap().leap = Some(phalanx::ninjutsu::Leap {
+                from: [-2., 0., 0.],
+                touch: [-1., 0.4, 0.],
+                to: [2., 0., 0.],
+                top: 1.7,
+                start,
+                end: start + 14,
+                wall: 0,
+            });
+            let before = serde_json::to_string(&unit).unwrap();
+            let clip = wall_performance(&unit);
+            assert!(wall_clip(clip));
+            assert_eq!(clip, wall_performance(&unit));
+            assert_eq!(before, serde_json::to_string(&unit).unwrap());
+            seen.insert(clip);
+        }
+        assert_eq!(seen.len(), 15);
+    }
+    #[test]
+    fn quiet_and_wounded_fighters_do_not_select_showy_vaults() {
+        let mut campaign = phalanx::progression::Campaign::new();
+        let (_, battle) = campaign
+            .begin_battle(42, Arena::OpenField, phalanx::learned::Controller::Utility)
+            .unwrap();
+        let mut unit = battle.units[0].clone();
+        unit.mind = phalanx::styles::BattleStyle::Skirmisher.mind();
+        for start in 0..128 {
+            unit.ninja.as_mut().unwrap().leap = Some(phalanx::ninjutsu::Leap {
+                from: [-2., 0., 0.],
+                touch: [-1., 0.4, 0.],
+                to: [2., 0., 0.],
+                top: 1.7,
+                start,
+                end: start + 14,
+                wall: 0,
+            });
+            assert!([52, 56, 58, 60, 62].contains(&wall_performance(&unit)));
+        }
+        unit.mind = phalanx::styles::BattleStyle::Vanguard.mind();
+        unit.lost_limbs = 1;
+        assert!([52, 56, 60].contains(&wall_performance(&unit)));
+    }
+    #[test]
+    fn temperaments_have_distinct_performances_with_the_same_class_and_rules() {
+        let mut campaign = phalanx::progression::Campaign::new();
+        let (_, battle) = campaign
+            .begin_battle(42, Arena::OpenField, phalanx::learned::Controller::Utility)
+            .unwrap();
+        let mut unit = battle.units[0].clone();
+        let mut minds = phalanx::styles::BattleStyle::ALL.map(|s| s.mind()).to_vec();
+        let mut anxious = minds[2];
+        anxious.courage = 0.2;
+        minds.push(anxious);
+        let mut signatures = Vec::new();
+        for mind in minds {
+            unit.mind = mind;
+            let before = serde_json::to_string(&unit).unwrap();
+            let signature = [
+                locomotion_clip(&unit, 0., false),
+                locomotion_clip(&unit, 0.06, false),
+                locomotion_clip(&unit, 0.2, false),
+                attack_clip(&unit, 0),
+            ];
+            assert!(!signatures.contains(&signature));
+            assert_eq!(serde_json::to_string(&unit).unwrap(), before);
+            signatures.push(signature);
         }
     }
     #[test]

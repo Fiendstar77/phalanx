@@ -264,6 +264,16 @@ impl Campaign {
                 next.teams[team].fighters.push(fighter);
             }
             // Explicit story time skips, not biological aging per combat round.
+            for team in &mut next.teams {
+                for f in &mut team.fighters {
+                    f.flesh.rest();
+                }
+            }
+            for waiting in &mut p.waiting {
+                for f in waiting {
+                    f.flesh.rest();
+                }
+            }
             for f in &mut next.teams[0].fighters {
                 if f.appearance.age_years < 18 {
                     f.appearance.age_years += 1;

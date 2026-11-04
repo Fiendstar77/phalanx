@@ -132,7 +132,7 @@ impl Skill {
             Self::Occult => "Stronger resisted bindings drain enemy effort and last longer.",
             Self::Springheel => "Fast traversal; improved acrobatics and longer wall holds.",
 
-            Self::Heal => "Heal nearby injured allies every 1.2s",
+            Self::Heal => "Heal nearby injured allies every 1.2s; actual healing stanches bleeding",
             Self::Bless => "Nearby allies gain damage and protection",
             Self::Rally => "Rally allies; requires a physical banner",
             Self::Hex => "Nearby enemies deal 25% less damage",
@@ -144,7 +144,9 @@ impl Skill {
             Self::Bloodrage => "Damage rises as HP falls; +15% incoming damage",
             Self::WeaponDrill => "+5% damage after 100 Warrior practice",
             Self::Quickdraw => "37.5% shorter projectile recovery",
-            Self::WallDance => "Climb and vault nearby walls; costs 7 effort; intact legs required",
+            Self::WallDance => {
+                "Vault at Acrobatics 12; 7+ trauma effort; usable legs and willingness required"
+            }
             Self::SmokeBomb => "Two bombs per battle; smoke obscures both teams and enables escape",
             Self::ShadowSeal => {
                 "Resisted shadow binding slows and exposes a visible enemy; costs 8 effort"
@@ -156,6 +158,19 @@ impl Skill {
             || self.class() == current
             || mastery.retained(self.class())
     }
+    pub fn training_status(self, current: C, mastery: Mastery) -> String {
+        if matches!(self, Self::WallDance | Self::SmokeBomb | Self::ShadowSeal) {
+            return "Available to every discipline".into();
+        }
+        let progress = mastery.retention_progress(self.class());
+        if mastery.retained(self.class()) {
+            progress
+        } else if self.class() == current {
+            format!("TEMPORARY while this discipline is active | {progress}")
+        } else {
+            format!("LOCKED after retraining | {progress}")
+        }
+    }
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SkillLoadout {
@@ -166,7 +181,11 @@ impl SkillLoadout {
     pub fn defaults(current: C, mastery: Mastery) -> Self {
         let mut result = Self::default();
         // Current discipline first; retained disciplines fill remaining capacity.
-        for class in std::iter::once(current).chain(C::ALL.into_iter().filter(|c| *c != current)) {
+        for class in std::iter::once(current).chain(
+            C::ALL
+                .into_iter()
+                .filter(|c| *c != current && mastery.retained(*c)),
+        ) {
             for skill in Skill::ALL
                 .into_iter()
                 .filter(|s| s.class() == class && s.unlocked(current, mastery))

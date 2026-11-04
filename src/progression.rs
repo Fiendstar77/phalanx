@@ -140,6 +140,8 @@ pub struct WoundRecord {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Fighter {
+    #[serde(default, skip_serializing_if = "crate::injuries::is_blank")]
+    pub flesh: crate::injuries::Flesh,
     /// Original identity when an exhibition needs a separate runtime namespace.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_fighter_id: Option<String>,
@@ -253,6 +255,7 @@ impl Phalanx {
             }
             let m = f.mind;
             if f.skills.is_some_and(|s| !s.valid(f.class, f.mastery))
+                || !f.flesh.valid()
                 || f.legends.len() > crate::legend::RETAINED_ENTRIES
                 || f.legend_count < f.legends.len() as u32
                 || f.legend_count > f.battles
@@ -342,6 +345,10 @@ pub struct FighterResult {
     pub max_health: f32,
     pub damage: f32,
     pub healing: f32,
+    #[serde(default)]
+    pub bleeding_loss: f32,
+    #[serde(default)]
+    pub flesh_wounds: u32,
     pub xp: u32,
     pub new_wounds: u8,
     #[serde(default, deserialize_with = "crate::weapons::deserialize_practice")]
@@ -377,10 +384,11 @@ impl BattleReport {
                         !f.name.is_empty()
                             && f.name.chars().count() <= 64
                             && !f.name.chars().any(char::is_control)
-                            && [f.health, f.max_health, f.damage, f.healing]
+                            && [f.health, f.max_health, f.damage, f.healing, f.bleeding_loss]
                                 .iter()
                                 .all(|v| v.is_finite() && *v >= 0.0)
                             && f.max_health > 0.0
+                            && f.flesh_wounds <= 32
                             && f.health <= f.max_health
                             && f.xp <= 55
                             && f.legends.len() <= 1
@@ -482,6 +490,7 @@ impl Campaign {
                 .into_iter()
                 .enumerate()
                 .map(|(slot, title)| Fighter {
+                    flesh: Default::default(),
                     source_fighter_id: None,
                     legends: Vec::new(),
                     legend_count: 0,
@@ -671,6 +680,8 @@ impl Campaign {
             u.mind = f.mind;
             u.lost_limbs = f.lost_limbs;
             u.prosthetics = f.prosthetics;
+            u.flesh = f.flesh.clone();
+            u.bleeding_loss = 0.;
             u.equipment = f.equipment;
             u.mastery = f.mastery;
             u.skills = f.skills;
@@ -815,6 +826,7 @@ impl Campaign {
             recruit.legends.clear();
             recruit.legend_count = 0;
             recruit.wounds.clear();
+            recruit.flesh = Default::default();
             recruit.lost_limbs = 0;
             recruit.prosthetics = 0;
             recruit.equipment = Default::default();
@@ -960,6 +972,8 @@ impl Campaign {
             }
             f.lost_limbs = u.lost_limbs;
             f.prosthetics = u.prosthetics;
+            f.flesh = u.flesh.clone();
+            f.flesh.settle(id);
             f.psyche.absorb(
                 u.mind,
                 crate::psyche::Exposure {
@@ -1040,6 +1054,13 @@ impl Campaign {
                             max_health: u.max_health(),
                             damage: u.damage_dealt,
                             healing: u.healing_done,
+                            bleeding_loss: u.bleeding_loss,
+                            flesh_wounds: u
+                                .flesh
+                                .marks
+                                .iter()
+                                .filter(|w| w.source_battle.is_none())
+                                .count() as u32,
                             xp: f.history.last().unwrap().experience_gained,
                             new_wounds: u.lost_limbs & !self.teams[team].fighters[slot].lost_limbs,
                             weapon_training: std::array::from_fn(|i| {

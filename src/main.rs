@@ -941,6 +941,75 @@ fn main() {
             session.player.details = true;
             session.camp_page = None;
         }
+        if args.iter().any(|a| a == "--yard-witness") {
+            session.menu = false;
+            session.map_briefing = false;
+            session.running = false;
+            session.camera_follow = false;
+            session.cinema_grabbed = true;
+            session.camera_target = Vec3::new(0., 2., -3.);
+            session.zoom = 38.;
+            session.pitch = 0.30;
+            session.orbit = 0.;
+        }
+        if args.iter().any(|a| a == "--flesh-witness") {
+            session.autosave = false;
+            let mut found = false;
+            for trial_seed in 0..64 {
+                session.campaign = Campaign::new();
+                for team in &mut session.campaign.teams {
+                    for fighter in &mut team.fighters {
+                        fighter.class = FighterClass::Warrior;
+                        fighter.mind = phalanx::styles::BattleStyle::Vanguard.mind();
+                        fighter.theus = Some(phalanx::theus::Sheet {
+                            attributes: [14, 12, 10, 10],
+                            ..default()
+                        });
+                    }
+                }
+                session.restart_founders(trial_seed, Arena::OpenField, Controller::Utility);
+                while !session.battle.finished {
+                    session.battle.step();
+                    if let Some(id) = session.battle.units.iter().position(|u| !u.flesh.blank()) {
+                        session.selected = id;
+                        found = true;
+                        break;
+                    }
+                }
+                if found {
+                    break;
+                }
+            }
+            assert!(found, "No real flesh wound in bounded art-review fixture");
+            session.previous_positions = session.battle.units.iter().map(|u| u.position).collect();
+            session.accumulator = 0.;
+            session.menu = false;
+            session.running = false;
+            session.founding.open = false;
+            session.map_briefing = false;
+            session.camp_page = None;
+            session.camera_follow = true;
+            session.cinema_grabbed = true;
+            session.zoom = 2.2;
+            session.pitch = 0.17;
+            let subject = &session.battle.units[session.selected];
+            session.orbit = (subject.target[0] - subject.position[0])
+                .atan2(subject.target[1] - subject.position[1])
+                + 0.15;
+            session.save_notice =
+                "Staged art review: actual seeded cutting wound; autosave disabled".into();
+            std::fs::create_dir_all("outputs").unwrap();
+            std::fs::write(
+                "outputs/flesh-fixture.json",
+                serde_json::to_vec_pretty(&serde_json::json!({
+                "scripted_starting_profiles":true,"real_combat":true,"autosave":false,
+                "seed":session.battle.seed,"tick":session.battle.tick,
+                "unit":session.selected,"flesh":session.battle.units[session.selected].flesh,
+                "hit":session.battle.damage_events.iter().find(|e|e.sequence==session.battle.units[session.selected].flesh.marks[0].hit_sequence),"human_playtest":false}))
+                .unwrap(),
+            )
+            .unwrap();
+        }
     }
     if args.iter().any(|a| a == "--rpg-witness") {
         use phalanx::equipment::{Gear, Item};
@@ -1519,6 +1588,7 @@ fn setup(
             illuminance: 10000.0,
             ..default()
         },
+        visuals::StageKey,
         Transform::from_xyz(-6.0, 12.0, 7.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
     // The opposite fill preserves face and weapon shape while fighters turn.
@@ -2184,6 +2254,7 @@ fn apply(control: Control, session: &mut Session) {
             }
             let u = &session.battle.units[session.selected];
             let (team, slot) = (u.team, u.id % session.battle.team_size());
+            let previous = session.campaign.teams[team].fighters[slot].class;
             match session.campaign.set_class(team, slot, class) {
                 Ok(()) => {
                     if session.battle.tick == 0 {
@@ -2196,8 +2267,13 @@ fn apply(control: Control, session: &mut Session) {
                     if session.autosave {
                         session.save_campaign();
                     }
-                    session.save_notice =
-                        format!("{}: {} (10 gold)", class.name(), class.description());
+                    let fighter = &session.campaign.teams[team].fighters[slot];
+                    session.save_notice = format!(
+                        "{}: {} (10 gold). Previous training saved: {}. Skills > learned disciplines shows what remains available.",
+                        class.name(),
+                        class.description(),
+                        fighter.mastery.retention_progress(previous)
+                    );
                 }
                 Err(e) => session.save_notice = e,
             }
@@ -3044,6 +3120,11 @@ fn camera_motion(
             session.zoom = zoom;
             session.pitch = 0.20;
         }
+        if let Some((target, zoom)) = visuals::impact_focus(&session) {
+            session.camera_target = target;
+            session.zoom = zoom;
+            session.pitch = 0.18;
+        }
         session.orbit += aim.orbit_rate * dt;
     }
     if session.camera_follow {
@@ -3068,7 +3149,10 @@ fn camera_motion(
     if automatic {
         eye = cinema_eye(session.battle.arena, session.camera_target, eye);
     }
-    let wanted = Transform::from_translation(eye).looking_at(session.camera_target, Vec3::Y);
+    let mut wanted = Transform::from_translation(eye).looking_at(session.camera_target, Vec3::Y);
+    if automatic {
+        wanted.rotation *= Quat::from_rotation_z(visuals::camera_bank(&session));
+    }
     let blend = if *initialized {
         1.0 - (-dt * 18.0).exp()
     } else {

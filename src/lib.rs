@@ -10,7 +10,7 @@ pub mod collision;
 pub mod equipment;
 pub mod genesis;
 pub mod heraldry;
-mod injuries;
+pub mod injuries;
 pub mod inventory;
 pub mod learned;
 pub mod learning;
@@ -29,6 +29,7 @@ pub mod rivals;
 pub mod skills;
 pub mod study;
 pub mod styles;
+pub mod tactics;
 pub mod telemetry;
 pub mod terrain;
 pub mod theus;
@@ -294,6 +295,12 @@ pub struct Rock {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Unit {
+    #[serde(skip_serializing_if = "tactics::is_blank")]
+    pub tactics: tactics::State,
+    #[serde(skip_serializing_if = "injuries::is_blank")]
+    pub flesh: injuries::Flesh,
+    #[serde(skip_serializing_if = "is_zero_f32")]
+    pub bleeding_loss: f32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ninja: Option<ninjutsu::Fighter>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -622,6 +629,7 @@ impl Unit {
     }
     pub fn movement_multiplier(&self) -> f32 {
         self.equipment.speed()
+            * self.flesh.movement()
             * if self.has_skill(FighterClass::Assassin) {
                 1.15
             } else if self.has_skill(FighterClass::Acrobat) {
@@ -704,6 +712,8 @@ impl Unit {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct DamageEvent {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub flesh_region: Option<injuries::Region>,
     pub sequence: u64,
     pub tick: u32,
     pub attacker: usize,
@@ -724,6 +734,8 @@ pub struct HealEvent {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Battle {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub bleed_events: Vec<injuries::BleedEvent>,
     #[serde(skip_serializing_if = "ninjutsu::Field::empty")]
     pub ninjutsu: ninjutsu::Field,
     #[serde(skip)]
@@ -838,6 +850,9 @@ impl Battle {
                     arena.spawn(team, id % team_size)
                 };
                 Unit {
+                    tactics: Default::default(),
+                    flesh: Default::default(),
+                    bleeding_loss: 0.,
                     ninja: None,
                     theus: None,
                     id,
@@ -949,6 +964,7 @@ impl Battle {
             })
             .collect();
         Self {
+            bleed_events: Vec::new(),
             seed,
             founders,
             tick: 0,
@@ -1017,6 +1033,7 @@ impl Battle {
             return;
         }
         theus_combat::recover(self);
+        injuries::bleed(self);
         ninjutsu::prepare(self);
         let aura: Vec<_> = self
             .units
@@ -1099,6 +1116,15 @@ impl Battle {
                 })
                 .collect();
             let mut enemy = cognition::focus_target(unit, &allies, self.tick);
+            let tactical = if self.founders
+                && self.controller == Controller::Utility
+                && self.learned_team != Some(unit.team)
+                && !self.opportunities.owns_mobility(unit.id)
+            {
+                tactics::intent(unit, &allies, arena, self.tick, team_size)
+            } else {
+                None
+            };
             if let Some(priority) = theus_combat::priority_contact(unit, &snapshot, self.tick) {
                 enemy = Some(priority);
                 unit.decision_reason = "Theus: seize an ally's opening".into();
@@ -1108,7 +1134,7 @@ impl Battle {
             {
                 enemy = Some(contact.clone());
             }
-            if !self.opportunities.owns_mobility(unit.id) {
+            if !self.opportunities.owns_mobility(unit.id) && tactical.is_none() {
                 theus_combat::mobility(unit, enemy.as_ref(), arena, self.tick);
             }
             let bow = unit.bow_available();
@@ -1209,7 +1235,7 @@ impl Battle {
                 ]
             };
             let isolation = (distance(unit.position, center) / 5.0).min(1.0);
-            let injury = 1.0 - unit.health_fraction();
+            let injury = (1.0 - unit.health_fraction() + unit.flesh.soreness() * 0.025).min(1.);
             let local_threat = (unit
                 .contacts
                 .iter()
@@ -1552,6 +1578,9 @@ impl Battle {
                 if support.is_none() {
                     unit.scores[8] = -1.0;
                 }
+                if tactical.is_some() && unit.scores[0] >= 0. {
+                    unit.scores[0] = unit.scores[0].max(2.25);
+                }
                 let utility_action = unit
                     .scores
                     .iter()
@@ -1647,8 +1676,13 @@ impl Battle {
                 } else if let Some(line) = scar.as_ref().filter(|line| line.action == unit.action) {
                     unit.decision_reason = line.text.into();
                 }
+                if unit.action == 0
+                    && let Some(intent) = &tactical
+                {
+                    unit.decision_reason = intent.reason.clone();
+                }
                 if self.founders {
-                    if unit.action == 0 {
+                    if unit.action == 0 && tactical.is_none() && enemy.is_some() {
                         if !unit.charging {
                             unit.charging = true;
                             unit.charge_health = unit.health;
@@ -1665,6 +1699,9 @@ impl Battle {
                 None
             };
             unit.target = match unit.action {
+                0 => tactical
+                    .as_ref()
+                    .map_or(enemy_position, |intent| intent.goal),
                 2 => ridge,
                 3 => unit.flank_anchor.unwrap_or(enemy_position),
                 4 => center,
@@ -2153,6 +2190,7 @@ impl Battle {
             if unit.health > 0.0 {
                 let restored = healing[unit.id].min((unit.max_health() - unit.health).max(0.0));
                 unit.health += restored;
+                unit.flesh.stanch(restored);
                 if restored > 0.0 {
                     for &(healer, target, power) in &casts {
                         if target == unit.id {
@@ -2193,6 +2231,17 @@ impl Battle {
             };
             self.units[defender].lost_limbs |= severed;
             self.units[defender].prosthetics &= !severed;
+            let flesh_region = if self.founders && severed == 0 {
+                injuries::lacerate(
+                    self.seed,
+                    self.next_damage_event,
+                    &mut self.units[defender],
+                    amount,
+                    !blunt && contact.is_none(),
+                )
+            } else {
+                None
+            };
             let delta = [b.position[0] - a.position[0], b.position[1] - a.position[1]];
             let length = distance(a.position, b.position).max(0.001);
             let velocity = std::array::from_fn(|axis| {
@@ -2207,6 +2256,7 @@ impl Battle {
             ]);
             let velocity = contact.map(|c| c.1).unwrap_or(velocity);
             self.damage_events.push(DamageEvent {
+                flesh_region,
                 sequence: self.next_damage_event,
                 tick: self.tick,
                 attacker,

@@ -1,5 +1,9 @@
 # Theus
 
+The system law lives outside this game, in `/home/cognis/Projects/THEUS/SYSTEM.md`.
+This file is Phalanx's integration note. The public name is Theus. The letters
+are the end of Prometheus: forethought, then fire.
+
 **Theus** is Guillaume Heinerth's shared RPG framework for Phalanx, Zeitgeist,
 and future games. Phalanx is its first playable integration. The name was chosen
 October 26, 2026. These games are personal projects by Guillaume Heinerth,

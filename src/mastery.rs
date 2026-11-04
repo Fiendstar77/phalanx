@@ -30,6 +30,28 @@ impl Mastery {
     pub fn retained(self, class: FighterClass) -> bool {
         self.points(class) >= RETAIN_AT
     }
+    pub fn battles_to_retain(self, class: FighterClass) -> u32 {
+        RETAIN_AT
+            .saturating_sub(self.points(class))
+            .div_ceil(crate::progression::BATTLE_PRACTICE)
+    }
+    pub fn retention_progress(self, class: FighterClass) -> String {
+        let points = self.points(class);
+        if self.retained(class) {
+            format!(
+                "{} {points}/{RETAIN_AT} | permanently learned",
+                class.name()
+            )
+        } else {
+            let battles = self.battles_to_retain(class);
+            format!(
+                "{} {points}/{RETAIN_AT} | {battles} more completed {} battle{} to retain",
+                class.name(),
+                class.name(),
+                if battles == 1 { "" } else { "s" }
+            )
+        }
+    }
     pub fn rank(self, class: FighterClass) -> u32 {
         match self.points(class) {
             600.. => 3,
@@ -55,9 +77,9 @@ impl Mastery {
             .map(|c| format!("{} R{}", c.name(), self.rank(c)))
             .collect::<Vec<_>>();
         format!(
-            "Training {}: {} practice | retain at 100; ranks at 100/300/600\nRetained: {}",
-            current.name(),
-            self.points(current),
+            "{}\n+{} practice per completed battle, win or lose. Ranks: 100/300/600.\nRetained: {}",
+            self.retention_progress(current),
+            crate::progression::BATTLE_PRACTICE,
             if retained.is_empty() {
                 "none yet".into()
             } else {

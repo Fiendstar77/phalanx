@@ -24,6 +24,7 @@ pub(super) struct Socket {
 }
 #[derive(Clone)]
 struct Fountain {
+    flesh_sequence: Option<u64>,
     unit: usize,
     limb: u8,
     height: f32,
@@ -42,7 +43,9 @@ impl Fountain {
         let wound = phalanx::procedural::hash(seed ^ event.sequence.wrapping_mul(131));
         let heart = phalanx::procedural::hash(seed ^ event.defender as u64);
         let variation = (wound & 65535) as f32 / 65535.;
-        let duration = if event.severed != 0 {
+        let duration = if event.flesh_region.is_some() {
+            16.0
+        } else if event.severed != 0 {
             10.0 + variation * 3.0
         } else {
             1.5 + variation * 1.5
@@ -60,13 +63,20 @@ impl Fountain {
             1.
         };
         Self {
+            flesh_sequence: event.flesh_region.map(|_| event.sequence),
             unit: event.defender,
             limb: if event.severed != 0 {
                 1 << event.severed.trailing_zeros()
             } else {
                 0
             },
-            height: if event.severed & 12 != 0 { 0.30 } else { 0.90 },
+            height: if event.severed & 12 != 0
+                || event.flesh_region.is_some_and(|r| r.limb() & 12 != 0)
+            {
+                0.30
+            } else {
+                0.90
+            },
             side,
             life: duration,
             duration,
@@ -538,6 +548,14 @@ pub(super) fn effects(
         jet.life -= dt;
         let p = session.presented(jet.unit);
         let unit = &session.battle.units[jet.unit];
+        if let Some(sequence) = jet.flesh_sequence
+            && !unit.flesh.marks.iter().any(|w| {
+                w.hit_sequence == sequence && w.source_battle.is_none() && w.blood_remaining > 0.
+            })
+        {
+            jet.life = 0.;
+            continue;
+        }
         let facing = Vec2::from_array(unit.target) - Vec2::from_array(unit.position);
         let heading = if facing.length_squared() > 0.001 {
             facing.y.atan2(facing.x)
@@ -724,9 +742,10 @@ pub(super) fn effects(
         fx.dirty = false;
         fx.upload = 0.;
     }
+    let isolated_review = std::env::args().any(|a| a == "--flesh-witness");
     for (particle, mut transform, mut visibility) in &mut particles {
         let p = &fx.particles[particle.0];
-        *visibility = if p.life > 0. {
+        *visibility = if p.life > 0. && !isolated_review {
             Visibility::Inherited
         } else {
             Visibility::Hidden
@@ -745,6 +764,7 @@ mod tests {
     #[test]
     fn a_deep_hit_can_bleed_without_cutting_off_a_limb() {
         let event = phalanx::DamageEvent {
+            flesh_region: None,
             sequence: 4,
             tick: 40,
             attacker: 0,
@@ -764,6 +784,7 @@ mod tests {
     #[test]
     fn wounds_share_a_heart_but_have_distinct_sources_and_quiet_intervals() {
         let mut event = phalanx::DamageEvent {
+            flesh_region: None,
             sequence: 1,
             tick: 40,
             attacker: 0,

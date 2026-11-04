@@ -14,6 +14,24 @@ fn funded() -> Campaign {
     c
 }
 #[test]
+fn universal_catalog_access_does_not_silently_equip_every_class_with_ninja_arts() {
+    let mastery = phalanx::mastery::Mastery::default();
+    let warrior = SkillLoadout::defaults(C::Warrior, mastery);
+    assert!(
+        !warrior.has(S::SmokeBomb) && !warrior.has(S::WallDance) && !warrior.has(S::ShadowSeal)
+    );
+    let scout = SkillLoadout::defaults(C::Scout, mastery);
+    assert!(scout.has(S::SmokeBomb) && scout.has(S::WallDance));
+    let mut chosen = warrior;
+    chosen
+        .assign(false, 0, Some(S::SmokeBomb), C::Warrior, mastery)
+        .unwrap();
+    assert!(chosen.has(S::SmokeBomb));
+    let mut earned = mastery;
+    earned.train(C::Scout, 100);
+    assert!(SkillLoadout::defaults(C::Warrior, earned).has(S::SmokeBomb));
+}
+#[test]
 fn physical_items_keep_their_progress_across_fighters_and_disk() {
     let mut c = funded();
     c.craft_item(0, 1, Gear::TemperedWeapon).unwrap();

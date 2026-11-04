@@ -8,9 +8,10 @@ reads those states and cast receipts; visual effects do not award damage.
 
 Open **Workshop → Skills**. **Wall dance**, **Smoke bombs** and **Grave binding**
 are universal starter arts, available to any title or class. They occupy the
-existing active slots. Default loadouts include them when capacity permits;
-explicitly saved custom loadouts keep their choices, so equip the new skills
-from the catalogue. Class abilities and retained mastery still share the same
+existing active slots. Default loadouts follow the current discipline and
+mastered disciplines; universal catalogue access does not silently equip all
+three arts. Explicitly saved custom loadouts keep their choices. Class
+abilities and retained mastery still share the same
 10 active / 3 passive capacity.
 
 Open **Forge** to craft a **Chain-sickle** or **Returning razor wheel** for
@@ -25,8 +26,8 @@ class can use it without secretly continuing to shoot its class weapon.
 
 | Art | Combat behaviour |
 | --- | --- |
-| Wall dance | A fighter approaches a nearby wall face, climbs/kicks upward, crosses above its top and lands on walkable ground. The full 1.4-second path is checked against solid scenery and other reserved vaults. It costs 7 effort, requires intact legs and Acrobatics 12, and recovers after 5.5 seconds. |
-| Smoke bombs | Two charges per battle, 3 effort per deployment and a 6.5-second recovery. A cloud grows to a 2.6 m radius and dissipates after 4.2 seconds. Both teams lose direct sight through it; contact memory remains. Touching distance and sight above the cloud remain possible. |
+| Wall dance | A fighter approaches a nearby wall face, climbs/kicks upward, crosses above its top and lands on walkable ground. The full 1.4-second path is checked against solid scenery and other reserved vaults. It costs 7 effort plus 0.75 per point of wound soreness, requires usable legs and Acrobatics 12, and recovers after 5.5 seconds. A recovering severity-three natural leg wound prevents it. |
+| Smoke bombs | Two charges per battle, 3 effort per deployment and a 6.5-second recovery. A cloud grows to a 2.6 m radius and dissipates after 4.2 seconds. Smoke takes its owner's team colour. Both teams lose direct sight through it; contact memory remains. Touching distance and sight above the cloud remain possible. |
 | Grave binding | An Insight/Coordination check opposes the target's Resolve. It costs 8 effort, recovers after 9 seconds, and requires clear current sight within 6.5 m. A successful seal reduces movement to 20% and exposes the victim for 2.2 seconds. Resisted casts spend effort but do not bind. It does not directly inflict damage or bind an active wall dancer. |
 | Reaper's hook | A successful chain-sickle strike can snare a target for 0.8 seconds and pull it up to 0.7 m on the next accepted physical step. Weapon reach is 3.3 m. Walls and body contacts constrain the pull; the hook recovers after 2.8 seconds. |
 | Demon wheel | A real 3D blade flies toward the observed target point, then returns toward its owner. It can contact an enemy once outbound and once on return. Each contact still passes through Theus attack/defence resolution. Throws cost 4 effort and recover after 2.2 seconds. Walls turn back or stop the blade. |
@@ -39,6 +40,11 @@ Conflicting vault trajectories are reserved sequentially. An unproductive blind
 search advances to another authored patrol objective instead of repeating an
 irrelevant wall crossing.
 
+Eligibility does not compel a vault. Courage, aggression, discipline, caution,
+self-preservation, health, wounds, wall height and sheltered landing influence
+spontaneous attempts. Non-scouts hold their staging role during the tactical
+opening. Committed compositions retain their own planning and execution checks.
+
 Smoke can therefore break a volley, create a route for a flank, or cover a wall
 approach. It also blinds allies. A fighter above the cloud can regain direct
 sight. Binding and chain snares create real exposure windows for Theus partners.
@@ -49,8 +55,12 @@ The hand-held chain-sickle and eight-bladed wheel are procedural meshes. The
 moving wheel, chain links, soft smoke billboards and orbiting seal papers come
 from bounded pools: at most eight clouds, eight flying wheels and 128 retained
 cast receipts. Captions name actual arts, including resisted binding attempts.
-Wall movement uses the existing skeletal wall-kick clip with authoritative
-world movement. The current 52-clip set is reused; these are not newly acquired
+Wall movement now selects from fifteen skeletal performances with authoritative
+world movement and synchronized leap timing. Personality, physical condition
+and equipment restrict the performance bank; persistent identity and the actual
+leap start select a variation within it. The current 82-clip set includes
+fourteen new wall-vault clips and sixteen living/reconnaissance/injury clips;
+these are not newly acquired
 motion-capture assets.
 
 Wall vaults and razor-wheel sweeps have 3D solid clearance. Existing ground
@@ -88,8 +98,11 @@ symlink and launch the built game there:
 WGPU_ADAPTER_NAME=AMD /path/to/Phalanx/target/debug/phalanx --visual-witness --ninja-demo --seed 6
 ```
 
-This stages a real 3v3 encounter with the new weapons equipped, disables
-campaign autosave, waits for render warm-up and records a bounded excerpt.
+This stages a real 3v3 encounter with the new weapons and arts explicitly
+equipped, gives its scouts Agility 14 and a willing Vanguard temperament,
+starts after preparation, disables campaign autosave, waits for render warm-up
+and records a bounded excerpt. It is an effects/traversal fixture, not evidence
+of natural scouting behaviour or equal loadouts in normal play.
 `outputs/ninja-demo/audit.json` reports observed arts, physical wall height and
 smoke observations; `events.json` retains the actual cast receipts. PNGs are
 requested at 24 FPS. This is a scripted fixture, not a human playtest, a full

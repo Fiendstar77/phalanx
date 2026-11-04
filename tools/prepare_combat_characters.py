@@ -16,6 +16,14 @@ CLIPS += [('BreatheLook',1.9),('BreatheShift',2.1),('ReadyBounce',1.4),('SneakSt
  ('RisingLauncher',.65),('MeteorChase',1.2),('MeteorSlam',1.1),('CrossfireRelease',.65),
  ('GroundSweep',.7),('CounterCut',.55),('LandingRoll',.55),('RecoverKipUp',.7),
  ('DeathSpiral',1.4),('VictorySalute',1.6),('DefeatKneel',1.7),('HurtTwist',.42),('HurtShoulder',.40)]
+WALL_VARIANTS=['TightTuck','Scissor','Sidewinder','BackArch','HeelLead','Corkscrew',
+ 'CrossGuard','LongSplit','KneeDrive','ShoulderTurn','DoubleTuck','Crane','ReverseTwist','Scramble']
+CLIPS += [('WallVault_'+name,1.) for name in WALL_VARIANTS]
+LIVING_CLIPS=[('ScoutScan',2.4),('LowSurvey',2.2),('GuardListen',2.1),('ShoulderCheck',1.8),
+ ('SignalAdvance',1.2),('SignalHold',1.7),('ReadyWeapon',1.8),('WatchShift',2.3),
+ ('GuardLeftArm',1.8),('GuardRightArm',1.8),('LimpLeft',1.1),('LimpRight',1.1),
+ ('TorsoHunch',2.0),('WoundFlinch',.65),('ExhaustedBrace',2.5),('ReliefBreath',1.4)]
+CLIPS += LIVING_CLIPS
 def clean():bpy.ops.wm.read_factory_settings(use_empty=True)
 def rot(rig,name,axis,angle):
  b=rig.pose.bones.get('mixamorig'+name)
@@ -201,7 +209,46 @@ def varied_pose(rig,name,u):
 
 def extended_pose(rig,name,u):
  arc=math.sin(math.pi*u);wave=math.sin(math.tau*u);hit=pulse(u,.36)
- if name in ['BreatheLook','BreatheShift','ReadyBounce']:
+ if name in [n for n,_ in LIVING_CLIPS]:
+  if name in ['LimpLeft','LimpRight']:
+   grounded_gait(rig,name,u)
+   rot(rig,'Spine',(0,1,0),(.10 if name=='LimpLeft' else -.10)*math.sin(math.tau*u))
+  else:
+   rot(rig,'Spine',(1,0,0),.025*wave)
+   if name=='ScoutScan':
+    rot(rig,'Head',(0,0,1),.65*wave);rot(rig,'Spine2',(0,0,1),.18*wave)
+   elif name=='LowSurvey':
+    root_offset(rig,-.13*arc);rot(rig,'Spine',(1,0,0),.42*arc);rot(rig,'Head',(0,0,1),-.5*wave)
+   elif name=='GuardListen':
+    rot(rig,'Head',(0,1,0),.22*wave);rot(rig,'LeftArm',(1,0,0),-.45*arc)
+   elif name=='ShoulderCheck':
+    rot(rig,'Head',(0,0,1),-.85*arc);rot(rig,'Spine2',(0,0,1),-.35*arc)
+   elif name=='SignalAdvance':
+    rot(rig,'LeftArm',(1,0,0),-1.7*arc);rot(rig,'LeftForeArm',(1,0,0),.9*arc)
+   elif name=='SignalHold':
+    rot(rig,'LeftArm',(1,0,0),-1.1*arc);rot(rig,'LeftArm',(0,1,0),.65*arc)
+   elif name=='ReadyWeapon':
+    rot(rig,'RightArm',(1,0,0),-.65*arc);rot(rig,'Spine2',(0,0,1),.17*wave)
+   elif name=='WatchShift':
+    rot(rig,'Hips',(0,0,1),.08*wave);rot(rig,'Head',(0,0,1),.24*wave)
+   elif name in ['GuardLeftArm','GuardRightArm']:
+    side='Left' if name=='GuardLeftArm' else 'Right';sign=1 if side=='Left' else -1
+    rot(rig,side+'Arm',(1,0,0),-.65-.08*wave);rot(rig,side+'ForeArm',(1,0,0),.8)
+    rot(rig,'Spine2',(0,0,1),sign*.12)
+   elif name=='TorsoHunch':
+    rot(rig,'Spine',(1,0,0),.35+.06*wave);rot(rig,'Head',(1,0,0),.16)
+    rot(rig,'LeftArm',(1,0,0),-.65);rot(rig,'LeftForeArm',(1,0,0),.7)
+   elif name=='WoundFlinch':
+    rot(rig,'Spine',(1,0,0),.65*hit);rot(rig,'Spine2',(0,0,1),-.3*hit)
+    rot(rig,'Head',(1,0,0),-.35*hit);rot(rig,'LeftArm',(1,0,0),-1.1*hit)
+   elif name=='ExhaustedBrace':
+    rot(rig,'Spine',(1,0,0),.48+.08*wave);rot(rig,'Head',(1,0,0),.22+.06*wave)
+    for side in ['Left','Right']:rot(rig,side+'Arm',(1,0,0),.4)
+   elif name=='ReliefBreath':
+    rot(rig,'Spine',(1,0,0),-.20*arc);rot(rig,'Head',(1,0,0),-.3*arc)
+   for side in ['Left','Right']:
+    foot=rig.pose.bones['mixamorig'+side+'Foot'];place_foot(rig,side,foot.bone.head_local)
+ elif name in ['BreatheLook','BreatheShift','ReadyBounce']:
   rot(rig,'Spine',(1,0,0),.035*wave)
   rot(rig,'Head',(0,0,1),.16*wave if name=='BreatheLook' else .035*wave)
   rot(rig,'Head',(1,0,0),.045*math.sin(math.tau*u+.8))
@@ -239,6 +286,39 @@ def extended_pose(rig,name,u):
    rot(rig,side+'Leg',(1,0,0),.6*arc if name=='CorkscrewStrike' else .2*arc)
    rot(rig,side+'Arm',(0,1,0),sign*.9*arc)
   rot(rig,'RightArm',(1,0,0),-1.8*hit)
+ elif name.startswith('WallVault_'):
+  # Fourteen authored performances plus the original WallKickStrike. Hips
+  # never add another jump: the actual Leap owns the path and its timing.
+  profiles=[
+   (0.,-.75,0.,-1.45,-1.2,2.1,1.9,-.45,-.35,.10),
+   (.5,-.15,.25,-1.35,.95,.35,.25,-1.6,.5,.85),
+   (-1.4,-.4,.9,-.8,-.4,1.2,.6,.7,-1.5,.25),
+   (.3,.85,-.15,.55,.65,1.1,1.45,-2.1,-1.8,.10),
+   (-.4,-.55,0.,-.15,-1.6,.15,.3,-1.3,.4,.35),
+   (math.tau,-.45,0.,-1.25,-.7,1.8,1.1,-.7,-1.9,.15),
+   (.15,-.2,-.4,-.7,-.9,.9,1.1,-1.1,-1.1,.05),
+   (-.7,-.1,.15,-1.55,1.2,.15,.15,-1.8,.9,1.1),
+   (.65,-.65,-.15,-1.7,.35,2.15,.4,.35,-2.0,.15),
+   (1.8,-.35,-.7,-.4,-1.15,.65,1.75,-1.5,.6,.15),
+   (-.5,-1.15,.1,-1.6,-1.6,2.25,2.25,.6,.7,.05),
+   (.2,.1,-.35,-1.3,.1,2.15,.05,-1.0,-1.65,.7),
+   (-math.tau,-.25,.25,-.5,-1.2,1.1,1.6,-1.9,-.3,.35),
+   (-.9,.35,.6,-.95,-.25,1.8,.8,.9,-1.6,.5),
+  ]
+  index=WALL_VARIANTS.index(name.removeprefix('WallVault_'))
+  twist,lean,roll,lt,rt,lk,rk,la,ra,spread=profiles[index]
+  root_offset(rig,-.045*arc)
+  rot(rig,'Hips',(0,0,1),twist*(ease(u) if abs(twist)>6 else arc))
+  rot(rig,'Hips',(0,1,0),roll*arc)
+  rot(rig,'Spine',(1,0,0),lean*arc)
+  rot(rig,'Head',(0,0,1),-.3*math.sin(math.pi*u))
+  for side,thigh,knee,arm,sign in [('Left',lt,lk,la,1),('Right',rt,rk,ra,-1)]:
+   rot(rig,side+'UpLeg',(1,0,0),thigh*arc)
+   rot(rig,side+'UpLeg',(0,1,0),sign*spread*arc)
+   rot(rig,side+'Leg',(1,0,0),knee*arc)
+   rot(rig,side+'Arm',(1,0,0),arm*arc)
+   rot(rig,side+'Arm',(0,1,0),sign*spread*.7*arc)
+   rot(rig,side+'ForeArm',(1,0,0),(.5 if index==6 else .15)*arc)
  elif name in ['WallKickStrike','ShadowStep']:
   # The real vault owns height. A second visual jump would detach the skin
   # from its physical path; only tuck/turn/landing compression belongs here.
@@ -348,9 +428,13 @@ def grounded_gait(rig,name,u):
  rot(rig,'Spine',(1,0,0),-.18 if run else -.06)
  rot(rig,'Spine2',(0,0,1),.07*math.sin(u*math.tau))
  for index,side in enumerate(['Left','Right']):
+  hurt=name=='Limp'+side
+  step_duty=.72 if hurt else duty
   phase=(u+index*.5)%1.;swing=max(0,(phase-duty)/(1-duty))
-  forward=stride*(.5-phase/duty) if phase<duty else stride*(-.5+ease(swing))
-  lift=(.18 if run else .10)*math.sin(math.pi*swing)**1.4
+  if name in ['LimpLeft','LimpRight']:swing=max(0,(phase-step_duty)/(1-step_duty))
+  reach=stride*(.67 if hurt else 1.)
+  forward=reach*(.5-phase/step_duty) if phase<step_duty else reach*(-.5+ease(swing))
+  lift=(.18 if run else (.055 if hurt else .10))*math.sin(math.pi*swing)**1.4
   foot=rig.pose.bones['mixamorig'+side+'Foot']
   target=foot.bone.head_local+Vector((0,-forward,lift))
   place_foot(rig,side,target)

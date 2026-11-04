@@ -40,7 +40,8 @@ pub fn recover(battle: &mut Battle) {
         if let Some(actor) = &mut unit.theus {
             actor.clock = battle.tick;
             let recovery = if unit.action == 6 { 4.5 } else { 2.8 };
-            actor.stamina = (actor.stamina + recovery * DT).min(actor.sheet.endurance());
+            actor.stamina = (actor.stamina + recovery * (1. - unit.flesh.soreness() * 0.045) * DT)
+                .min(actor.sheet.endurance());
         }
     }
 }

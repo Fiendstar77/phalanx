@@ -153,14 +153,14 @@ fn setup(
     let ring = meshes.add(Torus::new(0.82, 1.));
     let paper = meshes.add(Cuboid::new(0.12, 0.28, 0.012));
     let blade = meshes.add(razor_mesh());
-    let cloud = materials.add(StandardMaterial {
+    let cloud = StandardMaterial {
         base_color: Color::srgba(0.75, 0.78, 0.84, 0.75),
         base_color_texture: Some(images.add(smoke_image())),
         alpha_mode: AlphaMode::Blend,
         unlit: true,
         cull_mode: None,
         ..default()
-    });
+    };
     let steel = materials.add(StandardMaterial {
         base_color: Color::srgb(0.35, 0.39, 0.48),
         metallic: 0.85,
@@ -178,6 +178,9 @@ fn setup(
         ..default()
     });
     for slot in 0..rules::SMOKE_CAPACITY {
+        // One material per active smoke slot, shared by its twelve puffs.
+        // Opposing clouds can overlap without changing each other's tint.
+        let cloud = materials.add(cloud.clone());
         for part in 0..12 {
             commands.spawn((
                 Cloud(slot, part),
@@ -232,13 +235,19 @@ fn update(
     session: Res<Session>,
     mut audit: ResMut<Audit>,
     cameras: Query<&GlobalTransform, (With<Camera3d>, With<IsDefaultUiCamera>)>,
-    mut clouds: Query<(&Cloud, &mut Transform, &mut Visibility)>,
+    mut clouds: Query<(
+        &Cloud,
+        &MeshMaterial3d<StandardMaterial>,
+        &mut Transform,
+        &mut Visibility,
+    )>,
     mut discs: Query<(&Disc, &mut Transform, &mut Visibility), Without<Cloud>>,
     mut links: Query<(&Link, &mut Transform, &mut Visibility), (Without<Cloud>, Without<Disc>)>,
     mut seals: Query<
         (&Seal, &mut Transform, &mut Visibility),
         (Without<Cloud>, Without<Disc>, Without<Link>),
     >,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let battle = &session.battle;
     if audit.run != Some(session.run_id) {
@@ -276,11 +285,21 @@ fn update(
             .iter()
             .any(|u| u.health > 0. && u.visible_enemies == 0 && !u.contacts.is_empty());
     }
-    for (cloud, mut transform, mut visible) in &mut clouds {
+    for (cloud, handle, mut transform, mut visible) in &mut clouds {
         let Some(s) = battle.ninjutsu.smoke.get(cloud.0) else {
             *visible = Visibility::Hidden;
             continue;
         };
+        if let Some(owner) = battle.units.get(s.owner)
+            && let Some(team) = session.campaign.teams.get(owner.team)
+            && let Some(mut material) = materials.get_mut(&handle.0)
+        {
+            let [r, g, b] = team.color;
+            let color = Color::srgba(r, g, b, 0.75);
+            if material.base_color != color {
+                material.base_color = color;
+            }
+        }
         let r = s.radius(tick);
         *visible = if r > 0.02 {
             Visibility::Inherited
@@ -403,9 +422,32 @@ fn demo_setup(mut session: ResMut<Session>) {
         {
             f.class = class;
             f.mind = phalanx::Mind::disciplined();
+            if class == C::Scout {
+                // Authored traversal fixture: a willing, physically eligible scout.
+                f.mind = phalanx::styles::BattleStyle::Vanguard.mind();
+                f.theus = Some(phalanx::theus::Sheet {
+                    attributes: [10, 14, 10, 10],
+                    ..Default::default()
+                });
+            }
         }
     }
     for team in 0..2 {
+        for fighter in 0..3 {
+            for (slot, skill) in [
+                phalanx::skills::Skill::WallDance,
+                phalanx::skills::Skill::SmokeBomb,
+                phalanx::skills::Skill::ShadowSeal,
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                session
+                    .campaign
+                    .set_skill(team, fighter, false, slot, Some(skill))
+                    .unwrap();
+            }
+        }
         session
             .campaign
             .workshop(team, 0, Gear::Kusarigama)
@@ -427,6 +469,9 @@ fn demo_setup(mut session: ResMut<Session>) {
     ]) {
         u.position = p;
         u.target = [-p[0], p[1]];
+        // This close-range effects review starts after preparation. Separate
+        // tactical-opening tests exercise the normal scouting/assembly phases.
+        u.tactics.phase = phalanx::tactics::Phase::Engage;
     }
     session.remember_positions();
     session.founding.open = false;
@@ -453,6 +498,7 @@ fn demo(
     mut session: ResMut<Session>,
     audit: Res<Audit>,
     stains: Res<super::stains::Stains>,
+    ink: Res<super::kinetic::Audit>,
     mut state: Local<Demo>,
     mut commands: Commands,
     mut exit: MessageWriter<AppExit>,
@@ -478,7 +524,8 @@ fn demo(
         state.next += 1. / 24.;
     }
     if state.seconds > 37. || state.ended > 2. {
-        let record = serde_json::json!({"scripted_fixture":true,"human_playtest":false,"real_combat":true,"autosave":session.autosave,"seed":session.battle.seed,"tick":session.battle.tick,"finished":session.battle.finished,"frames":state.frame,"arts":audit.arts,"physical_wall_height":audit.max_wall_height,"smoke_render_frames":audit.smoke_frames,"smoke_hid_contacts":audit.hidden_contacts,"rigid_blood_contacts":stains.rigid_hits,"smoke_capacity":rules::SMOKE_CAPACITY,"wheel_capacity":rules::WHEEL_CAPACITY});
+        let record = serde_json::json!({"scripted_fixture":true,"human_playtest":false,"real_combat":true,"autosave":session.autosave,"seed":session.battle.seed,"tick":session.battle.tick,"finished":session.battle.finished,"frames":state.frame,"arts":audit.arts,"physical_wall_height":audit.max_wall_height,"smoke_render_frames":audit.smoke_frames,"smoke_hid_contacts":audit.hidden_contacts,"rigid_blood_contacts":stains.rigid_hits,"smoke_capacity":rules::SMOKE_CAPACITY,"wheel_capacity":rules::WHEEL_CAPACITY,
+            "ink_shockwaves":ink.impacts,"pose_echoes":ink.echoes,"peak_pose_echoes":ink.peak_echoes,"max_graphic_radius":ink.max_radius});
         std::fs::create_dir_all("outputs/ninja-demo").unwrap();
         std::fs::write(
             "outputs/ninja-demo/audit.json",

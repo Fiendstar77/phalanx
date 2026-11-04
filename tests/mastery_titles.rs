@@ -122,6 +122,76 @@ fn earned_practice_persists_and_only_rewards_once() {
 }
 
 #[test]
+fn healing_retention_explains_partial_training_and_survives_the_fourth_bout_and_retraining() {
+    use phalanx::skills::Skill;
+    let mut campaign = Campaign::new();
+    campaign.set_class(0, 1, Class::Healer).unwrap();
+    campaign
+        .set_skill(0, 1, false, 0, Some(Skill::Heal))
+        .unwrap();
+    for seed in 0..3 {
+        let (id, mut battle) = campaign
+            .begin_battle(seed, Arena::OpenField, Controller::Utility)
+            .unwrap();
+        while !battle.finished {
+            battle.step();
+        }
+        campaign.settle(id, &battle).unwrap();
+        let mastery = campaign.teams[0].fighters[1].mastery;
+        assert_eq!(mastery.points(Class::Healer), (seed as u32 + 1) * 25);
+        assert_eq!(mastery.battles_to_retain(Class::Healer), 3 - seed as u32);
+    }
+    campaign.set_class(0, 1, Class::Warrior).unwrap();
+    let fighter = &campaign.teams[0].fighters[1];
+    assert!(!fighter.skills.unwrap().has(Skill::Heal));
+    assert_eq!(fighter.mastery.points(Class::Healer), 75);
+    assert!(
+        Skill::Heal
+            .training_status(fighter.class, fighter.mastery)
+            .contains("1 more completed HEALER battle")
+    );
+    assert!(
+        campaign
+            .set_skill(0, 1, false, 0, Some(Skill::Heal))
+            .is_err()
+    );
+    campaign = serde_json::from_str(&serde_json::to_string(&campaign).unwrap()).unwrap();
+    campaign.set_class(0, 1, Class::Healer).unwrap();
+    let (id, mut battle) = campaign
+        .begin_battle(3, Arena::OpenField, Controller::Utility)
+        .unwrap();
+    while !battle.finished {
+        battle.step();
+    }
+    campaign.settle(id, &battle).unwrap();
+    campaign.set_class(0, 1, Class::Warrior).unwrap();
+    campaign = serde_json::from_str(&serde_json::to_string(&campaign).unwrap()).unwrap();
+    let fighter = &campaign.teams[0].fighters[1];
+    assert!(fighter.skills.unwrap().has(Skill::Heal));
+    assert_eq!(fighter.mastery.battles_to_retain(Class::Healer), 0);
+    assert!(
+        Skill::Heal
+            .training_status(fighter.class, fighter.mastery)
+            .contains("permanently learned")
+    );
+    let (_, mut battle) = campaign
+        .begin_battle(4, Arena::OpenField, Controller::Utility)
+        .unwrap();
+    for u in &mut battle.units {
+        u.position = if u.team == 0 { [-4., 0.] } else { [8., 6.] };
+    }
+    battle.units[0].health = battle.units[0].max_health() - 20.;
+    battle.units[1].position = [-4., 1.];
+    battle.step();
+    assert!(
+        battle
+            .heals
+            .iter()
+            .any(|e| e.healer == 1 && e.target == 0 && e.amount > 0.)
+    );
+}
+
+#[test]
 fn banner_skill_requires_banner_equipment_after_retraining() {
     let mut b = Battle::with_founders(42, false, Arena::OpenField);
     let u = &mut b.units[1];
