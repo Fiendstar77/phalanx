@@ -599,6 +599,9 @@ pub fn prepare(battle: &mut Battle) {
         {
             continue;
         }
+        if crate::tactics::manoeuvring(&unit.tactics) {
+            continue;
+        }
         let contact = unit
             .contacts
             .iter()

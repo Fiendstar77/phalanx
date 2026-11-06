@@ -119,7 +119,7 @@ impl Recorder {
                 "position":u.position,"ground_height":battle.arena.elevation(u.position),
                 "mean_velocity":[(u.position[0]-old[0])/elapsed,(u.position[1]-old[1])/elapsed],
                 "health":u.health,"max_health":u.max_health(),"lost_limbs":u.lost_limbs,
-                "flesh":u.flesh,"bleeding_loss":u.bleeding_loss,
+                "flesh":u.flesh,"bleeding_loss":u.bleeding_loss,"tactics":u.tactics,
                 "prosthetics":u.prosthetics,"action":ACTIONS[u.action],
                 "effort":u.theus.as_ref().map(|a|a.stamina),
                 "theus_practice":u.theus.as_ref().map(|a|a.sheet.practice),
@@ -161,6 +161,9 @@ impl Recorder {
         }
         for event in battle.bleed_events.iter().filter(|e| e.tick == tick) {
             self.emit(serde_json::json!({"event":"bleeding","receipt":event}))?;
+        }
+        for event in battle.tactical_events.iter().filter(|e| e.tick == tick) {
+            self.emit(serde_json::json!({"event":"tactical","receipt":event}))?;
         }
         for event in battle.theus_events.iter().filter(|e| e.tick == tick) {
             self.emit(serde_json::json!({"event":"theus","receipt":event}))?;
@@ -217,6 +220,7 @@ impl Recorder {
             "learned_fallbacks": battle.learned_fallbacks,
             "opportunity_attempts": battle.opportunities.attempt_count(),
             "opportunity_completions": battle.opportunities.completed.len(),
+            "tactical_events":battle.tactical_events,
             "mean_recorded_step_wall_ms": self.total_step_ms / f64::from(self.steps.max(1)),
             "max_recorded_step_wall_ms": self.max_step_ms,
             "step_timing_scope": "Simulation and observation capture; excludes trace disk writes, rendering and model-specific timing.",
@@ -256,6 +260,22 @@ impl Recorder {
             ));
         }
         text.push_str(&format!("\n## Deep telemetry\n\nBuild `{}`. {} ordered events, {} post-step frames and {} opposed Theus receipts. Trace size: {} bytes. Frames include resolved positions, mean motion, health, effort, wounds, practice and technique state. Theus receipts retain dice, defence, critical and actual damage.\n\nFrames are research truth, separate from decision-time perceived observations. Coordinates remain local to this arena; world context is unknown. A stream sequence detects gaps and ordering errors.\n",crate::challenges::BUILD,self.stream_sequence,self.frames,self.theus_receipts,self.trace.get_ref().metadata()?.len()));
+        if !battle.tactical_events.is_empty() {
+            text.push_str("\n## Tactical history\n\n");
+            for e in &battle.tactical_events {
+                text.push_str(&format!(
+                    "- {:.1}s, fighter {}: {}{}\n",
+                    e.tick as f32 * DT,
+                    e.unit,
+                    e.description(),
+                    if e.kind == crate::tactics::Kind::TreatmentReceived {
+                        format!(" (+{:.1} HP)", e.amount)
+                    } else {
+                        String::new()
+                    }
+                ));
+            }
+        }
         text.push_str("\n## Evidence\n\n[Full battle state](battle.json) · [Machine-readable report](report.json) · [Decision trace](decisions.jsonl)\n\nDecision records contain perceived contacts, features, eligibility masks, baseline scores, controller proposals and the actual executed action. Damage and healing have simulation receipts. If campaign rewards settle, learning.json and learning.md record persisted before/after changes.\n\n## Interpretation\n\nThis is one battle. Repeated decisions are correlated, and agreement does not establish better tactics. The live PyTorch policy is frozen; separate research models may be trained from eligible studies. Actual practice and event memories persist. Match results grant no temperament or growth multiplier. Timing measures simulation plus observation capture, excludes rendering and trace disk writes, and does not isolate inference. Interrupted/reset recordings retain complete=false in status.json.\n");
         fs::write(self.directory.join("report.md"), text)?;
         write_json(

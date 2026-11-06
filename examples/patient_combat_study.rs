@@ -73,7 +73,8 @@ fn main() {
             .unwrap();
         summaries.push(serde_json::json!({"seed":seed,"first_report_tick":first_report,"first_hit_tick":first_hit,
             "recon_seconds":recon_frames as f32*phalanx::DT,"assembly_seconds":assembly_frames as f32*phalanx::DT,
-            "ticks":battle.tick,"result":battle.result,"new_flesh_wounds":wounds,"bleeding_hp":bleeding}));
+            "ticks":battle.tick,"result":battle.result,"new_flesh_wounds":wounds,"bleeding_hp":bleeding,
+            "tactical_events":battle.tactical_events}));
         println!(
             "seed {seed}: first report {first_report:?}, first hit {first_hit:?}, {wounds} wounds, {bleeding:.1} bleeding HP"
         );

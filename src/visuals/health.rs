@@ -5,7 +5,11 @@ struct HealthBar(usize);
 #[derive(Component)]
 struct Fill;
 #[derive(Component)]
-struct Caption(bool);
+enum Caption {
+    Health,
+    Healing,
+    Duty,
+}
 #[derive(Default)]
 struct Feedback {
     run: Option<u32>,
@@ -27,7 +31,7 @@ fn setup_bars(mut commands: Commands) {
                     position_type: PositionType::Absolute,
                     display: Display::None,
                     width: px(64),
-                    height: px(24),
+                    height: px(42),
                     ..default()
                 },
             ))
@@ -55,7 +59,7 @@ fn setup_bars(mut commands: Commands) {
                     ));
                 });
                 p.spawn((
-                    Caption(false),
+                    Caption::Health,
                     Text::new(""),
                     super::super::font(11.),
                     TextColor(Color::WHITE),
@@ -65,13 +69,26 @@ fn setup_bars(mut commands: Commands) {
                     },
                 ));
                 p.spawn((
-                    Caption(true),
+                    Caption::Healing,
                     Text::new(""),
                     super::super::font(13.),
                     TextColor(Color::srgb(0.2, 1.0, 0.45)),
                     Node {
                         position_type: PositionType::Absolute,
                         top: px(-18),
+                        ..default()
+                    },
+                ));
+                p.spawn((
+                    Caption::Duty,
+                    Text::new(""),
+                    super::super::font(10.),
+                    TextColor(Color::srgb(1., 0.82, 0.36)),
+                    Node {
+                        position_type: PositionType::Absolute,
+                        top: px(27),
+                        left: px(-14),
+                        width: px(100),
                         ..default()
                     },
                 ));
@@ -180,7 +197,7 @@ fn update(
         };
         if session.menu
             || unit.health <= 0.0
-            || session.cinematic_playing()
+            || (session.cinematic_playing() && !phalanx::tactics::manoeuvring(&unit.tactics))
             || (std::env::args().any(|a| a == "--flesh-witness") && bar.0 != session.selected)
         {
             continue;
@@ -206,11 +223,11 @@ fn update(
         for _ in 0..20 {
             if !occupied
                 .iter()
-                .any(|p| (p.x - location.x).abs() < 68.0 && (p.y - location.y).abs() < 36.0)
+                .any(|p| (p.x - location.x).abs() < 68.0 && (p.y - location.y).abs() < 54.0)
             {
                 break;
             }
-            location.y -= 36.0;
+            location.y -= 54.0;
         }
         occupied.push(location);
         node.display = Display::Flex;
@@ -225,14 +242,21 @@ fn update(
                     .filter(|(e, _)| e.target == unit.id)
                     .map(|(e, _)| e.amount)
                     .sum::<f32>();
-                **caption = if kind.0 {
-                    if heal > 0.0 {
-                        format!("+{heal:.0} HP")
-                    } else {
-                        String::new()
+                **caption = match kind {
+                    Caption::Healing => {
+                        if heal > 0.0 {
+                            format!("+{heal:.0} HP")
+                        } else {
+                            String::new()
+                        }
                     }
-                } else {
-                    format!("{:.0}/{:.0}", unit.health, unit.max_health())
+                    Caption::Duty => if unit.tactics.scout.is_some() {
+                        phalanx::tactics::label(unit)
+                    } else {
+                        ""
+                    }
+                    .into(),
+                    Caption::Health => format!("{:.0}/{:.0}", unit.health, unit.max_health()),
                 };
             }
             if let Ok(parts) = children.get(entity) {

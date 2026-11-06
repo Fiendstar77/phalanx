@@ -168,8 +168,16 @@ fn the_ledger_keeps_the_first_qualifying_witness_without_ranking_damage() {
         battle.step();
     }
     let first = phalanx::legend::capture(id, &battle, 0, &campaign).unwrap();
+    let completed_count = battle.opportunities.completed.len();
     let mut later = battle.opportunities.completed[0].clone();
-    later.plan += 1;
+    later.plan = battle
+        .opportunities
+        .completed
+        .iter()
+        .map(|c| c.plan)
+        .max()
+        .unwrap()
+        + 1;
     later.completed_tick += 1;
     later.strike.tick += 1;
     later.strike.resolution.damage *= 10.;
@@ -177,7 +185,7 @@ fn the_ledger_keeps_the_first_qualifying_witness_without_ranking_damage() {
     let retained = phalanx::legend::capture(id, &battle, 0, &campaign).unwrap();
     assert_eq!(retained.plan, first.plan);
     assert_eq!(retained.strike.damage, first.strike.damage);
-    assert_eq!(battle.opportunities.completed.len(), 2);
+    assert_eq!(battle.opportunities.completed.len(), completed_count + 1);
 }
 
 #[test]

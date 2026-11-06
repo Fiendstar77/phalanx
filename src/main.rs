@@ -104,6 +104,7 @@ impl Session {
                         | "--player-demo"
                         | "--memory-soak"
                         | "--ninja-demo"
+                        | "--recovery-demo"
                         | "--opportunity-demo"
                         | "--prologue-demo"
                 )
@@ -471,6 +472,8 @@ mod opportunity_demo_controls {
         while !session.battle.finished {
             session.battle.step();
         }
+        let completed = session.battle.opportunities.completed.len();
+        assert!(completed > 0);
         session.settle_finished();
         assert!(session.rewarded && session.menu);
         assert_eq!(session.camp_page, Some(camp::Page::Report));
@@ -494,7 +497,7 @@ mod opportunity_demo_controls {
         while !session.battle.finished {
             session.battle.step();
         }
-        assert_eq!(session.battle.opportunities.completed.len(), 1);
+        assert_eq!(session.battle.opportunities.completed.len(), completed);
     }
 }
 
@@ -2859,12 +2862,21 @@ fn sync_pawns(
         if transform.translation != next {
             transform.translation = next;
         }
-        let facing_target =
-            if unit.projectile_weapon() == Some(phalanx::weapons::ProjectileWeapon::Bow) {
-                unit.bow_aim()
-            } else {
-                unit.target
-            };
+        let facing_target = if phalanx::tactics::recovering(&unit.tactics)
+            && !unit.bow_follow_through()
+        {
+            unit.contacts
+                .iter()
+                .filter(|c| c.confidence(session.battle.tick) > 0.15)
+                .min_by(|a, b| {
+                    phalanx::distance(p, a.position).total_cmp(&phalanx::distance(p, b.position))
+                })
+                .map_or(unit.target, |c| c.position)
+        } else if unit.projectile_weapon() == Some(phalanx::weapons::ProjectileWeapon::Bow) {
+            unit.bow_aim()
+        } else {
+            unit.target
+        };
         let direction = Vec3::new(facing_target[0] - p[0], 0.0, facing_target[1] - p[1]);
         if direction.length_squared() > 0.01 && unit.health > 0.0 {
             let facing = Transform::IDENTITY

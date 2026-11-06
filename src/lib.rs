@@ -735,6 +735,8 @@ pub struct HealEvent {
 #[derive(Clone, Debug, Serialize)]
 pub struct Battle {
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tactical_events: Vec<tactics::Event>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub bleed_events: Vec<injuries::BleedEvent>,
     #[serde(skip_serializing_if = "ninjutsu::Field::empty")]
     pub ninjutsu: ninjutsu::Field,
@@ -964,6 +966,7 @@ impl Battle {
             })
             .collect();
         Self {
+            tactical_events: Vec::new(),
             bleed_events: Vec::new(),
             seed,
             founders,
@@ -1121,7 +1124,14 @@ impl Battle {
                 && self.learned_team != Some(unit.team)
                 && !self.opportunities.owns_mobility(unit.id)
             {
-                tactics::intent(unit, &allies, arena, self.tick, team_size)
+                tactics::intent(
+                    unit,
+                    &allies,
+                    arena,
+                    self.tick,
+                    team_size,
+                    &mut self.tactical_events,
+                )
             } else {
                 None
             };
@@ -1578,8 +1588,8 @@ impl Battle {
                 if support.is_none() {
                     unit.scores[8] = -1.0;
                 }
-                if tactical.is_some() && unit.scores[0] >= 0. {
-                    unit.scores[0] = unit.scores[0].max(2.25);
+                if let Some(intent) = &tactical {
+                    tactics::steer(unit, intent);
                 }
                 let utility_action = unit
                     .scores
@@ -1676,7 +1686,7 @@ impl Battle {
                 } else if let Some(line) = scar.as_ref().filter(|line| line.action == unit.action) {
                     unit.decision_reason = line.text.into();
                 }
-                if unit.action == 0
+                if (unit.action == 0 || tactical.as_ref().is_some_and(|i| i.screen))
                     && let Some(intent) = &tactical
                 {
                     unit.decision_reason = intent.reason.clone();
@@ -1744,6 +1754,7 @@ impl Battle {
                 unit.target = goal;
             }
             if let Some(plan) = &bow_plan
+                && !tactics::manoeuvring(&unit.tactics)
                 && plan.action == unit.action
             {
                 unit.target = plan.goal;
@@ -1954,16 +1965,19 @@ impl Battle {
                     };
                 unit.decision_reason = format!("Released {}", weapon.name());
             }
-            if let Some(exit) = ninjutsu::smoke_exit(unit, arena, &self.ninjutsu, self.tick) {
+            if let Some(exit) = ninjutsu::smoke_exit(unit, arena, &self.ninjutsu, self.tick)
+                && !tactics::manoeuvring(&unit.tactics)
+            {
                 unit.target = exit;
                 unit.decision_reason = "Leave smoke by an obscured flank".into();
             }
-            if bow && (unit.windup.is_some() || released) {
+            if bow && (unit.windup.is_some() || released) && !tactics::manoeuvring(&unit.tactics) {
                 unit.target = enemy_position;
             }
             if let Arena::Pressure(field) = arena
                 && field.layout > 0
                 && enemy.is_some()
+                && !tactics::recovering(&unit.tactics)
                 && unit.cooldown <= 0.0
                 && !arena.clear_segment(unit.position, enemy_position)
                 && let Some((index, _)) = crate::procedural::original_walls(field)
@@ -2319,6 +2333,7 @@ impl Battle {
                 self.ally_distance_samples[team] += 1;
             }
         }
+        tactics::observe(self);
         opportunity::observe(self, true);
         self.tick += 1;
         let a = self.survivors(0);

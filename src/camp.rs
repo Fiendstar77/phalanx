@@ -243,6 +243,46 @@ fn report(session: &Session) -> String {
         r.arena.name(),
         r.seed
     );
+    if !r.tactical_events.is_empty() {
+        text.push_str("TACTICAL TURNING POINTS\n");
+        let fighters: Vec<_> = r.fighters.iter().flatten().collect();
+        let mut shown = Vec::new();
+        for event in r
+            .tactical_events
+            .iter()
+            .filter(|e| e.unit < r.fighters[0].len())
+        {
+            if event.kind == phalanx::tactics::Kind::WithdrawalJoined {
+                continue;
+            }
+            let subject = if event.kind == phalanx::tactics::Kind::TreatmentReceived {
+                Some(event.unit)
+            } else {
+                event.subject
+            };
+            let key = (event.kind, event.approach, subject);
+            if shown.contains(&key) {
+                continue;
+            }
+            shown.push(key);
+            let name = fighters
+                .get(event.unit)
+                .map_or("Unknown fighter", |f| f.name.as_str());
+            text.push_str(&format!(
+                "{:.1}s | {name}: {}",
+                event.tick as f32 * phalanx::DT,
+                event.description()
+            ));
+            if event.kind == phalanx::tactics::Kind::TreatmentReceived {
+                text.push_str(&format!(" (+{:.1} HP)", event.amount));
+            }
+            text.push('\n');
+            if shown.len() == 8 {
+                break;
+            }
+        }
+        text.push('\n');
+    }
     if session.active_battle_id == Some(r.battle_id)
         && let Some((run, study)) = &session.study
         && *run == session.run_id
@@ -327,7 +367,7 @@ fn report(session: &Session) -> String {
         }
         text.push('\n');
     }
-    text.push_str("RECOVERY\nAll fighters return at full HP next battle. Missing limbs and psychological scars persist.\nFit prosthetics or change loadouts in the squad workshop before continuing.\n\nRewards are granted once. This report stays available after saving and restarting.");
+    text.push_str("RECOVERY\nAll fighters return at full HP next battle. Missing limbs, recovering flesh wounds and lasting scars persist.\nFit prosthetics or change loadouts in the squad workshop before continuing.\n\nRewards are granted once. This report stays available after saving and restarting.");
     if let Some((run, study)) = &session.study
         && *run == session.run_id
     {

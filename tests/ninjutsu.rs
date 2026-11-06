@@ -45,6 +45,7 @@ fn equip(b: &mut Battle, id: usize, skill: Skill) {
             scout: Some(id),
             first_report: Some(0),
             phase: phalanx::tactics::Phase::Engage,
+            ..Default::default()
         };
     }
 }

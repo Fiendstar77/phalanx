@@ -53,6 +53,8 @@ The wire-action presentation adds captured skeletal pose echoes, graphic shockwa
 
 [Patient tactics and flesh wounds](docs/patient-tactics-and-wounds.md) add a campaign scouting/assembly opening, actual bleeding and effort loss, treatment, recovering injuries and lasting scars. Smoke uses its owner's team colour. Default skill kits follow current and mastered disciplines; universal ninja arts remain explicit catalogue choices.
 
+Utility campaign fighters can now abandon a losing or stalled approach, report a rally to nearby teammates, screen an injured fighter, receive actual treatment and try a different lane. Role labels, backward withdrawal, guarding movement and a saved tactical timeline make the decisions visible. Regrouping and route deadlines keep the policy bounded; outcomes remain ordinary Theus consequences.
+
 ![Characters, blood and wounded veterans](docs/images/veteran-combat.png)
 
 [Asset pipeline, live verification and visual limits](docs/visual-combat.md) · [Wounds and crafting rules](docs/progression.md#wounds-salvage-and-first-crafting-recipe) · [Proposed reserve roster](docs/roster-design.md)

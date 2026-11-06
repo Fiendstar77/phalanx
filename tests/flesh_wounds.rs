@@ -33,6 +33,7 @@ fn duel(seed: u64) -> (Campaign, u64, Battle) {
             scout: Some(id),
             first_report: Some(0),
             phase: Phase::Engage,
+            ..Default::default()
         };
     }
     (campaign, id, battle)

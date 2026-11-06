@@ -662,8 +662,14 @@ fn away_from_company(battle: &Battle, id: usize) -> bool {
             .fold(f32::MAX, f32::min)
             > 5.0
 }
-fn help_refused(unit: &phalanx::Unit) -> bool {
-    unit.health > 0.0 && unit.action != 8 && unit.scores[8] > 0.0
+fn help_refused(battle: &Battle, unit: &phalanx::Unit) -> bool {
+    unit.health > 0.0
+        && unit.action != 8
+        && unit.scores[8] > 0.0
+        && !phalanx::tactics::manoeuvring(&unit.tactics)
+        && !battle.heals.iter().any(|h| {
+            h.healer == unit.id && h.amount > 0. && battle.tick.saturating_sub(h.tick) <= 13
+        })
 }
 fn route_missing(battle: &Battle, unit: &phalanx::Unit) -> bool {
     battle.tick > 0
@@ -722,7 +728,7 @@ fn why_now(session: &Session, id: usize) -> String {
             "away from the company".to_string()
         });
     }
-    if help_refused(unit) {
+    if help_refused(battle, unit) {
         let who = unit
             .support_target
             .map(|ally| call_name(session, ally))
@@ -748,9 +754,11 @@ fn card_flag(session: &Session, id: usize) -> Option<&'static str> {
         Some("DOWN")
     } else if unit.flesh.bleeding() {
         Some("BLEEDING")
+    } else if phalanx::tactics::manoeuvring(&unit.tactics) {
+        Some(phalanx::tactics::label(unit))
     } else if away_from_company(&session.battle, id) {
         Some("ALONE")
-    } else if help_refused(unit) {
+    } else if help_refused(&session.battle, unit) {
         Some("WON'T HELP")
     } else if route_missing(&session.battle, unit) {
         Some("NO PATH")
@@ -927,5 +935,36 @@ mod tests {
         assert!(fallen.contains("fell to"), "{fallen}");
         assert!(fallen.contains("away from the company"), "{fallen}");
         assert_eq!(card_flag(&s, general), Some("DOWN"));
+    }
+
+    #[test]
+    fn actual_healing_and_recovery_duties_are_not_presented_as_refusing_help() {
+        let mut s = session();
+        for (u, p) in s.battle.units.iter_mut().zip([
+            [-4., 0.],
+            [-4., 1.],
+            [-5., -1.],
+            [8., 0.],
+            [8., 2.],
+            [8., -2.],
+        ]) {
+            u.position = p;
+        }
+        s.battle.units[1].class = Some(FighterClass::Healer);
+        s.battle.units[1].skills = None;
+        s.battle.units[0].health -= 40.;
+        s.battle.step();
+        assert!(
+            s.battle
+                .heals
+                .iter()
+                .any(|h| h.healer == 1 && h.amount > 0.)
+        );
+        s.battle.units[1].action = 0;
+        s.battle.units[1].scores[8] = 1.;
+        assert!(!help_refused(&s.battle, &s.battle.units[1]));
+        s.battle.units[1].tactics.phase = phalanx::tactics::Phase::Regroup;
+        s.battle.units[1].tactics.patient = Some(0);
+        assert_eq!(card_flag(&s, 1), Some("MEDIC"));
     }
 }

@@ -358,6 +358,8 @@ pub struct FighterResult {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BattleReport {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tactical_events: Vec<crate::tactics::Event>,
     /// Zero denotes historical result-based awards; one is equal completion credit.
     #[serde(default)]
     pub progression_policy: u32,
@@ -374,6 +376,15 @@ pub struct BattleReport {
 impl BattleReport {
     fn valid(&self) -> bool {
         self.progression_policy <= PROGRESSION_POLICY
+            && self.tactical_events.len() <= 128
+            && self
+                .tactical_events
+                .iter()
+                .all(|e| e.valid(self.fighters[0].len() * 2))
+            && self
+                .tactical_events
+                .windows(2)
+                .all(|pair| pair[0].sequence < pair[1].sequence && pair[0].tick <= pair[1].tick)
             && self.fighters[0].len() == self.fighters[1].len()
             && self.winner.is_none_or(|w| w < 2)
             && self.gold.iter().all(|g| *g <= 1000)
@@ -1011,6 +1022,7 @@ impl Campaign {
             }
         }
         updated.last_report = Some(BattleReport {
+            tactical_events: b.tactical_events.clone(),
             progression_policy: PROGRESSION_POLICY,
             team_names: Some(std::array::from_fn(|team| self.teams[team].name.clone())),
             arena: b.initial_arena,

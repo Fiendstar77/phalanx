@@ -6,6 +6,7 @@ mod blood;
 pub(super) mod organs;
 mod pooling;
 mod ragdoll;
+mod recovery;
 mod stain_patch;
 pub(super) mod stains;
 pub(super) use blood::Fx;
@@ -54,6 +55,7 @@ impl Plugin for BattleVisuals {
         team_actions::install(app);
         ragdoll::install(app);
         yard::install(app);
+        recovery::install(app);
         app.add_systems(Update, portrait_camera.after(super::camera_motion))
             .add_systems(
                 PostUpdate,
@@ -65,7 +67,11 @@ impl Plugin for BattleVisuals {
             && !std::env::args().any(|a| {
                 matches!(
                     a.as_str(),
-                    "--player-demo" | "--wirefu-demo" | "--creator-review" | "--ninja-demo"
+                    "--player-demo"
+                        | "--wirefu-demo"
+                        | "--creator-review"
+                        | "--ninja-demo"
+                        | "--recovery-demo"
                 )
             })
         {
@@ -247,7 +253,7 @@ fn loop_clip(clip: usize) -> bool {
 fn locomotion_clip(unit: &phalanx::Unit, moved: f32, finished: bool) -> usize {
     if !finished && unit.health > 0. && unit.health_fraction() <= 0.30 {
         if moved > 0.005 { 16 } else { 15 }
-    } else if !finished && !unit.flesh.blank() {
+    } else if !finished && unit.flesh.marks.iter().any(|w| w.recovery_bouts > 0) {
         let hurt = |region| {
             unit.flesh
                 .marks
@@ -269,6 +275,22 @@ fn locomotion_clip(unit: &phalanx::Unit, moved: f32, finished: bool) -> usize {
             if moved > 0.13 { 2 } else { 1 }
         } else {
             23
+        }
+    } else if !finished && phalanx::tactics::manoeuvring(&unit.tactics) {
+        if moved > 0.005 {
+            if unit.tactics.screen == Some(unit.id) {
+                28
+            } else if phalanx::tactics::recovering(&unit.tactics) {
+                30
+            } else {
+                25
+            }
+        } else if unit.tactics.screen == Some(unit.id) {
+            72
+        } else if unit.tactics.patient == Some(unit.id) {
+            80
+        } else {
+            71
         }
     } else if moved > 0.13 {
         if unit.theus.is_some() {
@@ -344,6 +366,44 @@ fn locomotion_clip(unit: &phalanx::Unit, moved: f32, finished: bool) -> usize {
         } else {
             0
         }
+    }
+}
+
+#[cfg(test)]
+mod tactical_motion_tests {
+    use super::*;
+    #[test]
+    fn withdrawal_and_screening_have_distinct_gaits_and_actual_leg_trauma_takes_priority() {
+        use phalanx::{
+            injuries::{Laceration, Region},
+            tactics::Phase,
+        };
+        let mut b = phalanx::Battle::with_founders(42, false, Arena::OpenField);
+        let u = &mut b.units[0];
+        u.tactics.phase = Phase::Withdraw;
+        u.tactics.patient = Some(u.id);
+        u.tactics.screen = Some(1);
+        assert_eq!(locomotion_clip(u, 0.04, false), 30);
+        u.tactics.patient = Some(1);
+        u.tactics.screen = Some(u.id);
+        assert_eq!(locomotion_clip(u, 0.04, false), 28);
+        assert_eq!(locomotion_clip(u, 0., false), 72);
+        u.flesh.marks.push(Laceration {
+            source_battle: None,
+            hit_sequence: 0,
+            region: Region::LeftLeg,
+            severity: 2,
+            blood_remaining: 12.,
+            recovery_bouts: 2,
+        });
+        u.flesh.lifetime_count = 1;
+        assert_eq!(locomotion_clip(u, 0.04, false), 76);
+        u.flesh.marks[0].recovery_bouts = 0;
+        assert_eq!(
+            locomotion_clip(u, 0.04, false),
+            28,
+            "healed scars must not suppress the living tactical gait"
+        );
     }
 }
 fn death_clip(clip: usize) -> bool {
