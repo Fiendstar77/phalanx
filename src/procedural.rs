@@ -57,6 +57,9 @@ fn normalized(field: PressureField, p: [f32; 2]) -> [f32; 2] {
     [p[0] / s[0], p[1] / s[1]]
 }
 pub fn family(field: PressureField) -> &'static str {
+    if field.generator == crate::region::GENERATOR {
+        return crate::region::NAME;
+    }
     match field.layout.saturating_sub(1) % 4 {
         0 => "THE BROKEN GATE",
         1 => "CROWN OF STONE",
@@ -65,6 +68,9 @@ pub fn family(field: PressureField) -> &'static str {
     }
 }
 pub fn briefing(field: PressureField) -> &'static str {
+    if field.generator == crate::region::GENERATOR {
+        return "A persistent stretch of the Yard. A winding dry road crosses black salt basins; pale terraces and reed beds offer longer approaches. The boundary gates are sealed. Broken timber stays broken when you return.";
+    }
     match field.layout.saturating_sub(1) % 4 {
         0 => {
             "A narrow gate offers the shortest engagement. Ruined wings screen two covered flanks. Breach timber to open crossfire into the courtyard."
@@ -82,6 +88,9 @@ pub fn briefing(field: PressureField) -> &'static str {
 }
 /// Reflection across X gives both sides identical approaches and deployment clearance.
 pub fn original_walls(field: PressureField) -> Walls {
+    if field.generator == crate::region::GENERATOR {
+        return crate::region::walls();
+    }
     if field.generator == 0 {
         let l = field.layout.saturating_sub(1) % 8;
         let x = 4. + (l % 3) as f32 * 1.5;
@@ -143,6 +152,9 @@ pub fn walls(field: PressureField) -> Walls {
     out
 }
 pub fn flank_z(field: PressureField) -> f32 {
+    if field.generator == crate::region::GENERATOR {
+        return 20.;
+    }
     field.half()[1] * 0.80
 }
 pub fn zones(field: PressureField) -> [(&'static str, [f32; 2]); 7] {
@@ -158,6 +170,9 @@ pub fn zones(field: PressureField) -> [(&'static str, [f32; 2]); 7] {
     ]
 }
 pub fn cover_anchors(field: PressureField) -> [[f32; 2]; 12] {
+    if field.generator == crate::region::GENERATOR {
+        return crate::region::anchors();
+    }
     let s = scale(field);
     let x = 9.5 + variation(field, 9);
     let z = 8.5 + variation(field, 12) * 0.6;
@@ -184,6 +199,9 @@ fn mound(p: [f32; 2], center: [f32; 2], radius: [f32; 2], height: f32) -> f32 {
     height * t * t * (3. - 2. * t)
 }
 pub fn high_points(field: PressureField) -> [[f32; 2]; 3] {
+    if field.generator == crate::region::GENERATOR {
+        return [[-19., 15.], [19., -15.], [0., 0.]];
+    }
     let s = scale(field);
     let z = match field.layout.saturating_sub(1) % 4 {
         1 => 3.4,
@@ -193,6 +211,9 @@ pub fn high_points(field: PressureField) -> [[f32; 2]; 3] {
     [[0., z * s[1]], [0., -z * s[1]], [0., 0.]]
 }
 pub fn elevation(field: PressureField, p: [f32; 2]) -> f32 {
+    if field.generator == crate::region::GENERATOR {
+        return crate::region::elevation(field, p);
+    }
     let q = normalized(field, p);
     let height = 1.6
         + variation(field, 31)
@@ -215,6 +236,9 @@ pub fn elevation(field: PressureField, p: [f32; 2]) -> f32 {
     (base + (strata + 0.1) * edge).max(0.)
 }
 pub fn cover(field: PressureField, p: [f32; 2]) -> f32 {
+    if field.generator == crate::region::GENERATOR {
+        return crate::region::cover(field, p);
+    }
     let q = normalized(field, p);
     let flank = q[1].abs() > 7.6 && q[1].abs() < 11.2 && q[0].abs() < 12.;
     let s = scale(field);
@@ -226,6 +250,9 @@ pub fn cover(field: PressureField, p: [f32; 2]) -> f32 {
     f32::from(flank || pockets)
 }
 pub fn roughness(field: PressureField, p: [f32; 2]) -> f32 {
+    if field.generator == crate::region::GENERATOR {
+        return crate::region::roughness(field, p);
+    }
     let q = normalized(field, p);
     let crossing = field.layout.saturating_sub(1) % 4 == 2
         || field.lesson == crate::pressure::Lesson::Approach;

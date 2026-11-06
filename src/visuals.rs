@@ -11,6 +11,7 @@ mod stain_patch;
 pub(super) mod stains;
 pub(super) use blood::Fx;
 use blood::effects;
+mod balance;
 mod body;
 mod cuts;
 mod equipment;
@@ -18,7 +19,10 @@ mod face;
 mod flesh;
 mod garments;
 mod health;
+mod individual;
+mod kennel;
 mod kinetic;
+pub(super) mod landscape;
 mod occult;
 mod spectacle;
 mod standards;
@@ -55,12 +59,15 @@ impl Plugin for BattleVisuals {
         team_actions::install(app);
         ragdoll::install(app);
         yard::install(app);
+        landscape::install(app);
+        balance::install(app);
+        kennel::install(app);
         recovery::install(app);
         app.add_systems(Update, portrait_camera.after(super::camera_motion))
             .add_systems(
                 PostUpdate,
                 follow_crowns
-                    .after(face::Pose)
+                    .after(balance::Pose)
                     .before(bevy::transform::TransformSystems::Propagate),
             );
         if std::env::args().any(|a| a == "--visual-witness")
@@ -308,11 +315,7 @@ fn locomotion_clip(unit: &phalanx::Unit, moved: f32, finished: bool) -> usize {
             if unit.action == 3 {
                 28
             } else {
-                match performance(unit) {
-                    Performance::Composed => 28,
-                    Performance::Fierce => 1,
-                    Performance::Watchful | Performance::Anxious => 25,
-                }
+                individual::signature(unit).gait
             }
         } else {
             1
@@ -605,7 +608,8 @@ pub(crate) fn load_visuals(
                 .observe(archery::ready)
                 .observe(stains::ready)
                 .observe(kinetic::ready)
-                .observe(ragdoll::ready);
+                .observe(ragdoll::ready)
+                .observe(balance::ready);
             });
         }
     }
@@ -885,6 +889,14 @@ fn animate(
             if !death_clip(clip) {
                 clip = [21, 13, 14, 47][unit.id.wrapping_add(session.battle.seed as usize) % 4];
             }
+        } else if unit.aerial.is_some() {
+            clip = match individual::key(unit) % 4 {
+                0 => 35,
+                1 => 38,
+                2 => 53,
+                _ => 61,
+            };
+            actor.lock = 0.2;
         } else if phalanx::ninjutsu::in_transit(unit) {
             clip = wall_performance(unit);
             actor.lock = 0.2;
@@ -1042,6 +1054,11 @@ fn animate(
             } else {
                 1.
             };
+        let cadence = if matches!(clip, 1 | 2 | 25..=30) {
+            cadence * individual::signature(unit).cadence
+        } else {
+            cadence
+        };
         advance_clip(
             &mut actor,
             &mut player,
@@ -1280,6 +1297,10 @@ fn scenery(
     let size = arena.half_size();
     for (piece, mut transform, mut visibility) in &mut pieces {
         let i = piece.0;
+        if matches!(arena,Arena::Pressure(f) if f.generator==phalanx::region::GENERATOR) {
+            *visibility = Visibility::Hidden;
+            continue;
+        }
         if i >= 160 {
             let wall = (i - 160) / 8;
             let block = (i - 160) % 8;

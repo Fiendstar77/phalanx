@@ -33,6 +33,7 @@ struct FaceState {
     weights: [f32; 17],
     gaze: Vec2,
     iris: u8,
+    expression: usize,
 }
 #[derive(Component)]
 struct Caricature {
@@ -91,6 +92,7 @@ pub(super) struct Audit {
     pub seen: [bool; 6],
     pub eye_rotation: bool,
     pub meshes: usize,
+    pub variants: [bool; 24],
 }
 
 #[derive(SystemSet, Clone, Debug, PartialEq, Eq, Hash)]
@@ -139,6 +141,7 @@ pub(super) fn ready(
         weights: [0.0; 17],
         gaze: Vec2::ZERO,
         iris: u8::MAX,
+        expression: 0,
     });
     for entity in children.iter_descendants(event.entity) {
         let Ok((name, transform, morph)) = nodes.get(entity) else {
@@ -320,10 +323,32 @@ fn drive(
             speaking,
             blink,
         });
+        state.expression = super::individual::expression(
+            unit,
+            session.battle.tick,
+            state.clock,
+            state.hurt,
+            state.attack,
+            state.laugh,
+            session.battle.finished,
+        );
+        if unit.health > 0. {
+            target = super::individual::pose(state.expression, blink);
+            if speaking {
+                target[SHOUT] = 0.45;
+            }
+        }
         if speaking && unit.health > 0. {
             // Articulated barks, not audio phoneme sync. This clock freezes with
             // the actor so pause/step never keeps a mouth chattering.
             target[SHOUT] *= 0.45 + 0.55 * (state.clock * 17. + state.id as f32).sin().abs();
+        }
+        if unit
+            .support_target
+            .is_some_and(|id| unit.social.bond(id) > 0.35)
+            && state.expression == 3
+        {
+            target[FEAR] = (target[FEAR] + 0.1).min(1.);
         }
         let alpha = 1.0 - (-dt * 22.0).exp();
         for (weight, target) in state.weights.iter_mut().zip(target) {
@@ -577,6 +602,7 @@ fn apply(
         };
         if let Some(mut morph) = morph {
             meshes += 1;
+            audit.variants[state.expression] = true;
             for (seen, weight) in audit.seen.iter_mut().zip(state.weights) {
                 *seen |= weight > 0.15;
             }

@@ -7,6 +7,7 @@ pub const COMMUNICATION_RANGE: f32 = 8.0;
 pub enum Source {
     OwnSight,
     Ally(usize),
+    Companion(usize),
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Contact {
@@ -28,12 +29,22 @@ pub fn cooperative(mind: Mind) -> bool {
     (mind.teamwork + mind.discipline) * 0.5 >= 0.5
 }
 pub fn can_see(arena: Arena, observer: [f32; 2], target: [f32; 2]) -> bool {
+    can_see_from(arena, observer, target, 0.95, 0.95)
+}
+/// Terrain visibility from actual eye heights; animal observers stay near the ground.
+pub fn can_see_from(
+    arena: Arena,
+    observer: [f32; 2],
+    target: [f32; 2],
+    observer_eye: f32,
+    target_eye: f32,
+) -> bool {
     let sight = 10.0 + arena.elevation(observer) * 1.5 - arena.cover(target) * 2.0;
     if distance(observer, target) > sight || !arena.clear_segment(observer, target) {
         return false;
     }
-    let from = arena.elevation(observer) + 0.95;
-    let to = arena.elevation(target) + 0.95;
+    let from = arena.elevation(observer) + observer_eye;
+    let to = arena.elevation(target) + target_eye;
     let steps = (distance(observer, target) / 0.25).ceil().max(1.0) as usize;
     (1..steps).all(|i| {
         let t = i as f32 / steps as f32;

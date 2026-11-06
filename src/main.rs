@@ -31,6 +31,9 @@ use phalanx::{
 };
 
 fn frame_zoom(arena: Arena) -> f32 {
+    if matches!(arena,Arena::Pressure(f) if f.generator==phalanx::region::GENERATOR) {
+        return 96.;
+    }
     if arena.large() {
         52.0
     } else {
@@ -105,6 +108,10 @@ impl Session {
                         | "--memory-soak"
                         | "--ninja-demo"
                         | "--recovery-demo"
+                        | "--region-witness"
+                        | "--region-demo"
+                        | "--individual-demo"
+                        | "--hound-demo"
                         | "--opportunity-demo"
                         | "--prologue-demo"
                 )
@@ -137,7 +144,7 @@ impl Session {
             let arena = if std::env::args().any(|a| a == "--arena") {
                 battle.arena
             } else {
-                phalanx::pressure::generate(&campaign.teams, seed)
+                campaign.battlefield(seed)
             };
             match campaign.begin_battle(seed, arena, battle.controller) {
                 Ok((id, b)) => {
@@ -1095,6 +1102,94 @@ fn main() {
         }
         session.restart_founders(seed.wrapping_sub(1), Arena::OpenField, Controller::Utility);
         apply(Control::GenerateArena, &mut session);
+    }
+    if args.iter().any(|a| {
+        matches!(
+            a.as_str(),
+            "--region-demo"
+                | "--region-witness"
+                | "--individual-demo"
+                | "--individual-witness"
+                | "--hound-demo"
+                | "--hound-witness"
+        )
+    }) {
+        // Isolated four-fighter visual fixture: never write to the player's campaign.
+        session.autosave = false;
+        session.campaign = Campaign::new();
+        session.campaign.teams[0].gold = 1000;
+        session.campaign.unlock_fourth().unwrap();
+        if args.iter().any(|a| a.starts_with("--individual-")) {
+            for (team, t) in session.campaign.teams.iter_mut().enumerate() {
+                t.gold = 1000;
+                t.salvage = 1000;
+                for (slot, f) in t.fighters.iter_mut().enumerate() {
+                    f.class = [
+                        FighterClass::Warrior,
+                        FighterClass::Acrobat,
+                        FighterClass::Healer,
+                        FighterClass::Guardian,
+                    ][slot];
+                    f.mind = phalanx::styles::BattleStyle::ALL[(slot + team) % 3].mind();
+                    if slot == 1 {
+                        f.mind.courage = 0.85;
+                        f.mind.caution = 0.25;
+                    }
+                    f.theus = Some(phalanx::theus::Sheet {
+                        attributes: [11, 13, 12, 12],
+                        practice: [100, 0, 100, 0, 0, 0],
+                        ..default()
+                    });
+                }
+            }
+            for warmup in 0..2 {
+                let arena = session.campaign.battlefield(seed);
+                let (id, mut b) = session
+                    .campaign
+                    .begin_battle(seed + warmup, arena, Controller::Utility)
+                    .unwrap();
+                while !b.finished {
+                    b.step();
+                }
+                session.campaign.settle(id, &b).unwrap();
+            }
+        }
+        if args.iter().any(|a| a.starts_with("--individual-")) {
+            for t in &mut session.campaign.teams {
+                t.fighters[0].class = FighterClass::Houndwarden;
+            }
+        }
+        if args.iter().any(|a| a.starts_with("--hound-")) {
+            for t in &mut session.campaign.teams {
+                t.fighters[0].class = FighterClass::Houndwarden;
+            }
+        }
+        let arena = if args.iter().any(|a| a == "--hound-witness") {
+            Arena::OpenField
+        } else {
+            session.campaign.battlefield(seed)
+        };
+        session.restart_founders(seed, arena, Controller::Utility);
+        session.founding.open = false;
+        session.menu = false;
+        session.running = false;
+        session.map_briefing = false;
+        session.player.details = false;
+        session.camera_follow = false;
+        session.camera_target = Vec3::new(0., 1., 0.);
+        session.zoom = 96.;
+        session.orbit = 0.65;
+        session.pitch = 0.72;
+        session.speed = 1.;
+        session.cinema_grabbed = true;
+        session.paths = 2;
+        if args.iter().any(|a| a == "--hound-demo") {
+            session.camera_follow = true;
+            session.selected = 0;
+            session.zoom = 4.2;
+            session.pitch = 0.18;
+            session.orbit = 1.0;
+        }
     }
     if args.iter().any(|a| a == "--player-demo") {
         session.autosave = false;
@@ -2111,7 +2206,7 @@ fn apply(control: Control, session: &mut Session) {
             match session.campaign.select_rival(index) {
                 Ok(()) => {
                     let seed = session.battle.seed.wrapping_add(1);
-                    let arena = phalanx::pressure::generate(&session.campaign.teams, seed);
+                    let arena = session.campaign.battlefield(seed);
                     session.restart_founders(seed, arena, controller);
                     session.running = false;
                     session.accumulator = 0.0;
@@ -2134,11 +2229,9 @@ fn apply(control: Control, session: &mut Session) {
             }
             match session.campaign.unlock_fourth() {
                 Ok(()) => {
-                    session.restart_founders(
-                        session.battle.seed.wrapping_add(1),
-                        session.battle.arena,
-                        controller,
-                    );
+                    let seed = session.battle.seed.wrapping_add(1);
+                    let arena = session.campaign.battlefield(seed);
+                    session.restart_founders(seed, arena, controller);
                     session.previous_positions =
                         session.battle.units.iter().map(|u| u.position).collect();
                     session.selected = 0;
@@ -2383,11 +2476,8 @@ fn apply(control: Control, session: &mut Session) {
                 return;
             }
             let seed = session.battle.seed.wrapping_add(1);
-            session.restart_founders(
-                seed,
-                phalanx::pressure::generate(&session.campaign.teams, seed),
-                controller,
-            );
+            let arena = session.campaign.battlefield(seed);
+            session.restart_founders(seed, arena, controller);
             if !session.battle.pressure_note.is_empty() {
                 session.save_notice = session.battle.pressure_note.clone();
             }
@@ -2469,7 +2559,7 @@ fn apply(control: Control, session: &mut Session) {
         Control::Setup => {
             let entering = !session.battle.founders;
             let arena = if entering {
-                phalanx::pressure::generate(&session.campaign.teams, session.battle.seed)
+                session.campaign.battlefield(session.battle.seed)
             } else if matches!(session.battle.arena, Arena::Pressure(_)) {
                 Arena::Ridge
             } else {
@@ -2494,7 +2584,7 @@ fn apply(control: Control, session: &mut Session) {
                 let _ = session.campaign.capture_minds(&session.battle);
             }
             let seed = session.battle.seed.wrapping_add(1);
-            let arena = phalanx::pressure::generate(&session.campaign.teams, seed);
+            let arena = session.campaign.battlefield(seed);
             session.restart_founders(seed, arena, controller);
             session.save_notice = session.battle.pressure_note.clone();
             session.menu = false;
@@ -3142,6 +3232,13 @@ fn camera_motion(
     if session.camera_follow {
         let p = session.presented(session.selected);
         session.camera_target = Vec3::new(p[0], session.battle.arena.elevation(p) + 0.85, p[1]);
+        if let Some(u) = session.battle.units.get(session.selected) {
+            session.camera_target.y += phalanx::ninjutsu::visual_height(
+                u,
+                session.battle.arena,
+                session.battle.tick as f32,
+            );
+        }
     }
     session.zoom = session.zoom.clamp(1.1, 100.0);
     let size = session.battle.arena.half_size();
@@ -3512,6 +3609,7 @@ fn update_text(session: Res<Session>, mut text: Query<&mut Text, With<Inspector>
                 "own sight".into()
             } else {
                 match c.source {
+                    Source::Companion(id) => format!("hound report {}", id + 1),
                     Source::OwnSight => "own memory".into(),
                     Source::Ally(id) => {
                         format!("ally {:02} report", id % session.battle.team_size() + 1)
@@ -3766,6 +3864,11 @@ fn update_divergence(
 }
 
 fn terrain_mesh(arena: Arena) -> Mesh {
+    if let Arena::Pressure(field) = arena
+        && field.generator == phalanx::region::GENERATOR
+    {
+        return visuals::landscape::ground(field);
+    }
     let mut positions = Vec::new();
     let mut colors = Vec::new();
     let size = arena.half_size();
@@ -3863,6 +3966,16 @@ fn sync_terrain(
     }
     for (wall, mut visible, mut transform, mut material) in &mut walls {
         if let Some((center, extent)) = arena.walls().get(wall.0) {
+            if matches!(arena,Arena::Pressure(f) if f.generator==phalanx::region::GENERATOR)
+                && wall.0
+                    >= 4 - (match arena {
+                        Arena::Pressure(f) => (f.destroyed & 15).count_ones() as usize,
+                        _ => 0,
+                    })
+            {
+                *visible = Visibility::Hidden;
+                continue;
+            }
             let timber = if let Arena::Pressure(field) = arena {
                 field.layout > 0 && wall.0 < 4 - (field.destroyed & 15).count_ones() as usize
             } else {

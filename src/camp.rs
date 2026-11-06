@@ -531,7 +531,7 @@ fn refresh(
                 fighter.equipment.summary(),
                 limb_names(fighter.lost_limbs),
                 limb_names(fighter.prosthetics),
-                fighter.legend_summary()
+                format!("{}\n\n{}",fighter.legend_summary(),fighter.social.summary_named(&session.campaign.teams))
             ),
             Label::Roster(id) => {
                 if *id >= session.battle.units.len() {

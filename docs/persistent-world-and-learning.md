@@ -6,10 +6,36 @@ same place. The encounter should not appear to have been cut into a small arena.
 Deep telemetry and substantial PyTorch work are central to the game and portfolio.
 Visuals, techniques, sound and music must develop with that simulation.
 
-This is the architecture for that expansion. The current game still uses arenas,
-the three opening chapters and the existing campaign. The telemetry and research
-model described under “Implemented foundation” are implemented in this change;
-the world, autonomous travel and adaptive opponent deployment are future work.
+The first bounded location is now playable in the four-fighter campaign; the
+three opening chapters, three-fighter fields, five NPC tutorial teams and Lab
+remain distinct. Autonomous travel, additional connected locations and adaptive
+opponent deployment are future work.
+
+## First playable location: The Hollow Procession
+
+The four-fighter campaign now defaults to a 100 x 100 metre location with a
+winding dry road, slow dark basins, raised pale terraces, reed cover and four
+breachable timber barricades. Ground rendering, navigation, sightlines and both
+cameras query the same terrain. Porcelain ribs and suspended funeral bells give
+the land its scale; overhead and distant set dressing grants no combat powers.
+Outer gates are sealed. This is one bounded location, not world streaming.
+
+Campaign `yard` stores the location seed, destroyed-timber mask and completed
+encounter ticks. Returning with a different battle seed preserves the geography
+and breached timber. Manual saves capture breached terrain; settlement records
+time once. Fighters retain their existing IDs, practice and histories. Reload
+still starts encounter preparation, not an exact resume of a suspended battle.
+The battle report records its starting location address; study start/frame/end
+records carry actual location context and terrain revision. Legacy arenas retain
+unknown world context. No past event is assigned a fabricated location.
+
+Presentation uses continuous surface paint with a 4096-square texture, filtered
+mips and 25 cm ground tessellation, rather than coloring half-metre mesh cells.
+The same legal terrain supplies its heights. Pose corrections add bounded ankle
+planting, acceleration lean and contact-driven looking over existing clips;
+these do not change movement rules or grant skills. `--region-demo` opens an
+isolated 4v4 preview, without altering the player's campaign. `--region-witness`
+is a staged render check, not a human playtest.
 
 ## One world, two scales of attention
 

@@ -39,6 +39,29 @@ pub(super) fn fitted(source: &Mesh, layer: u8) -> Mesh {
             .to_array();
         }
     }
+    // Ink hems, compressed fabric folds and a split lapel are carried by the
+    // same skinned vertices. The class/team dye remains in the material.
+    if let Some(VertexAttributeValues::Float32x3(points)) =
+        source.attribute(Mesh::ATTRIBUTE_POSITION)
+    {
+        let colors: Vec<_> = points
+            .iter()
+            .map(|p| {
+                let [x, y, z] = *p;
+                let hem = if layer == 0 {
+                    (y - 0.75).abs() < 0.035 || (x.abs() - 0.28).abs() < 0.025 && y < 1.02
+                } else {
+                    (y - 0.12).abs() < 0.025 || (y - 0.66).abs() < 0.03
+                };
+                let lapel =
+                    layer == 0 && z < 0. && (x.abs() - (1.18 - y) * 0.60).abs() < 0.035 && y > 0.88;
+                let fold = 0.88 + 0.12 * (x * 83. + (y * 12.).sin() * 1.2).sin().abs();
+                let shade = if hem || lapel { 0.20 } else { fold };
+                [shade, shade, shade, 1.]
+            })
+            .collect();
+        out.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+    }
     out
 }
 pub(super) fn conceal_skin(mesh: &mut Mesh) {

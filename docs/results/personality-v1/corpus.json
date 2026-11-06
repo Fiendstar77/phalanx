@@ -1,0 +1,10 @@
+{
+  "battles": 48,
+  "companion_events": 1927,
+  "decision_ticks": 78039,
+  "fixture": "Independent four-fighter campaigns; staged classes and initial training; two completed episodes per seed; not player data",
+  "schema_version": 1,
+  "seeds": 24,
+  "social_events": 1586,
+  "source_sha256": "0.5.0:ea32a0033086f953"
+}

@@ -14,7 +14,8 @@ pub fn focus_target(unit: &Unit, allies: &[&Unit], tick: u32) -> Option<Contact>
         } else {
             0.0
         };
-        distance(unit.position, c.position)
+        crate::social::target_bias(unit, c)
+            + distance(unit.position, c.position)
             + if c.visible { 0.0 } else { 2.0 }
             + (1.0 - c.confidence(tick)) * 3.0
             - shared_focus * unit.mind.teamwork * 1.2
@@ -26,7 +27,7 @@ pub fn focus_target(unit: &Unit, allies: &[&Unit], tick: u32) -> Option<Contact>
         .cloned()
 }
 pub fn support_ally<'a>(unit: &Unit, allies: &[&'a Unit], tick: u32) -> Option<(&'a Unit, f32)> {
-    if unit.mind.teamwork < 0.5 {
+    if unit.mind.teamwork < 0.5 && !allies.iter().any(|a| unit.social.bond(a.id) >= 0.35) {
         return None;
     }
     allies
@@ -50,7 +51,10 @@ pub fn support_ally<'a>(unit: &Unit, allies: &[&'a Unit], tick: u32) -> Option<(
             if injury < 0.35 && (enemies < 1.0 || nearby >= 2) {
                 return None;
             }
-            let urgency = injury + (enemies * 0.25).min(0.75) + if nearby == 0 { 0.3 } else { 0.0 };
+            let urgency = unit.social.bond(ally.id) * 0.6
+                + injury
+                + (enemies * 0.25).min(0.75)
+                + if nearby == 0 { 0.3 } else { 0.0 };
             Some((*ally, urgency))
         })
         .max_by(|a, b| a.1.total_cmp(&b.1).then_with(|| b.0.id.cmp(&a.0.id)))

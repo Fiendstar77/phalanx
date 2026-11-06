@@ -122,7 +122,7 @@ def run(args):
     torch.manual_seed(args.seed)
     random.seed(args.seed)
     torch.use_deterministic_algorithms(True)
-    groups, (features, actions), provenance = load(args.data,args.train_end,args.val_end,args.history)
+    groups, (features, actions), provenance = load(args.data,args.train_end,args.val_end,args.history,max_bytes=getattr(args,"max_corpus_mib",512)*1024*1024)
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=False)
     data = {k:(torch.tensor([r[0] for r in rows],dtype=torch.float32),
@@ -199,6 +199,7 @@ def main():
     parser.add_argument('--train-end',type=int,default=8)
     parser.add_argument('--val-end',type=int,default=10)
     parser.add_argument('--history',type=int,default=2)
+    parser.add_argument('--max-corpus-mib',type=int,default=512)
     parser.add_argument('--epochs',type=int,default=20)
     parser.add_argument('--seed',type=int,default=23)
     args = parser.parse_args()

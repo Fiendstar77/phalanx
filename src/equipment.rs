@@ -14,9 +14,13 @@ pub enum Gear {
     Bow,
     Kusarigama,
     RazorWheel,
+    BoneGlaive,
+    BellMace,
+    SilkLamellar,
+    PorcelainHarness,
 }
 impl Gear {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 15] = [
         Self::TemperedWeapon,
         Self::BalancedWeapon,
         Self::IronArmor,
@@ -28,6 +32,10 @@ impl Gear {
         Self::Bow,
         Self::Kusarigama,
         Self::RazorWheel,
+        Self::BoneGlaive,
+        Self::BellMace,
+        Self::SilkLamellar,
+        Self::PorcelainHarness,
     ];
     pub fn index(self) -> usize {
         Self::ALL.iter().position(|g| *g == self).unwrap()
@@ -40,8 +48,10 @@ impl Gear {
             | Self::Atlatl
             | Self::Bow
             | Self::Kusarigama
-            | Self::RazorWheel => 0,
-            Self::IronArmor | Self::TrailArmor => 1,
+            | Self::RazorWheel
+            | Self::BoneGlaive
+            | Self::BellMace => 0,
+            Self::IronArmor | Self::TrailArmor | Self::SilkLamellar | Self::PorcelainHarness => 1,
             Self::VitalityCharm | Self::WarBanner => 2,
         }
     }
@@ -58,6 +68,10 @@ impl Gear {
             Self::Bow => "Bow",
             Self::Kusarigama => "Chain-sickle",
             Self::RazorWheel => "Returning razor wheel",
+            Self::BoneGlaive => "Ossuary glaive",
+            Self::BellMace => "Funeral bell mace",
+            Self::SilkLamellar => "Silk lamellar",
+            Self::PorcelainHarness => "Porcelain harness",
         }
     }
     pub fn effect(self) -> &'static str {
@@ -72,6 +86,10 @@ impl Gear {
             Self::Atlatl => crate::weapons::ProjectileWeapon::Atlatl.description(),
             Self::Bow => crate::weapons::ProjectileWeapon::Bow.description(),
             Self::Kusarigama => "3.3m reach; successful hooks snare and pull along clear ground",
+            Self::BoneGlaive => "2.8m melee reach; -10% movement; two-handed cutting weapon",
+            Self::BellMace => "+12% damage; -7% movement; blunt blows cannot cut or sever",
+            Self::SilkLamellar => "+6% movement, +3% incoming damage",
+            Self::PorcelainHarness => "-14% incoming damage, -9% movement",
             Self::RazorWheel => {
                 "Spinning return blade; physical outbound and return hits; costs 4 effort"
             }
@@ -110,6 +128,9 @@ impl Gear {
             Self::Atlatl => (45, 12),
             Self::Bow => (55, 14),
             Self::Kusarigama | Self::RazorWheel => (5, 0),
+            Self::BoneGlaive | Self::BellMace => (30, 8),
+            Self::SilkLamellar => (25, 7),
+            Self::PorcelainHarness => (35, 10),
         }
     }
 }
@@ -178,6 +199,8 @@ impl Equipment {
             1.20 * self.power(0)
         } else if self.has(Gear::BalancedWeapon) {
             1.08 * self.power(0)
+        } else if self.has(Gear::BellMace) {
+            1.12 * self.power(0)
         } else {
             self.power(0)
         }
@@ -187,12 +210,20 @@ impl Equipment {
             0.80 / self.power(1)
         } else if self.has(Gear::TrailArmor) {
             1.08 / self.power(1)
+        } else if self.has(Gear::SilkLamellar) {
+            1.03
+        } else if self.has(Gear::PorcelainHarness) {
+            0.86 / self.power(1)
         } else {
             1.0
         }
     }
     pub fn speed(self) -> f32 {
-        (if self.has(Gear::TemperedWeapon) {
+        (if self.has(Gear::BoneGlaive) {
+            0.90
+        } else if self.has(Gear::BellMace) {
+            0.93
+        } else if self.has(Gear::TemperedWeapon) {
             0.92
         } else if self.has(Gear::BalancedWeapon) {
             1.05
@@ -202,6 +233,10 @@ impl Equipment {
             0.85
         } else if self.has(Gear::TrailArmor) {
             1.12
+        } else if self.has(Gear::SilkLamellar) {
+            1.06
+        } else if self.has(Gear::PorcelainHarness) {
+            0.91
         } else {
             1.0
         }

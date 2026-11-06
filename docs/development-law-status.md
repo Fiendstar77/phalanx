@@ -15,7 +15,7 @@ years of depth or player attachment.
 | 5. Emergent extraordinary acts | A bounded search composes ground approach, wall vault and strike from perceived contacts and geometry. Completion requires physical execution and a real opposed hit. | The full Black Bridge chain, interception, ledge throw and collapse sequence. |
 | 6. Opportunity Composition | Four-step, 32-expansion search; per-step execution checks; interruptions and completion receipts. | More primitives, alternative objectives, relationship pressure and broader risk reasoning. |
 | 7. Requirements and costs | Training, equipment, limbs, effort, terrain clearance, landing and current attack eligibility constrain the first primitives. Normal strike consequences apply. | Weapon breakage, fall/collision injury and independent mixed outcomes such as successful rescue with self-injury. |
-| 8. Relationships alter risk | Personality affects ordinary tactics and the planner's injury/caution cost. | Stable pairwise bonds, rivals, protection obligations and relationship-triggered risk changes. Teamwork alone is not a personal bond. |
+| 8. Relationships alter risk | Directional memories of actual help, witnessed screening and recognized harm affect support, medic/screen selection and familiarity with known opponents. Practiced habits bias eligible objectives. | Richer bonds, protection obligations, betrayal and calibrated intervention under relationship pressure. These bounded memories are the first foundation, not a full social simulation. |
 | 9. History records moments | A landed vault plus a committed hit can produce a factual ledger entry, post-battle report and cosmetic Wallrunner epithet. | A richer history browser, event-specific names and more kinds of accomplishment. |
 | 10. Legend is earned | A provisional detector considers completed wall assaults under starting injury, low health or an actual critical. It retains the first qualifying moment chronologically, without a damage ranking. All completed compositions remain in the battle receipts. | Detector calibration and multiple meaningful event families. The first heuristic does not establish that players consider these moments legendary. |
 | 11. Telemetry supports story | Study traces retain decisions, plan steps, cancellations, world completions, vault endpoints/timing, opposed dice, damage, health, flesh wounds and separate source-linked bleeding receipts. Campaign settlement writes a ledger alongside learning reports. | Richer resource/skill context at each step, relationship context, calibrated risk, battle significance and reconstruction across archived battles. Missing context must remain unknown. |
@@ -60,3 +60,17 @@ The next dependencies for the larger fantasy are persistent relationship
 identities and consequences, richer surface/anchor/support geometry, and
 step-level telemetry for new primitives. Each needs a real world effect and an
 inspectable witness before narration can claim it happened.
+
+The first bounded Yard location, **The Hollow Procession**, now serves the normal
+four-fighter campaign: 100 x 100 metres, shared terrain in both cameras, saved
+location seed and broken timber, and location context in new study receipts.
+[Scope and limitations](persistent-world-and-learning.md#first-playable-location-the-hollow-procession)
+include sealed outer gates and encounter preparation on reload. Larger autonomous
+journeys and persistent world NPCs remain future work.
+
+The [living Phalanx expansion](living-phalanx-direction.md) adds directional
+source-backed memories, practiced habits, distinct performance signatures, the
+Houndwarden prototype and checked Cloud Step traversal. Relationships currently
+cover help, screening and recognized harm; richer social lives remain future work.
+The [57-input campaign policy and causal forecasting experiment](results/personality-v1/README.md)
+record their training fixtures, held-out results and live-control boundaries.

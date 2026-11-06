@@ -352,3 +352,51 @@ fn founders_schema_two_matches_python_logits_on_held_out_rows() {
     std::fs::write(dir.join("duel-seeds-100-107.json"), report.to_string()).unwrap();
     eprintln!("{report}");
 }
+
+#[test]
+fn expanded_campaign_brain_matches_its_own_pytorch_checkpoint() {
+    let policy = LearnedPolicy::contextual();
+    let witness: serde_json::Value =
+        serde_json::from_str(include_str!("../assets/policy_context_witness.json")).unwrap();
+    for i in 0..witness["features"].as_array().unwrap().len() {
+        let features: Vec<f32> = serde_json::from_value(witness["features"][i].clone()).unwrap();
+        assert_eq!(features.len(), phalanx::telemetry::FEATURE_NAMES.len());
+        let mask: [bool; ACTION_COUNT] =
+            serde_json::from_value(witness["masks"][i].clone()).unwrap();
+        let expected: Vec<f32> = serde_json::from_value(witness["logits"][i].clone()).unwrap();
+        let actual = policy.logits(&features).unwrap();
+        for (a, b) in actual.iter().zip(&expected) {
+            assert!((a - b).abs() < 5e-4, "{a} != {b}");
+        }
+        let expected_action = (0..ACTION_COUNT)
+            .filter(|j| mask[*j])
+            .max_by(|a, b| expected[*a].total_cmp(&expected[*b]))
+            .unwrap();
+        assert_eq!(policy.predict(&features, &mask).unwrap().0, expected_action);
+    }
+}
+#[test]
+fn expanded_brain_controls_real_new_class_bouts_without_crossing_the_mask() {
+    use phalanx::{FighterClass as C, progression::Campaign, terrain::Arena};
+    let mut c = Campaign::new();
+    c.teams[0].fighters[0].class = C::Houndwarden;
+    c.teams[1].fighters[0].class = C::Houndwarden;
+    let (_, mut a) = c
+        .begin_battle(711, Arena::OpenField, Controller::Learned)
+        .unwrap();
+    let mut b = a.clone();
+    while !a.finished {
+        a.step();
+        b.step();
+        for u in &a.units {
+            if let Some(x) = &u.comparison {
+                assert!(u.scores[x.executed] >= 0.);
+            }
+        }
+    }
+    assert_eq!(a.learned_fallbacks, 0);
+    assert_eq!(
+        serde_json::to_value(a).unwrap(),
+        serde_json::to_value(b).unwrap()
+    );
+}

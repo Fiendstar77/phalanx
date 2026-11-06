@@ -65,7 +65,7 @@ impl Recorder {
                 "telemetry_schema_version": 2, "stream_sequence": 0,
                 "simulation_build": crate::challenges::BUILD,
                 "campaign_battle_id": campaign_battle_id,
-                "coordinate_system": "arena_local_xz", "world_context": null,
+                "coordinate_system": "arena_local_xz", "world_context": crate::region::address(battle.initial_arena),
                 "frame_authority": "research_truth_not_an_agent_observation",
                 "decision_authority": "actor_perception_before_movement",
                 "simulation_version": battle.simulation_version,
@@ -129,9 +129,9 @@ impl Recorder {
             })
             .collect();
         self.emit(
-            serde_json::json!({"event":"combat_frame","schema_version":1,
+            serde_json::json!({"event":"combat_frame","schema_version":1,"world_context":crate::region::address(battle.arena),
             "tick":battle.tick,"phase":"post_step_research_truth","truth_only":true,
-            "interval_seconds":elapsed,"actors":actors}),
+            "interval_seconds":elapsed,"actors":actors,"companions":battle.kennel.actors}),
         )?;
         self.previous_frame = battle.units.iter().map(|u| u.position).collect();
         self.frame_tick = battle.tick;
@@ -161,6 +161,15 @@ impl Recorder {
         }
         for event in battle.bleed_events.iter().filter(|e| e.tick == tick) {
             self.emit(serde_json::json!({"event":"bleeding","receipt":event}))?;
+        }
+        for event in battle.aerial_events.iter().filter(|e| e.tick == tick) {
+            self.emit(serde_json::json!({"event":"aerial","receipt":event}))?;
+        }
+        for event in battle.kennel.events.iter().filter(|e| e.tick == tick) {
+            self.emit(serde_json::json!({"event":"companion","receipt":event}))?;
+        }
+        for event in battle.social_events.iter().filter(|e| e.tick == tick) {
+            self.emit(serde_json::json!({"event":"social","receipt":event}))?;
         }
         for event in battle.tactical_events.iter().filter(|e| e.tick == tick) {
             self.emit(serde_json::json!({"event":"tactical","receipt":event}))?;
@@ -198,7 +207,7 @@ impl Recorder {
 
     fn finish(&mut self, battle: &Battle) -> io::Result<()> {
         self.emit(
-            serde_json::json!({"event": "end", "tick": battle.tick, "result": battle.result}),
+            serde_json::json!({"event": "end", "tick": battle.tick, "result": battle.result,"world_context":crate::region::address(battle.arena)}),
         )?;
         self.trace.flush()?;
         write_json(&self.directory.join("battle.json"), battle)?;
@@ -209,6 +218,7 @@ impl Recorder {
             "schema_version": 1, "complete": true,
             "simulation_version": battle.simulation_version,
             "seed": battle.seed, "arena": battle.initial_arena, "founders": battle.founders,
+            "world_context":crate::region::address(battle.arena),
             "initial_tick": self.initial_tick, "final_tick": battle.tick,
             "recorded_steps": self.steps, "decision_records": self.decisions,
             "telemetry_schema_version": 2, "simulation_build":crate::challenges::BUILD,

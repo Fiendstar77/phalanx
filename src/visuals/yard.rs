@@ -637,6 +637,15 @@ fn animate(
     let half = arena.half_size();
     for (piece, mut transform, mut visible) in &mut pieces {
         *visible = Visibility::Inherited;
+        if matches!(arena,Arena::Pressure(f) if f.generator==phalanx::region::GENERATOR)
+            && matches!(
+                piece.0,
+                Kind::Panel | Kind::Rig | Kind::House | Kind::Smoke | Kind::Reed
+            )
+        {
+            *visible = Visibility::Hidden;
+            continue;
+        }
         let phase = piece.1 as f32 * 2.399_963;
         *transform = match piece.0 {
             Kind::Watcher => {

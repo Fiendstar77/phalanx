@@ -106,6 +106,7 @@ mod tests {
         session.menu = false;
         session.running = false;
         session.battle.damage_events.push(phalanx::DamageEvent {
+            source_actor: None,
             flesh_region: None,
             sequence: 0,
             tick: 1,

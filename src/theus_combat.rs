@@ -255,6 +255,10 @@ pub fn exchanges(
     for (ordinal, (attacker, defender, amount, blunt, speed, contact)) in
         std::mem::take(impacts).into_iter().enumerate()
     {
+        let blunt = blunt
+            || snapshot[attacker]
+                .equipment
+                .has(crate::equipment::Gear::BellMace);
         let Some(a) = snapshot[attacker].theus.as_ref() else {
             damage[defender] += amount;
             battle.units[attacker].damage_dealt += amount;

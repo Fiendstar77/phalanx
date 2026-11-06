@@ -17,7 +17,7 @@ GitHub, without installing the game, PyTorch or Bonsai.
 | --- | --- | --- |
 | Perception and coordination | Occlusion/range checks, decaying contact memory, bounded ally reports, focus/support/flank rules | Live game; agents act on contacts rather than arbitrary hidden enemy transforms |
 | Utility controller | Nine guarded tactical objectives, personality and situational scores, seeded variation | Live default, action eligibility authority and deterministic fallback |
-| Learned controller | PyTorch-trained 29 → 64 → 64 → 9 ReLU policy; 6,665 parameters | Frozen exported weights run in Rust and can control live combat |
+| Learned controller | Campaign: 57 → 128 → 128 → 128 → 9, 41,609 parameters; original 29-input Lab baseline preserved | Frozen PyTorch exports run in Rust; campaign Utility remains default, Learned is optional |
 | Campaign adaptation | Equal completion credit, class/weapon practice, event memories and rival counters | Persists through save/load and influences later battles; uses authored rules |
 | Opportunity Composition | Bounded forward search over run, wall-vault and strike primitives | Live for qualified veteran acrobats; each primitive revalidates and uses existing physical rules |
 | Bonsai 1.7B | Local native `libllama` inference; structured action proposals and combat text | Separate experiments; tactical shadow decisions do not alter a battle |
@@ -260,3 +260,8 @@ Future work is a resident asynchronous worker, explicit call/latency budgets,
 controlled rollouts where LLM proposals actually execute, and separate player
 tests of visible adaptation and decision readability. None is represented by
 the current shadow study's acceptance rate.
+
+The [personal-memory and companion experiment](../results/personality-v1/README.md)
+extends the campaign observation schema, retrains portable weights, compares a
+29-input ablation and records a separate causal forecaster. Companion orders and
+aerial proposals remain rule-based; no online neural learning is claimed.

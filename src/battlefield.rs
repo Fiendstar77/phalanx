@@ -40,7 +40,7 @@ fn setup_briefing(mut commands: Commands) {
                 TextColor(Color::srgb(0.96, 0.76, 0.35)),
             ));
             p.spawn((BriefingText, Text::new(""), font(14.)));
-            button(p, "New battlefield [G]", Control::GenerateArena);
+            button(p, "Prepare terrain [G]", Control::GenerateArena);
             button(p, "Terrain / tactical overlays [O]", Control::Overlay);
             button(p, "Fight on this battlefield", Control::Run);
             button(
@@ -76,13 +76,17 @@ pub(super) fn show_briefing(
     if let Some(f) = field {
         let size = f.half();
         let content = format!(
-            "{}\nSeed {} | {:.0} x {:.0}\n\n{}\n\n{}\n\nGreen: cover\nDark earth: slow ground\nPale stone: heights\nTimber: breachable",
+            "{}\nSeed {} | {:.0} x {:.0}\n\n{}\n\n{}\n\nReeds: cover\nDark basins: slow ground\nPale stone: heights\nTimber: breachable",
             f.name(),
             f.seed,
             size[0] * 2.,
             size[1] * 2.,
             phalanx::procedural::briefing(f),
-            f.lesson.name()
+            if f.generator == phalanx::region::GENERATOR {
+                "Saved location | sealed outer gates | broken timber persists"
+            } else {
+                f.lesson.name()
+            }
         );
         for mut t in &mut text {
             if t.0 != content {

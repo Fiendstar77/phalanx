@@ -180,9 +180,12 @@ fn segment_distance(a: [f32; 3], b: [f32; 3], p: [f32; 3]) -> f32 {
     len(sub(p, lerp(a, b, t)))
 }
 pub fn in_transit(u: &Unit) -> bool {
-    u.ninja.as_ref().is_some_and(|n| n.leap.is_some())
+    u.aerial.is_some() || u.ninja.as_ref().is_some_and(|n| n.leap.is_some())
 }
 pub fn physical_height(u: &Unit, arena: Arena, tick: f32) -> f32 {
+    if let Some(f) = &u.aerial {
+        return (f.sample(tick)[1] - arena.elevation(u.position)).max(0.);
+    }
     u.ninja
         .as_ref()
         .and_then(|n| n.leap.as_ref())

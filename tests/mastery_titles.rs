@@ -19,7 +19,7 @@ fn legacy_class_practice_keeps_its_discipline_when_new_tracks_are_added() {
         serde_json::from_str(&serde_json::to_string(&restored).unwrap()).unwrap();
     assert_eq!(restored, reloaded);
     assert!(reloaded.retained(Class::Warlock));
-    for length in [0, 9, 11, 17, 19] {
+    for length in [0, 9, 11, 17, 20] {
         assert!(
             serde_json::from_value::<Mastery>(serde_json::json!({"practice": vec![0; length]}))
                 .is_err()

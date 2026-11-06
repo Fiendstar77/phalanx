@@ -1,5 +1,6 @@
 //! Fixed-step combat model, independent of rendering and wall-clock time.
 use serde::{Deserialize, Serialize};
+pub mod aerial;
 pub mod appearance;
 pub mod archery;
 pub mod async_exchange;
@@ -12,6 +13,7 @@ pub mod genesis;
 pub mod heraldry;
 pub mod injuries;
 pub mod inventory;
+pub mod kennel;
 pub mod learned;
 pub mod learning;
 pub mod legend;
@@ -25,8 +27,10 @@ pub mod procedural;
 pub mod progression;
 pub mod prologue;
 pub mod psyche;
+pub mod region;
 pub mod rivals;
 pub mod skills;
+pub mod social;
 pub mod study;
 pub mod styles;
 pub mod tactics;
@@ -171,6 +175,7 @@ pub enum FighterClass {
     Alchemist,
     Warlock,
     Acrobat,
+    Houndwarden,
 }
 impl FighterClass {
     pub fn index(self) -> usize {
@@ -196,9 +201,10 @@ impl FighterClass {
             Self::Alchemist => "ALCHEMIST",
             Self::Warlock => "WARLOCK",
             Self::Acrobat => "ACROBAT",
+            Self::Houndwarden => "HOUNDWARDEN",
         }
     }
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 19] = [
         Self::Warrior,
         Self::Guardian,
         Self::Ranger,
@@ -217,12 +223,14 @@ impl FighterClass {
         Self::Alchemist,
         Self::Warlock,
         Self::Acrobat,
+        Self::Houndwarden,
     ];
     /// Existing authored silhouettes remain usable by the new mechanical classes.
     pub fn silhouette(self) -> Self {
         match self {
             Self::Duelist => Self::Warrior,
             Self::Assassin | Self::Shinobi | Self::Acrobat => Self::Scout,
+            Self::Houndwarden => Self::Scout,
             Self::Monk => Self::Healer,
             Self::Reaper => Self::Berserker,
             Self::Alchemist => Self::Healer,
@@ -255,6 +263,9 @@ impl FighterClass {
             Self::Alchemist => "Toxic smoke drains enemy effort while covering allies.",
             Self::Warlock => "Stronger resisted bindings drain enemy effort and last longer.",
             Self::Acrobat => "Fast traversal; improved acrobatics and longer wall holds.",
+            Self::Houndwarden => {
+                "A persistent war hound scouts known routes, guards its handler and harasses visible enemies. Injury, effort and recall constrain it."
+            }
         }
     }
     pub fn role(self) -> Role {
@@ -295,6 +306,14 @@ pub struct Rock {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Unit {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub aerial: Option<aerial::Flight>,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub aerial_ready: u32,
+    #[serde(skip_serializing_if = "kennel::unaware")]
+    pub pack: kennel::Awareness,
+    #[serde(skip_serializing_if = "social::blank")]
+    pub social: social::Memory,
     #[serde(skip_serializing_if = "tactics::is_blank")]
     pub tactics: tactics::State,
     #[serde(skip_serializing_if = "injuries::is_blank")]
@@ -411,6 +430,7 @@ impl Unit {
             FighterClass::Alchemist => S::ToxicSmoke,
             FighterClass::Warlock => S::Occult,
             FighterClass::Acrobat => S::Springheel,
+            FighterClass::Houndwarden => S::PackCall,
         };
         self.equipped_skill(skill)
     }
@@ -455,6 +475,8 @@ impl Unit {
     pub fn projectile_weapon(&self) -> Option<ProjectileWeapon> {
         if self.equipment.has(equipment::Gear::Kusarigama)
             || self.equipment.has(equipment::Gear::RazorWheel)
+            || self.equipment.has(equipment::Gear::BoneGlaive)
+            || self.equipment.has(equipment::Gear::BellMace)
         {
             return None;
         }
@@ -494,6 +516,9 @@ impl Unit {
             && (self.projectile_weapon() != Some(ProjectileWeapon::Bow) || self.bow_available())
     }
     pub fn attack_range(&self) -> f32 {
+        if self.equipment.has(equipment::Gear::BoneGlaive) {
+            return 2.8;
+        }
         if self.equipment.has(equipment::Gear::Kusarigama) {
             return 3.3;
         }
@@ -713,6 +738,8 @@ impl Unit {
 #[derive(Clone, Debug, Serialize)]
 pub struct DamageEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_actor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub flesh_region: Option<injuries::Region>,
     pub sequence: u64,
     pub tick: u32,
@@ -734,6 +761,12 @@ pub struct HealEvent {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Battle {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub aerial_events: Vec<aerial::Event>,
+    #[serde(skip_serializing_if = "kennel::Field::empty")]
+    pub kennel: kennel::Field,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub social_events: Vec<social::Event>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tactical_events: Vec<tactics::Event>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -852,6 +885,10 @@ impl Battle {
                     arena.spawn(team, id % team_size)
                 };
                 Unit {
+                    social: Default::default(),
+                    pack: Default::default(),
+                    aerial: None,
+                    aerial_ready: 0,
                     tactics: Default::default(),
                     flesh: Default::default(),
                     bleeding_loss: 0.,
@@ -967,6 +1004,9 @@ impl Battle {
             .collect();
         Self {
             tactical_events: Vec::new(),
+            social_events: Vec::new(),
+            kennel: Default::default(),
+            aerial_events: Vec::new(),
             bleed_events: Vec::new(),
             seed,
             founders,
@@ -993,7 +1033,11 @@ impl Battle {
             schema_version: 2,
             controller: Controller::Utility,
             learned_team: None,
-            policy: Some(LearnedPolicy::bundled()),
+            policy: Some(if founders {
+                LearnedPolicy::contextual()
+            } else {
+                LearnedPolicy::bundled()
+            }),
             disagreements: Vec::new(),
             comparison_summary: ComparisonSummary::default(),
             learned_fallbacks: 0,
@@ -1037,6 +1081,8 @@ impl Battle {
         }
         theus_combat::recover(self);
         injuries::bleed(self);
+        kennel::step(self);
+        aerial::advance(self);
         ninjutsu::prepare(self);
         let aura: Vec<_> = self
             .units
@@ -1057,6 +1103,7 @@ impl Battle {
             unit.blessed = blessed;
         }
         perception::update_in_field(&mut self.units, self.arena, self.tick, &self.ninjutsu);
+        aerial::choose(self);
         let snapshot = self.units.clone();
         let mut damage = vec![0.0; self.units.len()];
         let mut impacts = Vec::new();
@@ -1591,6 +1638,12 @@ impl Battle {
                 if let Some(intent) = &tactical {
                     tactics::steer(unit, intent);
                 }
+                decision_features.extend(telemetry::context_features(
+                    unit,
+                    &allies,
+                    enemy.as_ref(),
+                ));
+                social::habit_bias(unit);
                 let utility_action = unit
                     .scores
                     .iter()
@@ -2270,6 +2323,7 @@ impl Battle {
             ]);
             let velocity = contact.map(|c| c.1).unwrap_or(velocity);
             self.damage_events.push(DamageEvent {
+                source_actor: None,
                 flesh_region,
                 sequence: self.next_damage_event,
                 tick: self.tick,
@@ -2334,6 +2388,7 @@ impl Battle {
             }
         }
         tactics::observe(self);
+        social::observe(self);
         opportunity::observe(self, true);
         self.tick += 1;
         let a = self.survivors(0);

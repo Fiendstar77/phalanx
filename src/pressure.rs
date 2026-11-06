@@ -95,6 +95,9 @@ impl PressureField {
         self.lesson.reason()
     }
     pub fn half(self) -> [f32; 2] {
+        if self.generator == crate::region::GENERATOR {
+            return [50., 50.];
+        }
         match self.reach {
             0 => [11.0, 8.0],
             1 => [18.0, 13.0],
@@ -102,6 +105,9 @@ impl PressureField {
         }
     }
     pub fn spawn_x(self) -> f32 {
+        if self.generator == crate::region::GENERATOR {
+            return 17.;
+        }
         match self.reach {
             0 => match self.lesson {
                 Lesson::Approach => 9.4,

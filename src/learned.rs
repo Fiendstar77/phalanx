@@ -117,7 +117,8 @@ impl Serialize for ComparisonSummary {
 }
 impl LearnedPolicy {
     pub fn from_json(text: &str) -> Result<Self, String> {
-        Self::from_schema(text, &FEATURE_NAMES, &ACTIONS)
+        Self::from_schema(text, FEATURE_NAMES, &ACTIONS)
+            .or_else(|_| Self::from_schema(text, &FEATURE_NAMES[..29], &ACTIONS))
     }
     pub fn from_schema(text: &str, features: &[&str], actions: &[&str]) -> Result<Self, String> {
         let model: Self = serde_json::from_str(text).map_err(|e| e.to_string())?;
@@ -164,6 +165,17 @@ impl LearnedPolicy {
         }
         Ok(model)
     }
+    pub fn contextual() -> Arc<Self> {
+        static MODEL: OnceLock<Arc<LearnedPolicy>> = OnceLock::new();
+        MODEL
+            .get_or_init(|| {
+                Arc::new(
+                    Self::from_json(include_str!("../assets/policy_context.json"))
+                        .expect("context policy must be valid"),
+                )
+            })
+            .clone()
+    }
     pub fn bundled() -> Arc<Self> {
         static MODEL: OnceLock<Arc<LearnedPolicy>> = OnceLock::new();
         MODEL
@@ -176,9 +188,13 @@ impl LearnedPolicy {
             .clone()
     }
     pub fn logits(&self, features: &[f32]) -> Option<Vec<f32>> {
-        if features.len() != self.mean.len() || features.iter().any(|v| !v.is_finite()) {
+        if (features.len() != self.mean.len()
+            && !(self.mean.len() == 29 && features.len() == FEATURE_NAMES.len()))
+            || features.iter().any(|v| !v.is_finite())
+        {
             return None;
         }
+        let features = &features[..self.mean.len()];
         let mut values: Vec<_> = features
             .iter()
             .zip(&self.mean)

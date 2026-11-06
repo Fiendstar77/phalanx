@@ -13,6 +13,8 @@ pub struct DecisionRecord {
     pub role: crate::Role,
     pub mind: Mind,
     pub contacts: Vec<Contact>,
+    pub personal_memory: crate::social::Memory,
+    pub companion_report: crate::kennel::Awareness,
     pub scores: [f32; ACTION_COUNT],
     pub action: &'static str,
     pub target: [f32; 2],
@@ -36,6 +38,8 @@ impl DecisionRecord {
             role: u.role,
             mind: u.mind,
             contacts: u.contacts.clone(),
+            personal_memory: u.social.clone(),
+            companion_report: u.pack.clone(),
             scores: u.scores,
             action: ACTIONS[u.action],
             target: u.target,
@@ -48,7 +52,7 @@ impl DecisionRecord {
         }
     }
 }
-pub const FEATURE_NAMES: [&str; 29] = [
+pub const FEATURE_NAMES: &[&str] = &[
     "aggression",
     "caution",
     "courage",
@@ -78,4 +82,78 @@ pub const FEATURE_NAMES: [&str; 29] = [
     "flank_ready",
     "contact_exists",
     "flank_remaining",
+    "trusted_support",
+    "recognized_rival",
+    "flank_habit",
+    "regroup_habit",
+    "effort",
+    "bleeding",
+    "unfitted_limbs",
+    "healer_capability",
+    "vault_capability",
+    "melee_reach",
+    "pack_available",
+    "pack_report_current",
+    "pack_health",
+    "pack_effort",
+    "pack_distance",
+    "pack_scout",
+    "pack_guard",
+    "pack_harry",
+    "pack_recall",
+    "pack_reports",
+    "pack_returns",
+    "tactical_recovery",
+    "tactical_scout",
+    "tactical_assemble",
+    "cloud_step_ready",
+    "equipment_speed",
+    "equipment_mitigation",
+    "equipment_damage",
 ];
+
+/// Internal memory and communicated state only; no hidden opponent or companion transforms.
+pub fn context_features(u: &Unit, allies: &[&Unit], enemy: Option<&Contact>) -> [f32; 28] {
+    let effort = u
+        .theus
+        .as_ref()
+        .map_or(0., |a| a.stamina / a.sheet.endurance());
+    let p = &u.pack;
+    let known = p.known;
+    [
+        allies
+            .iter()
+            .map(|a| u.social.bond(a.id))
+            .fold(0., f32::max),
+        enemy.map_or(0., |e| u.social.caution(e.enemy)),
+        (u.social.habits[0] as f32 / 8.).min(1.),
+        (u.social.habits[1] as f32 / 8.).min(1.),
+        effort,
+        (u.bleeding_loss / 100.).min(1.),
+        (u.lost_limbs & !u.prosthetics).count_ones() as f32 / 4.,
+        f32::from(u.has_skill(crate::FighterClass::Healer)),
+        f32::from(crate::ninjutsu::vault_body_allowed(u)),
+        u.attack_range() / 10.,
+        f32::from(p.available),
+        f32::from(known),
+        if known { p.health } else { 0. },
+        if known { p.effort } else { 0. },
+        if known { (p.distance / 8.).min(1.) } else { 0. },
+        f32::from(known && p.order == crate::kennel::Order::Scout),
+        f32::from(known && p.order == crate::kennel::Order::Guard),
+        f32::from(known && p.order == crate::kennel::Order::Harass),
+        f32::from(known && p.order == crate::kennel::Order::Recall),
+        (p.reports as f32 / 4.).min(1.),
+        (p.returns as f32 / 6.).min(1.),
+        f32::from(crate::tactics::recovering(&u.tactics)),
+        f32::from(u.tactics.scout == Some(u.id)),
+        f32::from(u.tactics.phase == crate::tactics::Phase::Assemble),
+        f32::from(
+            crate::aerial::qualified(u)
+                && u.theus.as_ref().is_some_and(|a| a.clock >= u.aerial_ready),
+        ),
+        u.equipment.speed(),
+        u.equipment.incoming(),
+        u.equipment.damage(),
+    ]
+}

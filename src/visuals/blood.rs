@@ -764,6 +764,7 @@ mod tests {
     #[test]
     fn a_deep_hit_can_bleed_without_cutting_off_a_limb() {
         let event = phalanx::DamageEvent {
+            source_actor: None,
             flesh_region: None,
             sequence: 4,
             tick: 40,
@@ -784,6 +785,7 @@ mod tests {
     #[test]
     fn wounds_share_a_heart_but_have_distinct_sources_and_quiet_intervals() {
         let mut event = phalanx::DamageEvent {
+            source_actor: None,
             flesh_region: None,
             sequence: 1,
             tick: 40,

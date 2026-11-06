@@ -140,6 +140,10 @@ pub struct WoundRecord {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Fighter {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hound: Option<crate::kennel::Hound>,
+    #[serde(default, skip_serializing_if = "crate::social::blank")]
+    pub social: crate::social::Memory,
     #[serde(default, skip_serializing_if = "crate::injuries::is_blank")]
     pub flesh: crate::injuries::Flesh,
     /// Original identity when an exhibition needs a separate runtime namespace.
@@ -277,6 +281,8 @@ impl Phalanx {
                 })
                 || !ids.insert(&f.fighter_id)
                 || !f.mastery.valid()
+                || !f.social.valid(next_battle_id)
+                || f.hound.as_ref().is_some_and(|h| !h.valid(&f.fighter_id))
                 || [
                     m.aggression,
                     m.caution,
@@ -359,6 +365,14 @@ pub struct FighterResult {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BattleReport {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub aerial_events: Vec<crate::aerial::Event>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub social_events: Vec<crate::social::Event>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub companion_events: Vec<crate::kennel::Event>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub world_address: Option<crate::region::Address>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tactical_events: Vec<crate::tactics::Event>,
     /// Zero denotes historical result-based awards; one is equal completion credit.
     #[serde(default)]
@@ -375,7 +389,43 @@ pub struct BattleReport {
 }
 impl BattleReport {
     fn valid(&self) -> bool {
-        self.progression_policy <= PROGRESSION_POLICY
+        self.social_events.len() <= 256
+            && self.companion_events.len() <= 256
+            && self.aerial_events.len() <= 128
+            && self.social_events.iter().all(|e| {
+                e.observer < self.fighters[0].len() * 2
+                    && e.other.is_none_or(|i| i < self.fighters[0].len() * 2)
+                    && e.tick <= crate::BATTLE_TICK_LIMIT
+                    && e.amount.is_finite()
+                    && (0.0..=1000.).contains(&e.amount)
+            })
+            && self.companion_events.iter().all(|e| {
+                e.owner < self.fighters[0].len() * 2
+                    && e.other.is_none_or(|i| i < self.fighters[0].len() * 2)
+                    && e.tick <= crate::BATTLE_TICK_LIMIT
+                    && !e.companion.is_empty()
+                    && e.companion.len() <= 160
+                    && !e.companion.chars().any(char::is_control)
+                    && e.amount.is_finite()
+                    && (0.0..=1000.).contains(&e.amount)
+                    && e.position.iter().all(|v| v.is_finite() && v.abs() <= 1000.)
+            })
+            && self.aerial_events.iter().all(|e| {
+                e.unit < self.fighters[0].len() * 2
+                    && e.target.is_none_or(|i| i < self.fighters[0].len() * 2)
+                    && e.tick <= crate::BATTLE_TICK_LIMIT
+                    && e.from
+                        .iter()
+                        .chain(&e.to)
+                        .all(|v| v.is_finite() && v.abs() <= 1000.)
+                    && e.effort.is_finite()
+                    && (0.0..=100.).contains(&e.effort)
+            })
+            && self
+                .world_address
+                .as_ref()
+                .is_none_or(|a| Some(a.clone()) == crate::region::address(self.arena))
+            && self.progression_policy <= PROGRESSION_POLICY
             && self.tactical_events.len() <= 128
             && self
                 .tactical_events
@@ -430,6 +480,8 @@ impl BattleReport {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Campaign {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub yard: Option<crate::region::Yard>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prologue: Option<crate::prologue::Progress>,
     #[serde(default)]
     pub origin: Option<crate::genesis::Origin>,
@@ -458,12 +510,20 @@ impl Default for Campaign {
     }
 }
 impl Campaign {
+    pub fn battlefield(&mut self, seed: u64) -> Arena {
+        if self.teams[0].fighters.len() >= 4 && !self.prologue_active() {
+            self.yard.get_or_insert_with(Default::default).arena(seed)
+        } else {
+            crate::pressure::generate(&self.teams, seed)
+        }
+    }
     pub fn new() -> Self {
         let stamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
         let mut campaign = Self {
+            yard: None,
             prologue: None,
             origin: None,
             founders_prepared: false,
@@ -531,6 +591,8 @@ impl Campaign {
                     prosthetics: 0,
                     wounds: Vec::new(),
                     psyche: Psyche::default(),
+                    social: Default::default(),
+                    hound: None,
                 })
                 .collect(),
             }),
@@ -588,6 +650,9 @@ impl Campaign {
         Ok(())
     }
     pub fn validate(&self) -> Result<(), String> {
+        if self.yard.as_ref().is_some_and(|y| !y.valid()) {
+            return Err("invalid Yard history".into());
+        }
         if let Some(progress) = &self.prologue {
             progress.validate(self)?;
         }
@@ -654,6 +719,16 @@ impl Campaign {
     ) -> Result<(u64, Battle), String> {
         self.validate()?;
         let arena = self.prologue_arena().unwrap_or(arena);
+        if let Arena::Pressure(f) = arena
+            && f.generator == crate::region::GENERATOR
+            && self.yard.is_none()
+        {
+            self.yard = Some(crate::region::Yard {
+                seed: Some(f.seed),
+                destroyed: f.destroyed,
+                elapsed_ticks: 0,
+            });
+        }
         if self.next_battle_id >= 1_000_000 {
             return Err("battle sequence exhausted".into());
         }
@@ -700,6 +775,7 @@ impl Campaign {
             u.role = u.trained_role();
             u.ammunition = u.projectile_weapon().map(|w| w.ammunition()).unwrap_or(0);
             u.psyche = f.psyche;
+            u.social = f.social.clone();
             let sheet = *f.theus.get_or_insert_with(|| {
                 crate::theus::Sheet::from_temperament([
                     f.mind.aggression,
@@ -712,6 +788,9 @@ impl Campaign {
             u.ninja = Some(Default::default());
             u.health = u.max_health();
         }
+        crate::social::bind(&mut b.units);
+        crate::social::bind_aliases(&mut b.units, &self.teams);
+        crate::kennel::begin(&mut b, &mut self.teams);
         if let Some(progress) = &self.prologue
             && progress.active()
         {
@@ -835,6 +914,8 @@ impl Campaign {
             recruit.history.clear();
             recruit.source_fighter_id = None;
             recruit.legends.clear();
+            recruit.social = Default::default();
+            recruit.hound = None;
             recruit.legend_count = 0;
             recruit.wounds.clear();
             recruit.flesh = Default::default();
@@ -930,6 +1011,9 @@ impl Campaign {
         for u in &b.units {
             updated.teams[u.team].fighters[u.id % b.team_size()].mind = u.mind;
         }
+        if let Some(yard) = &mut updated.yard {
+            yard.remember(b, false);
+        }
         updated.validate()?;
         *self = updated;
         Ok(())
@@ -943,6 +1027,10 @@ impl Campaign {
         }
         let mut updated = self.clone();
         updated.capture_minds(b)?;
+        crate::kennel::settle(&mut updated.teams, b);
+        if let Some(yard) = &mut updated.yard {
+            yard.remember(b, true);
+        }
         updated.founders_prepared = true;
         let winner = b.winner();
         if let Some(progress) = &mut updated.prologue {
@@ -985,6 +1073,8 @@ impl Campaign {
             f.prosthetics = u.prosthetics;
             f.flesh = u.flesh.clone();
             f.flesh.settle(id);
+            f.social = u.social.clone();
+            f.social.settle(id);
             f.psyche.absorb(
                 u.mind,
                 crate::psyche::Exposure {
@@ -1022,6 +1112,10 @@ impl Campaign {
             }
         }
         updated.last_report = Some(BattleReport {
+            social_events: b.social_events.clone(),
+            aerial_events: b.aerial_events.clone(),
+            companion_events: b.kennel.events.clone(),
+            world_address: crate::region::address(b.initial_arena),
             tactical_events: b.tactical_events.clone(),
             progression_policy: PROGRESSION_POLICY,
             team_names: Some(std::array::from_fn(|team| self.teams[team].name.clone())),

@@ -138,6 +138,7 @@ impl Challenge {
     pub fn start(&self) -> Result<(Campaign, Battle), String> {
         self.validate()?;
         let mut campaign = Campaign {
+            yard: None,
             prologue: None,
             origin: None,
             founders_prepared: true,
@@ -153,6 +154,10 @@ impl Challenge {
             for (slot, fighter) in team.fighters.iter_mut().enumerate() {
                 fighter.source_fighter_id = Some(fighter.source_identity().to_string());
                 fighter.fighter_id = format!("challenge-{side}-{slot}");
+                if let Some(h) = &mut fighter.hound {
+                    h.source_identity = Some(h.identity.clone());
+                    h.identity = format!("{}/hound", fighter.fighter_id);
+                }
             }
         }
         let (_, battle) = campaign.begin_battle(self.seed, self.arena, Controller::Utility)?;

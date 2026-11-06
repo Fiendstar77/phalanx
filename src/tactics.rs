@@ -469,8 +469,9 @@ pub(crate) fn intent(
                 .iter()
                 .filter(|a| a.has_skill(FighterClass::Healer))
                 .min_by(|a, b| {
-                    distance(unit.position, a.position)
-                        .total_cmp(&distance(unit.position, b.position))
+                    (distance(unit.position, a.position) - unit.social.bond(a.id) * 1.5).total_cmp(
+                        &(distance(unit.position, b.position) - unit.social.bond(b.id) * 1.5),
+                    )
                 });
             let base = medic.map_or(unit.position, |m| m.position);
             let rally = legal_goal(
@@ -481,8 +482,8 @@ pub(crate) fn intent(
                 .iter()
                 .filter(|a| !a.has_skill(FighterClass::Healer) && a.health_fraction() > 0.55)
                 .max_by(|a, b| {
-                    screen_value(a)
-                        .total_cmp(&screen_value(b))
+                    (screen_value(a) + unit.social.bond(a.id) * 2.)
+                        .total_cmp(&(screen_value(b) + unit.social.bond(b.id) * 2.))
                         .then(b.id.cmp(&a.id))
                 })
                 .map(|a| a.id);

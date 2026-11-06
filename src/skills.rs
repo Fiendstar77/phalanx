@@ -26,9 +26,12 @@ pub enum Skill {
     ToxicSmoke,
     Occult,
     Springheel,
+    PackCall,
+    PackRecall,
+    CloudStep,
 }
 impl Skill {
-    pub const ALL: [Self; 23] = [
+    pub const ALL: [Self; 26] = [
         Self::Heal,
         Self::Bless,
         Self::Rally,
@@ -52,6 +55,9 @@ impl Skill {
         Self::ToxicSmoke,
         Self::Occult,
         Self::Springheel,
+        Self::PackCall,
+        Self::PackRecall,
+        Self::CloudStep,
     ];
     pub fn class(self) -> C {
         match self {
@@ -74,7 +80,8 @@ impl Skill {
             Self::Reaping => C::Reaper,
             Self::ToxicSmoke => C::Alchemist,
             Self::Occult => C::Warlock,
-            Self::Springheel => C::Acrobat,
+            Self::Springheel | Self::CloudStep => C::Acrobat,
+            Self::PackCall | Self::PackRecall => C::Houndwarden,
         }
     }
     pub fn passive(self) -> bool {
@@ -92,6 +99,7 @@ impl Skill {
                 | Self::Reaping
                 | Self::Occult
                 | Self::Springheel
+                | Self::PackRecall
         )
     }
     pub fn name(self) -> &'static str {
@@ -119,6 +127,9 @@ impl Skill {
             Self::ToxicSmoke => "Toxic smoke",
             Self::Occult => "Occult resonance",
             Self::Springheel => "Springheel",
+            Self::PackCall => "War-hound bond",
+            Self::PackRecall => "Steady recall",
+            Self::CloudStep => "Cloud step",
         }
     }
     pub fn description(self) -> &'static str {
@@ -131,6 +142,15 @@ impl Skill {
             Self::ToxicSmoke => "Toxic smoke drains enemy effort while covering allies.",
             Self::Occult => "Stronger resisted bindings drain enemy effort and last longer.",
             Self::Springheel => "Fast traversal; improved acrobatics and longer wall holds.",
+            Self::PackCall => {
+                "Field your persistent hound; it scouts, guards, recalls and attempts opposed bites."
+            }
+            Self::PackRecall => {
+                "A practiced command reduces the effort needed to signal the hound."
+            }
+            Self::CloudStep => {
+                "A checked 3.2m aerial arc to a visible flank; requires Agility 12, practiced Acrobatics, usable legs and 9 effort."
+            }
 
             Self::Heal => "Heal nearby injured allies every 1.2s; actual healing stanches bleeding",
             Self::Bless => "Nearby allies gain damage and protection",

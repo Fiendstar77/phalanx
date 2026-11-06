@@ -441,7 +441,12 @@ pub(super) fn ready(
             let left = name.as_str() == "mixamorigLeftHand";
             if left || name.as_str() == "mixamorigRightHand" {
                 if !left {
-                    for gear in [Gear::Kusarigama, Gear::RazorWheel] {
+                    for gear in [
+                        Gear::Kusarigama,
+                        Gear::RazorWheel,
+                        Gear::BoneGlaive,
+                        Gear::BellMace,
+                    ] {
                         commands.entity(entity).with_children(|p| {
                             p.spawn((
                                 Crafted {
@@ -453,7 +458,46 @@ pub(super) fn ready(
                                 Visibility::Hidden,
                             ))
                             .with_children(|p| {
-                                if gear == Gear::RazorWheel {
+                                if gear == Gear::BoneGlaive {
+                                    block(
+                                        p,
+                                        &kit,
+                                        &kit.leather,
+                                        [0., 0.58, 0.],
+                                        [0.045, 1.45, 0.045],
+                                    );
+                                    block(p, &kit, &kit.steel, [0., 1.40, 0.], [0.12, 0.52, 0.035]);
+                                    block(
+                                        p,
+                                        &kit,
+                                        &kit.gold,
+                                        [-0.10, 1.29, 0.],
+                                        [0.06, 0.28, 0.045],
+                                    );
+                                } else if gear == Gear::BellMace {
+                                    block(
+                                        p,
+                                        &kit,
+                                        &kit.leather,
+                                        [0., 0.26, 0.],
+                                        [0.055, 0.65, 0.055],
+                                    );
+                                    part(
+                                        p,
+                                        &kit.sphere,
+                                        &kit.gold,
+                                        Vec3::new(0., 0.65, 0.),
+                                        Vec3::new(0.19, 0.22, 0.19),
+                                        Quat::IDENTITY,
+                                    );
+                                    block(
+                                        p,
+                                        &kit,
+                                        &kit.steel,
+                                        [0., 0.78, 0.],
+                                        [0.40, 0.055, 0.055],
+                                    );
+                                } else if gear == Gear::RazorWheel {
                                     part(
                                         p,
                                         &kit.wheel,
@@ -776,7 +820,10 @@ fn update(
             u.health > 0.0
                 && u.lost_limbs & !u.prosthetics & item.limb == 0
                 && (!item.hand
-                    || (!u.equipment.has(Gear::Kusarigama) && !u.equipment.has(Gear::RazorWheel)))
+                    || (!u.equipment.has(Gear::Kusarigama)
+                        && !u.equipment.has(Gear::RazorWheel)
+                        && !u.equipment.has(Gear::BoneGlaive)
+                        && !u.equipment.has(Gear::BellMace)))
                 && (!item.hand
                     || u.projectile_weapon() != Some(W::Bow)
                     || (!u.is_ranged() && !u.bow_follow_through()))
@@ -822,7 +869,9 @@ fn update(
         {
             if let Some(mut material) = materials.get_mut(&garment.material) {
                 let heavy = unit.equipment.has(Gear::IronArmor)
+                    || unit.equipment.has(Gear::PorcelainHarness)
                     || (!unit.equipment.has(Gear::TrailArmor)
+                        && !unit.equipment.has(Gear::SilkLamellar)
                         && matches!(class, Class::Guardian | Class::Paladin | Class::Warrior));
                 let base = if unit.equipment.has(Gear::IronArmor) {
                     [0.48, 0.54, 0.60]
@@ -848,6 +897,7 @@ fn update(
                         Class::Alchemist => [0.21, 0.42, 0.27],
                         Class::Warlock => [0.18, 0.07, 0.30],
                         Class::Acrobat => [0.19, 0.36, 0.44],
+                        Class::Houndwarden => [0.36, 0.43, 0.30],
                     }
                 };
                 let mix = if garment.layer == 0 { 0.18 } else { 0.05 };
@@ -858,12 +908,12 @@ fn update(
                     base[2] * dark * (1.0 - mix) + color[2] * mix,
                 );
                 material.metallic = if heavy && garment.layer == 0 {
-                    0.65
+                    0.38
                 } else {
                     0.0
                 };
                 material.perceptual_roughness = if heavy && garment.layer == 0 {
-                    0.42
+                    0.53
                 } else {
                     0.86
                 };

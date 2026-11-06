@@ -25,7 +25,13 @@ def load(paths, train_end=32, val_end=40):
         manifest=json.loads((Path(directory)/"manifest.json").read_text())
         if source_schema is not None and manifest["source_sha256"]!=source_schema: raise ValueError("mixed simulator source versions")
         source_schema=manifest["source_sha256"]
-        for file in sorted(Path(directory).glob("*.jsonl")):
+        files=sorted(Path(directory).glob("*.jsonl"))
+        if not files:
+            files=sorted(Path(directory).glob("studies/*/decisions.jsonl"))
+            for file in files:
+                if json.loads(file.with_name("status.json").read_text()).get("complete") is not True:
+                    raise ValueError("training requires completed studies")
+        for file in files:
             with file.open() as stream:
                 header = json.loads(next(stream))
                 if header.get("controller","Utility")!="Utility": raise ValueError("imitation labels must come from the utility teacher")
@@ -76,6 +82,11 @@ def run(args):
     torch.set_num_threads(4); torch.manual_seed(args.seed); random.seed(args.seed)
     torch.use_deterministic_algorithms(True)
     data, (features, actions) = load(args.data, args.train_end, args.val_end)
+    prefix=getattr(args,"input_prefix",0)
+    if prefix:
+        if not 1<=prefix<=len(features): raise ValueError("input prefix exceeds feature schema")
+        features=features[:prefix]
+        data={name:(x[:,:prefix],mask,y,seeds) for name,(x,mask,y,seeds) in data.items()}
     output = Path(args.output)
     if output.exists(): raise ValueError("use a fresh output directory")
     output.mkdir(parents=True)
@@ -129,6 +140,7 @@ def run(args):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__); p.add_argument("--data", nargs="+", required=True); p.add_argument("--output", required=True)
+    p.add_argument("--input-prefix",type=int,default=0,help="controlled feature-prefix ablation; 0 keeps all inputs")
     p.add_argument("--epochs",type=int,default=20); p.add_argument("--seed",type=int,default=2026)
     p.add_argument("--hidden",type=int,default=64); p.add_argument("--depth",type=int,default=2); p.add_argument("--lr",type=float,default=1e-3)
     p.add_argument("--train-end",type=int,default=32); p.add_argument("--val-end",type=int,default=40)

@@ -920,6 +920,7 @@ mod tests {
         let killer = s.battle.team_size();
         s.battle.units[general].health = 0.0;
         s.battle.damage_events.push(phalanx::DamageEvent {
+            source_actor: None,
             flesh_region: None,
             sequence: 1,
             tick: 40,

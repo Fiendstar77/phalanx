@@ -45,7 +45,7 @@ pub(super) fn install(app: &mut App) {
         .add_systems(
             PostUpdate,
             begin
-                .after(face::Pose)
+                .after(super::balance::Pose)
                 .before(bevy::transform::TransformSystems::Propagate),
         )
         .add_systems(

@@ -169,7 +169,7 @@ fn install_campaign(
     seed: u64,
     controller: Controller,
 ) -> Result<(), String> {
-    let arena = phalanx::pressure::generate(&campaign.teams, seed);
+    let arena = campaign.battlefield(seed);
     let (id, battle) = campaign.begin_battle(seed, arena, controller)?;
     let arena = battle.arena;
     session.campaign = campaign;

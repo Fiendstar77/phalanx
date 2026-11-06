@@ -1,0 +1,89 @@
+{
+  "source": "War_Hound.original.glb",
+  "removed_saliva_faces": 225,
+  "body_vertices": 26413,
+  "bones": 28,
+  "game_scale": 0.25,
+  "height_including_ears_m": 0.49117669465,
+  "gait": "baked two-bone IK; four-beat walk, diagonal trot, paired recall bound",
+  "gait_checks": {
+    "Walk": {
+      "max_stance_ankle_error_m": 3.161013638317052e-08,
+      "stance_samples": 67
+    },
+    "Run": {
+      "max_stance_ankle_error_m": 0.0023840511075363647,
+      "stance_samples": 32
+    },
+    "Recall": {
+      "max_stance_ankle_error_m": 0.00866754969402292,
+      "stance_samples": 29
+    }
+  },
+  "basecolor": {
+    "size": [
+      2048,
+      2048
+    ],
+    "source": "new concept-inspired procedural palette baked through original UVs; supplied texture was solid white"
+  },
+  "unweighted_vertices": 0,
+  "max_weight_error": 4.470348358154297e-08,
+  "test_leg_moved_vertices": 1649,
+  "test_leg_max_displacement": 0.06214057460467205,
+  "left_pupil_motion": 0.007780541265793313,
+  "opposite_pupil_motion": 0.0,
+  "clips": [
+    "Idle",
+    "Walk",
+    "Run",
+    "Recall",
+    "Bite",
+    "Sniff",
+    "Down",
+    "LookAround"
+  ],
+  "eye_centers_source": {
+    "L": [
+      0.3050000071525574,
+      -0.6949999928474426,
+      0.3449999988079071
+    ],
+    "R": [
+      -0.1120000034570694,
+      -0.6919999718666077,
+      0.3440000116825104
+    ]
+  },
+  "original_sha256": "2f64f81dec3018cb7415f134b88fe65bfb68164ef2f27fa40e3f4727f7fdf4b2",
+  "rigged_glb_sha256": "930c2d69a1252b5bb4c32367279ff4bb633105aac96c89fa982a087bb87251bf",
+  "basecolor_sha256": "42766d39a56803a6f63ade5df1c4c12a73efb2b9a4cda96ff68e630ab4417124",
+  "local_checks": {
+    "headless_tests_passed": 217,
+    "headless_tests_ignored": 1,
+    "graphics_tests_passed": 83,
+    "python_tests_passed": 17,
+    "strict_headless_clippy": "passed",
+    "fmt": "passed",
+    "original_source_preserved": true,
+    "campaign_save_sha256": "e4c9c1d47c01179e7ca65b5aa03fa82b81bfe0f331368a14d6e89810e84eb01d"
+  },
+  "game_pose_review": {
+    "battle_unchanged": true,
+    "clips": [
+      "Idle",
+      "Walk",
+      "Run",
+      "Recall",
+      "Bite",
+      "Sniff",
+      "Down",
+      "LookAround"
+    ],
+    "eye_bones": 16,
+    "fixture": "authored asset pose review; animation clocks staged; no combat claims",
+    "loaded_models": 8,
+    "pose_frames": 2042,
+    "skinned_meshes": 72
+  }
+}

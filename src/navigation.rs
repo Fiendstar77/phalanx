@@ -1,4 +1,4 @@
-//! Deterministic Dijkstra search over a one-unit grid. All edge costs are positive.
+//! Deterministic grid search. Larger regions use an admissible distance heuristic.
 use crate::{Mind, Unit, distance, terrain::Arena};
 use serde::Serialize;
 use std::{
@@ -109,6 +109,32 @@ fn nearest(arena: Arena, p: [f32; 2]) -> Option<usize> {
     let count = (size[0] * 2.0 * size[1] * 2.0) as usize;
     let mut best = None;
     let mut best_distance = f32::INFINITY;
+    // The closest clear anchor is normally local. Fall back to the complete search
+    // at obstacles; legacy fields retain their original stable traversal.
+    if matches!(arena,Arena::Pressure(f) if f.generator==crate::region::GENERATOR) {
+        let width = (size[0] * 2.) as i32;
+        let height = (size[1] * 2.) as i32;
+        let x = (p[0] + size[0] - 0.5).floor() as i32;
+        let z = (p[1] + size[1] - 0.5).floor() as i32;
+        for dz in -1..=2 {
+            for dx in -1..=2 {
+                let (xx, zz) = (x + dx, z + dz);
+                if xx < 0 || zz < 0 || xx >= width || zz >= height {
+                    continue;
+                }
+                let id = (zz * width + xx) as usize;
+                let q = point(arena, id);
+                let d = distance(p, q);
+                if d < best_distance && !arena.blocked(q) && arena.walk_segment(p, q) {
+                    best = Some(id);
+                    best_distance = d;
+                }
+            }
+        }
+        if best_distance < 1. {
+            return best;
+        }
+    }
     for id in 0..count {
         let candidate = point(arena, id);
         let d = distance(p, candidate);
@@ -148,19 +174,20 @@ pub struct Route {
 }
 #[derive(Clone, Copy)]
 struct Entry {
+    priority: f32,
     cost: f32,
     id: usize,
 }
 impl PartialEq for Entry {
     fn eq(&self, o: &Self) -> bool {
-        self.cost == o.cost && self.id == o.id
+        self.priority == o.priority && self.id == o.id
     }
 }
 impl Eq for Entry {}
 impl Ord for Entry {
     fn cmp(&self, o: &Self) -> Ordering {
-        o.cost
-            .total_cmp(&self.cost)
+        o.priority
+            .total_cmp(&self.priority)
             .then_with(|| o.id.cmp(&self.id))
     }
 }
@@ -249,19 +276,22 @@ pub fn plan_known(
     let mut costs = vec![f32::INFINITY; count];
     let mut previous = vec![usize::MAX; count];
     let mut heap = BinaryHeap::new();
-    let threat: Vec<_> = (0..count)
-        .map(|i| {
-            if arena.blocked(point(arena, i)) {
-                0.0
-            } else {
-                threat_at_known(arena, point(arena, i), threats)
-            }
-        })
-        .collect();
+    let mut threat = vec![f32::NAN; count];
+    let heuristic = |id| {
+        if matches!(arena,Arena::Pressure(f) if f.generator==crate::region::GENERATOR) {
+            distance(point(arena, id), point(arena, g))
+        } else {
+            0.
+        }
+    };
     costs[s] = 0.0;
-    heap.push(Entry { cost: 0.0, id: s });
+    heap.push(Entry {
+        priority: heuristic(s),
+        cost: 0.0,
+        id: s,
+    });
     let graph = neighbors(arena);
-    while let Some(Entry { cost, id }) = heap.pop() {
+    while let Some(Entry { cost, id, .. }) = heap.pop() {
         if cost > costs[id] {
             continue;
         }
@@ -269,6 +299,9 @@ pub fn plan_known(
             break;
         }
         for &next in &graph[id] {
+            if threat[next].is_nan() {
+                threat[next] = threat_at_known(arena, point(arena, next), threats);
+            }
             let candidate = cost
                 + edge(
                     arena,
@@ -282,6 +315,7 @@ pub fn plan_known(
                 costs[next] = candidate;
                 previous[next] = id;
                 heap.push(Entry {
+                    priority: candidate + heuristic(next),
                     cost: candidate,
                     id: next,
                 });
